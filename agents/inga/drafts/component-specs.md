@@ -1,45 +1,324 @@
 # KidneyHood Component Specifications
 
 **Author:** Inga (Senior UX/UI Designer)
-**Version:** 1.0 -- Discovery Phase Draft
+**Version:** 2.0 -- Lean Launch MVP
 **Date:** 2026-03-25
 **For:** Harshit (Frontend Developer)
+**Ticket:** LKID-33
 
-Every UI component for the KidneyHood app. Each includes props interface, all visual states, variants, spacing, responsive behavior, and accessibility requirements. Implement using shadcn/ui primitives + Tailwind CSS + Visx where noted.
+Every UI component for the KidneyHood lean launch (21 components across 5 groups). Each spec includes a TypeScript props interface, responsive behavior, and accessibility requirements. Implement using shadcn/ui primitives + Tailwind CSS + Visx where noted.
+
+**Source of truth:** `lean-launch-mvp-prd.md` (approved) + `design-sprint-meeting-1.md` (component inventory)
 
 ---
 
 ## Table of Contents
 
-1. [Form Components](#1-form-components)
-2. [Chart Components](#2-chart-components)
-3. [Auth Components](#3-auth-components)
-4. [Layout Components](#4-layout-components)
+1. [Shared Types](#shared-types)
+2. [Auth Components (3)](#1-auth-components)
+3. [Form Components (4)](#2-form-components)
+4. [Chart Components (10)](#3-chart-components)
+5. [Results Components (3)](#4-results-components)
+6. [Layout Components (1)](#5-layout-components)
+7. [Deferred to Phase 2](#deferred-to-phase-2)
 
 ---
 
-## 1. Form Components
+## Shared Types
 
-### 1.1 NumberInput
+These types are derived from the `POST /predict` API response and are referenced throughout the component specs.
 
-Numeric form field with label, unit indicator, helper text, and inline error state. Used for all lab value entries.
+```typescript
+/** POST /predict request body (flat object, no oneOf, no arrays) */
+interface PredictionInput {
+  name: string;
+  email: string;             // Pre-filled from Clerk session (read-only)
+  age: number;               // 18-120, integer
+  bun: number;               // 5-150, integer, mg/dL
+  creatinine: number;        // 0.3-15.0, step 0.1, mg/dL
+  potassium: number;         // 2.0-8.0, step 0.1, mEq/L
+}
+
+/** POST /predict response */
+interface PredictionResponse {
+  trajectories: TrajectoryData[];   // Always 4 trajectories
+  phases: PhaseDefinition[];        // CKD phase band definitions
+  dialysis_threshold: number;       // eGFR value (15)
+  summary: string;                  // Human-readable summary sentence
+}
+
+/** Single trajectory dataset */
+interface TrajectoryData {
+  id: string;                       // "bun_lte_12" | "bun_13_17" | "bun_18_24" | "no_treatment"
+  label: string;                    // Display label, e.g. "BUN ≤ 12"
+  color: string;                    // Hex color
+  pattern: "solid" | "dashed" | "short-dash" | "dotted";
+  stroke_width: number;             // 2.0 or 2.5
+  dash_array?: string;              // SVG dash-array, e.g. "8,4"
+  points: DataPoint[];
+  final_egfr: number;               // End-of-line eGFR value
+  dialysis_age?: number | null;     // Months to dialysis, or null
+}
+
+/** Single data point on a trajectory */
+interface DataPoint {
+  months_from_baseline: number;
+  egfr: number;
+}
+
+/** CKD phase band definition */
+interface PhaseDefinition {
+  label: string;                    // "Normal/Mild", "Moderate", "Severe", "Dialysis"
+  egfr_min: number;
+  egfr_max: number;
+  color: string;                    // Fill color hex
+  opacity: number;
+}
+
+/** Field-level validation error */
+interface FieldError {
+  field: string;                    // Field name matching PredictionInput key
+  message: string;                  // Human-readable error
+}
+```
+
+---
+
+## 1. Auth Components
+
+### 1.1 MagicLinkForm
+
+Email-only entry form for requesting a magic link. Single field, single CTA. This is the bot gate and email capture step.
+
+**Props:**
+
+```typescript
+interface MagicLinkFormProps {
+  onSubmit: (email: string) => void;
+  isLoading: boolean;
+  error?: string;                   // Inline error, e.g. "Invalid email format"
+}
+```
+
+**States:**
+
+| State | Button | Email Field | Error |
+|-------|--------|-------------|-------|
+| Default | Primary, enabled | Empty, placeholder "your@email.com" | Hidden |
+| Validating | Primary, spinner inside, `aria-busy="true"` | Filled, disabled | Hidden |
+| Error | Primary, enabled | 2px `--destructive` border, #FDECEA bg | Visible below field, 14px `--destructive` |
+
+**Layout:**
+- Max-width: 400px, centered on all breakpoints.
+- Email input: 48px height, `rounded-md`, 12px padding.
+- Submit button ("Send me a sign-in link"): 48px height, full-width, primary style.
+- Heading: "Get Started" -- 20px/600.
+- Subtext: "Enter your email to receive a secure sign-in link." -- 16px/400.
+- Field gap: 16px. Button margin-top: 24px.
+
+**Responsive:**
+- Mobile: 16px horizontal padding.
+- Tablet/Desktop: centered card within max-width 400px.
+
+**Accessibility:**
+- `<form role="form" aria-label="Sign in with email">`.
+- Email input: `type="email"`, `autocomplete="email"`, `inputmode="email"`.
+- `aria-invalid="true"` on email field when error is present.
+- `aria-describedby` pointing to error text element.
+- On submit: focus moves to MagicLinkSent screen.
+
+---
+
+### 1.2 MagicLinkSent
+
+Confirmation screen after magic link is sent. Includes deep-link buttons to email apps (critical for 60+ users) and a resend countdown.
+
+**Props:**
+
+```typescript
+interface MagicLinkSentProps {
+  email: string;                    // Partially masked, e.g. "j***@email.com"
+  onResend: () => void;
+  isResending: boolean;
+}
+```
+
+**States:**
+
+| State | Resend Button | Deep-Link Buttons |
+|-------|---------------|-------------------|
+| Cooldown (0-60s) | Disabled, countdown text "(available in Xs)" | Enabled, secondary style |
+| Ready | Enabled, secondary style | Enabled, secondary style |
+| Resending | Spinner, `aria-busy="true"` | Enabled |
+
+**Layout:**
+
+```
+[Email icon]                          48px
+
+Check your email!                     20px/600
+
+We sent a sign-in link to            16px/400
+j***@email.com                        16px/600 (masked)
+
+The link expires in 15 min.           14px/400 muted
+
++------------------------------------+
+| [Gmail icon] Open Gmail            |  48px, secondary btn
++------------------------------------+
++------------------------------------+
+| [Outlook icon] Open Outlook        |  48px, secondary btn
++------------------------------------+
+
+[Resend link]                         48px, disabled 60s
+(available in 58 seconds)             14px/400 muted
+
+Didn't receive it?                    14px/400 muted
+Check your spam folder.
+```
+
+- Max-width: 400px, centered on all breakpoints.
+- Deep-link URLs: `https://mail.google.com/mail/`, `https://outlook.live.com/mail/`.
+- Deep-link buttons: 48px height, secondary style, full-width, 8px gap between.
+- Resend countdown: 60s timer, visible below button.
+
+**Responsive:**
+- Same layout on all breakpoints (max-width 400px centered).
+
+**Accessibility:**
+- Resend button: `aria-disabled="true"` during cooldown (not HTML `disabled`, preserves focus).
+- Countdown text in `aria-label`: "Resend link, available in X seconds".
+- Deep-link buttons: `target="_blank"`, `rel="noopener noreferrer"`.
+- On resend: `role="alert"` toast announces "Link sent".
+
+---
+
+### 1.3 VerifyHandler
+
+Invisible handler for magic link token verification. No visible UI -- redirects on success, shows error on failure.
+
+**Props:**
+
+```typescript
+interface VerifyHandlerProps {
+  token: string;                    // From URL query param ?token=...
+}
+```
+
+**Behavior:**
+- On mount: call Clerk token verification.
+- Success: auto-redirect to `/predict`. Zero extra clicks.
+- Failure (expired/invalid): redirect to `/auth` with expired-link view ("This link has expired" + "Send a new link" button).
+
+**Layout:**
+- No visible UI during verification (redirect-only).
+- On error: renders expired-link screen (see Meeting 1, Screen D).
+
+**Responsive:** N/A (no visible UI during happy path).
+
+**Accessibility:**
+- `aria-busy="true"` on container during verification.
+- `role="alert"` on error message.
+- Error screen: "Send a new link" button receives focus automatically.
+
+---
+
+## 2. Form Components
+
+### 2.1 PredictionForm
+
+Container form for the prediction input. Manages layout, validation, error summary, and submission for name + 4 lab value fields. Email is pre-filled and read-only from Clerk session.
+
+**Props:**
+
+```typescript
+interface PredictionFormProps {
+  email: string;                    // Pre-filled from Clerk session
+  onSubmit: (data: PredictionInput) => void;
+  isLoading: boolean;
+  serverErrors?: FieldError[];      // Server-side validation errors
+}
+```
+
+**States:**
+
+| State | Submit Button | Fields | Error Summary |
+|-------|---------------|--------|---------------|
+| Default | Primary, enabled ("See My Prediction") | Editable | Hidden |
+| Validating | Spinner, `aria-busy="true"` | Disabled | Hidden |
+| Client Error | Primary, enabled | Error fields highlighted | Visible, `role="alert"` |
+| Server Error | Primary, enabled | Error fields highlighted | Visible, `role="alert"` |
+
+**Layout:**
+
+```
+MOBILE (single column)                   DESKTOP (max 640px centered)
++----------------------------------+     +----------------------------------+
+|  Enter Your Lab Values           | 20s |  Enter Your Lab Values           |
+|                                  |     |                                  |
+|  [Error Summary Banner]         |     |  [Error Summary Banner]          |
+|                                  |     |                                  |
+|  Email (read-only)              |     |  +--------------+--------------+ |
+|  Name *                          |     |  | Email (RO)   | Name *       | | 2-col
+|  Age *                           |     |  +--------------+--------------+ |
+|  BUN *                           |     |                                  |
+|  Creatinine *                    |     |  +--------------+--------------+ |
+|  Potassium *                     |     |  | Age *        | BUN *        | | 2-col
+|                                  |     |  +--------------+--------------+ |
+|  [See My Prediction]             | 56h |                                  |
++----------------------------------+     |  +--------------+--------------+ |
+                                         |  | Creatinine * | Potassium *  | | 2-col
+                                         |  +--------------+--------------+ |
+                                         |                                  |
+                                         |  [See My Prediction]             | 56h
+                                         +----------------------------------+
+```
+
+- Max-width: 640px, centered.
+- Heading: "Enter Your Lab Values" -- 20px/600.
+- Submit button: 56px height, full-width, primary color, margin-top 24px.
+- Field gap: 12px (mobile), 16px (desktop).
+
+**Responsive:**
+- Mobile (<768px): single column, all fields stacked.
+- Desktop (>=768px): 2-column grid (max 640px). Pairs: Email+Name, Age+BUN, Creatinine+Potassium.
+
+**Validation (client-side, on submit):**
+- All fields except email are required.
+- Age: integer, 18-120.
+- BUN: integer, 5-150.
+- Creatinine: float, 0.3-15.0.
+- Potassium: float, 2.0-8.0.
+- On error: scroll to first error field, error summary banner at top.
+
+**Accessibility:**
+- `<form>` element wrapping all fields.
+- Error summary: `role="alert"`, `aria-live="assertive"`, focus-on-mount.
+- Scroll-to-first-error on validation failure.
+- All fields use `<label htmlFor>` associations.
+
+---
+
+### 2.2 NumberInput
+
+Numeric form field with label, unit indicator, helper text, and inline error state. Used for age, BUN, creatinine, and potassium.
 
 **Props:**
 
 ```typescript
 interface NumberInputProps {
-  id: string;                    // Unique ID for label association
-  name: string;                  // API field name
-  label: string;                 // Visible label
-  unit: string;                  // e.g., "mg/dL"
-  helperText?: string;           // e.g., "Normal range: 7-20 mg/dL"
+  id: string;                       // Unique ID for label association
+  name: string;                     // API field name
+  label: string;                    // Visible label text
+  unit: string;                     // e.g. "mg/dL", "years"
+  helperText?: string;              // e.g. "Normal range: 7-20 mg/dL"
   placeholder?: string;
   min: number;
   max: number;
-  step?: number;                 // Default: 1 (int), 0.1 (float)
+  step?: number;                    // Default: 1 (int), 0.1 (float)
   value: number | undefined;
   onChange: (value: number | undefined) => void;
-  error?: string;                // Inline error message
+  error?: string;                   // Inline error message
   disabled?: boolean;
   required?: boolean;
 }
@@ -53,7 +332,7 @@ interface NumberInputProps {
 | Focused | 2px `--secondary` (#378ADD) | `--background` | `--foreground` | Helper visible |
 | Filled (valid) | 1px `--border` | `--background` | `--foreground` | Helper visible |
 | Error | 2px `--destructive` (#D32F2F) | #FDECEA | `--foreground` | Error replaces helper, 14px `--destructive` |
-| Disabled | 1px `--border` | `--card` (#F8F9FA) | `--muted-foreground` (#888) | Helper dimmed |
+| Disabled | 1px `--border` | `--card` (#F8F9FA) | `--muted-foreground` (#666) | Helper dimmed |
 | Hover | 1px `--neutral` (#AAA) | `--background` | `--foreground` | Helper visible |
 
 **Layout:**
@@ -70,8 +349,17 @@ interface NumberInputProps {
 - Mobile: unit below input, inline with helper text: "[unit] -- [helper text]".
 - Input height: 48px (`h-12`), border-radius: 6px (`rounded-md`), padding: 12px (`px-3`).
 - Label margin-bottom: 6px. Helper/error margin-top: 4px.
-- Field gap: 16px (tablet/desktop), 12px (mobile).
 - Font: input text 16px (prevents iOS zoom on focus).
+- 44px minimum touch target on all interactive elements.
+
+**Instances:**
+
+| Field | Label | Unit | Min | Max | Step | Helper Text | inputmode |
+|-------|-------|------|-----|-----|------|-------------|-----------|
+| age | Age | years | 18 | 120 | 1 | -- | `numeric` |
+| bun | BUN | mg/dL | 5 | 150 | 1 | Normal range: 7-20 mg/dL | `numeric` |
+| creatinine | Creatinine | mg/dL | 0.3 | 15.0 | 0.1 | Normal range: 0.6-1.2 mg/dL | `decimal` |
+| potassium | Potassium | mEq/L | 2.0 | 8.0 | 0.1 | Normal range: 3.5-5.0 mEq/L | `decimal` |
 
 **Accessibility:**
 - `<label htmlFor={id}>` wraps label text.
@@ -79,326 +367,138 @@ interface NumberInputProps {
 - `aria-invalid="true"` when in error state.
 - `aria-required="true"` for required fields.
 - `inputmode="decimal"` for float fields, `inputmode="numeric"` for integer fields.
-- Error announcement: `role="alert"` on error text container (announces on state change).
-
-**Instances:**
-
-| Field | Label | Unit | Min | Max | Step | Helper Text |
-|-------|-------|------|-----|-----|------|-------------|
-| age | Age | years | 18 | 120 | 1 | -- |
-| bun | BUN | mg/dL | 5 | 150 | 1 | Normal range: 7-20 mg/dL |
-| creatinine | Creatinine | mg/dL | 0.3 | 15.0 | 0.1 | Normal range: 0.6-1.2 mg/dL |
-| potassium | Potassium | mEq/L | 2.0 | 8.0 | 0.1 | Normal range: 3.5-5.0 mEq/L |
-| hemoglobin | Hemoglobin | g/dL | 3.0 | 20.0 | 0.1 | Normal range: 12-17 g/dL |
-| glucose | Glucose | mg/dL | 30 | 600 | 1 | Normal range: 70-100 mg/dL |
-| systolic_bp | Systolic Blood Pressure | mmHg | 70 | 250 | 1 | Normal: below 120 mmHg |
-| proteinuria | Proteinuria | (select) | 0 | 10000 | 1 | -- |
+- Error text: `role="alert"` on error container (announces on state change).
 
 ---
 
-### 1.2 RadioGroup
+### 2.3 NameInput
 
-Radio button group. Used for sex selection.
+Text input for patient name. Same visual pattern as NumberInput but for text.
 
 **Props:**
 
 ```typescript
-interface RadioGroupProps {
+interface NameInputProps {
   id: string;
-  name: string;
-  label: string;
-  options: { value: string; label: string }[];
-  value: string | undefined;
+  value: string;
   onChange: (value: string) => void;
   error?: string;
   required?: boolean;
-  orientation?: "vertical" | "horizontal"; // Default: vertical
 }
 ```
 
-**States:**
-
-| State | Radio Circle | Label | Border |
-|-------|-------------|-------|--------|
-| Unselected | 20px circle, 2px `--border` | 16px `--foreground` | -- |
-| Selected | 20px circle, 2px `--primary`, 10px filled `--primary` | 16px `--foreground` | -- |
-| Focused | 20px circle + 2px blue focus ring | 16px `--foreground` | -- |
-| Error | 20px circle, 2px `--destructive` | 16px `--foreground` | Error text below group |
-| Disabled | 20px circle, 2px `--border`, fill `--card` | 16px `--muted-foreground` | -- |
+**States:** Same state table as NumberInput (Default, Focused, Filled, Error, Disabled, Hover).
 
 **Layout:**
-- Each radio option: 44px min height (touch target).
-- Gap between options: 8px.
-- Radio circle: 20px, margin-right: 12px from label.
-- Vertical layout on all breakpoints for sex field.
-
-**Instance (Sex):**
-- Options: `[{value: "male", label: "Male"}, {value: "female", label: "Female"}, {value: "prefer_not_to_say", label: "Prefer not to say"}]`
-- Required: true. Placed after Age, before BUN.
+- Same 48px height, 6px rounded-md, 12px padding as NumberInput.
+- Label: "Name", no unit, no helper text.
+- Full-width on all breakpoints (within form grid cell).
 
 **Accessibility:**
-- Uses shadcn/ui `RadioGroup` (Radix primitives, handles ARIA automatically).
-- `role="radiogroup"` with `aria-label`.
-- Arrow key navigation between options.
+- `autocomplete="name"`.
+- `<label htmlFor={id}>`.
+- `aria-invalid="true"` on error.
 - `aria-required="true"`.
 
 ---
 
-### 1.3 Toggle
+### 2.4 EmailInput
 
-Binary toggle switch. Used for SGLT2 inhibitor.
+Read-only email field, pre-filled from Clerk session. Not editable by the user.
 
 **Props:**
 
 ```typescript
-interface ToggleProps {
-  id: string;
-  name: string;
-  label: string;
-  helperText?: string;
-  checked: boolean;
-  onChange: (checked: boolean) => void;
-  disabled?: boolean;
+interface EmailInputProps {
+  email: string;                    // Pre-filled from Clerk session
 }
 ```
 
 **States:**
 
-| State | Track | Thumb | Label |
-|-------|-------|-------|-------|
-| Off | 40x24px, `--border` bg | 20px circle, white, left | 16px `--foreground` |
-| On | 40x24px, `--primary` bg | 20px circle, white, right | 16px `--foreground` |
-| Focused | + 2px blue focus ring | | |
-| Disabled | 40x24px, `--card` bg | 20px circle, `--border` | 16px `--muted-foreground` |
+| State | Border | Background | Text | Icon |
+|-------|--------|-----------|------|------|
+| Read-only (always) | 1px `--border` | `--card` (#F8F9FA) | `--muted-foreground` (#666) | Lock icon, 16px, right-aligned |
 
 **Layout:**
-- Label left, toggle right, on same line.
-- Row height: 44px (touch target).
-- Helper text below, 14px `--muted-foreground`.
+- Same 48px height, 6px rounded-md as other inputs.
+- Lock icon inside input, right-aligned, 16px.
+- Helper text below: "Pre-filled from sign-in" -- 14px `--muted-foreground`.
+- Email text may be partially masked: "j***@email.com" or shown in full (match Clerk session).
+
+**Responsive:**
+- Mobile: full-width, single column.
+- Desktop: left cell of first 2-col row in PredictionForm.
 
 **Accessibility:**
-- `role="switch"`, `aria-checked`, `aria-label`.
-- Space/Enter to toggle. Uses shadcn/ui `Switch`.
+- `<input readonly>` with `aria-readonly="true"`.
+- `<label htmlFor>`: "Email".
+- `aria-describedby` pointing to helper text.
+- Not included in tab order for form submission (read-only, no action needed).
 
 ---
 
-### 1.4 Select
+## 3. Chart Components
 
-Dropdown select. Used for CKD diagnosis and proteinuria unit.
+### 3.1 PredictionChart
 
-**Props:**
-
-```typescript
-interface SelectFieldProps {
-  id: string;
-  name: string;
-  label: string;
-  placeholder: string;          // e.g., "Select type..."
-  options: { value: string; label: string }[];
-  value: string | undefined;
-  onChange: (value: string) => void;
-  error?: string;
-  disabled?: boolean;
-}
-```
-
-**States:**
-
-| State | Border | Background | Chevron |
-|-------|--------|-----------|---------|
-| Default (placeholder) | 1px `--border` | `--background` | `--muted-foreground` |
-| Open | 2px `--secondary` | `--background` | rotated 180deg |
-| Selected | 1px `--border` | `--background` | `--muted-foreground` |
-| Error | 2px `--destructive` | #FDECEA | `--destructive` |
-| Disabled | 1px `--border` | `--card` | `--muted-foreground` |
-
-**Layout:**
-- Height: 48px. Border-radius: 6px. Padding: 12px.
-- Dropdown menu: max-height 240px, scroll if needed, 8px border-radius.
-- Each option: 44px height (touch target), 12px padding.
-
-**Accessibility:**
-- Uses shadcn/ui `Select` (Radix, handles ARIA).
-- Keyboard: arrow keys to navigate, Enter to select, Escape to close.
-
-**Instances:**
-
-CKD Diagnosis options: `["Type 1 - Diabetic", "Type 2 - Diabetic", "Hypertensive", "Glomerular", "Polycystic", "Other", "Unknown"]`
-
-Proteinuria Unit options: `["mg/g (UACR)", "mg/dL", "g/24h"]`
-
----
-
-### 1.5 SubmitButton
-
-Primary form submission button.
-
-**Props:**
-
-```typescript
-interface SubmitButtonProps {
-  label: string;                 // "See My Prediction"
-  loading?: boolean;
-  disabled?: boolean;
-  onClick: () => void;
-}
-```
-
-**States:**
-
-| State | Background | Text | Cursor | Extra |
-|-------|-----------|------|--------|-------|
-| Default | `--primary` (#1D9E75) | white, 16px/600 | pointer | -- |
-| Hover | darken 10% (#178A65) | white | pointer | -- |
-| Active/pressed | darken 15% | white | pointer | scale(0.98) |
-| Loading | `--primary` 60% opacity | hidden | wait | spinner (white, 20px) centered |
-| Disabled | `--neutral` (#AAA) | white 60% opacity | not-allowed | -- |
-
-**Layout:**
-- Height: 56px (form submit, larger than standard 48px).
-- Full width on mobile. Max-width: 400px on desktop (centered).
-- Border-radius: 8px (`rounded-lg`). Font: 16px/600.
-- Margin-top: 24px from last form field.
-
-**Accessibility:**
-- `type="submit"`. `aria-disabled` when disabled (not HTML `disabled` -- preserves focus).
-- `aria-busy="true"` during loading. Screen reader announces "Calculating your prediction" during load.
-
----
-
-### 1.6 FormSection
-
-Collapsible section for optional/silent field groups. Progressive disclosure.
-
-**Props:**
-
-```typescript
-interface FormSectionProps {
-  id: string;
-  title: string;                 // e.g., "Sharpen your prediction"
-  description?: string;          // Subtitle text
-  defaultOpen?: boolean;         // Default: false
-  children: React.ReactNode;
-}
-```
-
-**States:**
-
-| State | Header | Content | Chevron |
-|-------|--------|---------|---------|
-| Collapsed | 44px height, `--foreground` title | Hidden (height: 0, overflow hidden) | Right-pointing |
-| Expanded | 44px height, `--foreground` title | Visible, animated slide-down (200ms ease) | Down-pointing |
-| Hover | Background: `--card` subtle | -- | -- |
-
-**Layout:**
-- Top border: 1px `--border`.
-- Header padding: 12px horizontal, 0 vertical (height set by min-height 44px).
-- Content padding: 0 top (flows from header), 0 horizontal (fields have own padding).
-- Title: 16px/600. Chevron: 16px, right-aligned.
-
-**Accessibility:**
-- Uses shadcn/ui `Collapsible` or `Accordion`.
-- `aria-expanded` on trigger. Content has `role="region"` with `aria-labelledby`.
-- Enter/Space to toggle.
-
-**Instances:**
-
-| Section | Title | Description |
-|---------|-------|-------------|
-| tier2 | Sharpen your prediction | Add hemoglobin and glucose for an enhanced prediction |
-| silent | Additional health info | Optional -- helps improve accuracy |
-
----
-
-## 2. Chart Components
-
-### 2.1 PredictionChart
-
-Main Visx chart container. Renders SVG with axes, lines, bands, and threshold.
+Main Visx chart container. Renders the SVG with axes, trajectory lines, phase bands, dialysis threshold, tooltips, crosshair, and end-of-line labels. This is the core product visualization.
 
 **Props:**
 
 ```typescript
 interface PredictionChartProps {
-  data: TrajectoryData[];        // Array of 4 trajectory datasets
-  phases: PhaseBand[];           // Phase band definitions
-  dialysisThreshold: number;     // eGFR value (15)
-  width: number;                 // Container width (responsive)
-  height: number;                // Container height (responsive)
-  variant: "A" | "B";           // Full interactive or simplified
-  confidenceTier: 1 | 2;
-  onDataPointHover?: (point: DataPoint) => void;  // Variant A only
-  onDataPointTap?: (point: DataPoint) => void;     // Variant A only
-}
-
-interface TrajectoryData {
-  id: string;                    // "bun_lte_12", "bun_13_17", "bun_18_24", "no_treatment"
-  label: string;                 // Display label
-  color: string;                 // Line color
-  pattern: "solid" | "dashed" | "short-dash" | "dotted";
-  points: DataPoint[];
-  finalEgfr: number;            // End-of-line label value
-  dialysisAge?: number | null;  // Months to dialysis, or null
-}
-
-interface DataPoint {
-  monthsFromBaseline: number;
-  egfr: number;
+  data: PredictionResponse;         // Full API response
+  width: number;                    // From ParentSize wrapper
+  height: number;                   // From ParentSize wrapper
+  onDataPointHover?: (point: DataPoint | null) => void;
+  onDataPointTap?: (point: DataPoint | null) => void;
 }
 ```
 
-**Dimensions (responsive):**
+**Dimensions (responsive via ParentSize):**
 
-| Breakpoint | Width | Height | Margins |
-|------------|-------|--------|---------|
-| Mobile (<768px) | 100% - 32px | 200px | top: 16, right: 48, bottom: 40, left: 40 |
-| Tablet (768-1024px) | 100% - 48px | 280px | top: 16, right: 64, bottom: 40, left: 48 |
-| Desktop (>1024px) | min(960px, 100%-64px) | 340px | top: 20, right: 80, bottom: 48, left: 56 |
+| Breakpoint | Width | Height | Margins (top, right, bottom, left) |
+|------------|-------|--------|-----|
+| Mobile (<768px) | 100% - 32px | 200px | 16, 48, 40, 40 |
+| Tablet (768-1024px) | 100% - 48px | 280px | 16, 64, 40, 48 |
+| Desktop (>1024px) | min(960px, 100%-64px) | 340px | 20, 80, 48, 56 |
 
 Right margin accommodates end-of-line labels.
 
-**X-Axis (true linear time scale):**
-- Scale: linear, domain [0, 120] months.
-- Tick marks at: 0, 12, 24, 36, 48, 60, 72, 84, 96, 108, 120.
-- Labels: "0", "1yr", "2yr", "3yr", "4yr", "5yr", "6yr", "7yr", "8yr", "9yr", "10yr".
+**X-Axis (linear time scale):**
+- Domain: [0, 120] months.
+- Ticks: 0, 12, 24, 36, 48, 60, 72, 84, 96, 108, 120.
+- Labels: "0", "1yr", "2yr", ... "10yr".
 - Mobile: show every other label (0, 2yr, 4yr, 6yr, 8yr, 10yr).
-- Font: 12px/400 `--muted-foreground`.
-- Axis line: 1px `--border`.
+- Font: 12px/400 `--muted-foreground`. Axis line: 1px `--border`.
 
 **Y-Axis:**
-- Scale: linear, domain [0, max(90, maxEgfr + 10)].
-- Tick marks: 0, 15, 30, 45, 60, 75, 90.
-- 15 always shown (dialysis threshold).
+- Domain: [0, max(90, maxEgfr + 10)].
+- Ticks: 0, 15, 30, 45, 60, 75, 90.
+- 15 always shown (dialysis threshold alignment).
+- Label: "eGFR (mL/min/1.73m²)" rotated -90deg.
 - Font: 12px/400 `--muted-foreground`.
-- Label: "eGFR (mL/min/1.73m2)" rotated -90deg.
-
-**Chart Title:**
-- "eGFR Trajectory" -- 15px/700 `--foreground`.
-- Subtitle: "Predicted kidney function over 10 years" -- 12px/400 `--muted-foreground`.
-- Position: top-left of chart area.
 
 **Accessibility:**
 - `<svg role="img" aria-label="eGFR trajectory chart showing 4 predicted scenarios over 10 years">`.
-- Hidden data table alternative (see section 2.8).
-- All text in SVG uses `aria-hidden="true"` (redundant with data table).
+- `<title>` and `<desc>` elements inside SVG.
+- AccessibleDataTable provides the screen reader alternative (see 3.9).
 
 ---
 
-### 2.2 TrajectoryLine
+### 3.2 TrajectoryLines
 
-Individual trajectory line rendered via Visx `LinePath`.
+Renders all 4 trajectory lines via Visx `LinePath`. Decorative -- the accessible data table is the screen reader alternative.
 
 **Props:**
 
 ```typescript
-interface TrajectoryLineProps {
-  data: DataPoint[];
-  color: string;
-  pattern: "solid" | "dashed" | "short-dash" | "dotted";
-  strokeWidth: number;
-  highlighted?: boolean;         // When stat card is selected
-  dimmed?: boolean;              // When another line is highlighted
-  label: string;                 // For accessibility
+interface TrajectoryLinesProps {
+  trajectories: TrajectoryData[];
+  xScale: ScaleLinear<number, number>;
+  yScale: ScaleLinear<number, number>;
+  highlightId?: string;             // Active trajectory on hover/tap
 }
 ```
 
@@ -406,290 +506,225 @@ interface TrajectoryLineProps {
 
 | Trajectory | Color | Pattern | strokeWidth | Dash Array |
 |-----------|-------|---------|-------------|------------|
-| BUN <= 12 | `--primary` (#1D9E75) | solid | 2.5 | -- |
-| BUN 13-17 | `--secondary` (#378ADD) | dashed | 2.5 | 8,4 |
-| BUN 18-24 | `--secondary-light` (#85B7EB) | short-dash | 2 | 4,4 |
-| No Treatment | `--neutral` (#AAA) | dotted | 2 | 2,4 |
+| BUN ≤ 12 | #1D9E75 (`--primary`) | solid | 2.5 | -- |
+| BUN 13-17 | #378ADD (`--secondary`) | dashed | 2.5 | 8,4 |
+| BUN 18-24 | #85B7EB (`--secondary-light`) | short-dash | 2.0 | 4,4 |
+| No Treatment | #AAAAAA (`--neutral`) | dotted | 2.0 | 2,4 |
 
-**Interaction States (Variant A only):**
+**Interaction States:**
 
 | State | Opacity | strokeWidth | Extra |
 |-------|---------|-------------|-------|
 | Default | 1.0 | per above | -- |
-| Highlighted (card selected) | 1.0 | +1px | drop shadow glow |
-| Dimmed (other card selected) | 0.3 | per above | -- |
+| Highlighted (hover/tap) | 1.0 | +1px | drop shadow glow |
+| Dimmed (other line highlighted) | 0.3 | per above | -- |
 | Hovered | 1.0 | +0.5px | cursor: pointer |
 
-**Variant B:** All lines at default state, no interaction. Static rendering.
+**Responsive:** Scales adapt automatically via ParentSize wrapper.
+
+**Accessibility:** `aria-hidden="true"` (data table is the accessible alternative).
 
 ---
 
-### 2.3 PhaseBand
+### 3.3 PhaseBands
 
-Vertical background band indicating CKD phase regions.
+Horizontal background bands indicating CKD phase regions. Decorative.
 
 **Props:**
 
 ```typescript
-interface PhaseBandProps {
-  label: string;                 // "Phase 1", "Phase 2", "Phase 3"
-  yStart: number;                // eGFR top
-  yEnd: number;                  // eGFR bottom
-  color: string;                 // Fill color
-  opacity: number;
+interface PhaseBandsProps {
+  phases: PhaseDefinition[];
+  yScale: ScaleLinear<number, number>;
+  width: number;
 }
 ```
 
 **Phase Definitions:**
 
-| Phase | eGFR Range | Fill Color | Opacity | Label Position |
-|-------|-----------|-----------|---------|---------------|
-| Phase 1 (Normal/Mild) | 60-90+ | `--primary-light` (#E8F5F0) | 0.3 | Top-right of band |
-| Phase 2 (Moderate) | 30-60 | #FFF8E1 (warm yellow) | 0.3 | Top-right of band |
-| Phase 3 (Severe) | 15-30 | #FDECEA (warm pink) | 0.2 | Top-right of band |
-| Phase 4 (Dialysis) | 0-15 | #F5F5F5 (light gray) | 0.3 | Top-right of band |
+| Phase | eGFR Range | Fill Color | Opacity | Label |
+|-------|-----------|-----------|---------|-------|
+| Phase 1 (Normal/Mild) | 60-90+ | #E8F5F0 (`--primary-light`) | 0.3 | Top-right, 11px/400 #888 |
+| Phase 2 (Moderate) | 30-60 | #FFF8E1 | 0.3 | Top-right, 11px/400 #888 |
+| Phase 3 (Severe) | 15-30 | #FDECEA | 0.2 | Top-right, 11px/400 #888 |
+| Phase 4 (Dialysis) | 0-15 | #F5F5F5 | 0.3 | Top-right, 11px/400 #888 |
 
 **Layout:**
 - Full width of chart area. z-index: behind lines, above grid.
-- Label: 11px/400 `--muted-foreground`, 8px from right edge, 4px from top of band.
-- Variant B: simplified as horizontal ruled lines instead of fills.
+- Label: 11px/400 #888888, 8px from right edge, 4px from top of band.
+
+**Responsive:** Full chart width, scales with ParentSize.
+
+**Accessibility:** `aria-hidden="true"`.
 
 ---
 
-### 2.4 DialysisThreshold
+### 3.4 DialysisThreshold
 
-Horizontal reference line at eGFR = 15.
+Horizontal reference line at eGFR = 15. Visual warning indicator.
 
 **Props:**
 
 ```typescript
 interface DialysisThresholdProps {
-  value: number;                 // 15
-  label: string;                 // "Dialysis threshold"
+  yScale: ScaleLinear<number, number>;
+  width: number;
+  threshold: number;                // eGFR value, default 15
 }
 ```
 
 **Visual:**
 - Dashed line: 2px `--destructive` (#D32F2F), dash-array: 6,3.
-- Label: "Dialysis threshold" -- 11px/600 `--destructive`, positioned right-aligned, 4px above line.
+- Label: "Dialysis threshold" -- 11px/600 `--destructive`, right-aligned, 4px above line.
 - z-index: above phase bands, below trajectory lines.
+
+**Responsive:** Full chart width, scales with ParentSize.
+
+**Accessibility:** `aria-hidden="true"`. Label text rendered in SVG `<text>`.
 
 ---
 
-### 2.5 ChartTooltip (Variant A only)
+### 3.5 Tooltips
 
-Tooltip on hover (desktop) or tap (mobile).
+Tooltip on hover (desktop) or tap (mobile). Shows trajectory details at the active data point.
 
 **Props:**
 
 ```typescript
-interface ChartTooltipProps {
-  visible: boolean;
-  x: number;
-  y: number;
-  trajectoryLabel: string;       // "BUN <= 12"
-  egfr: number;                  // eGFR at point
-  month: number;                 // Time point
-  color: string;                 // Trajectory color
+interface TooltipsProps {
+  data: TrajectoryData[];
+  xScale: ScaleLinear<number, number>;
+  yScale: ScaleLinear<number, number>;
+  activePoint?: {
+    trajectory: TrajectoryData;
+    point: DataPoint;
+  } | null;
 }
 ```
 
 **Layout:**
-- White card with 1px `--border`, 8px border-radius, shadow-md.
-- Padding: 8px 12px.
-- Width: auto (content-driven), max-width: 180px.
+- White card: 1px `--border`, 8px border-radius, `shadow-md`.
+- Padding: 8px 12px. Max-width: 180px.
 - Pointer/caret: 6px triangle pointing to data point.
 - Content:
   ```
-  [color dot] BUN <= 12          14px/600
-  eGFR: 48 mL/min                14px/400
-  at 60 months (5 years)         12px/400 muted
+  [color dot] BUN ≤ 12              14px/600
+  eGFR: 48 mL/min                   14px/400
+  at 60 months (5 years)            12px/400 muted
   ```
 
 **Behavior:**
 - Desktop: follows cursor, 8px offset. Appears on line hover.
-- Mobile: fixed position above data point. Appears on tap, dismisses on tap elsewhere.
+- Mobile: fixed position above tap point. Appears on tap, dismisses on tap elsewhere.
 - z-index: above all chart elements.
 - Transition: opacity 150ms ease.
 
-**Omitted in Variant B.** Data is accessible through stat cards only.
+**Responsive:**
+- Desktop: follow cursor.
+- Mobile: positioned above tap point.
+
+**Accessibility:** Tooltip content readable by screen readers via `role="tooltip"`.
 
 ---
 
-### 2.6 ChartFootnote
+### 3.6 Crosshair
 
-Required footnote below chart.
+Vertical + horizontal crosshair lines that follow the cursor on desktop. Helps users read precise values from the chart.
 
 **Props:**
 
 ```typescript
-interface ChartFootnoteProps {
-  text: string;                  // "Data points are plotted at actual time intervals..."
+interface CrosshairProps {
+  x: number;
+  y: number;
+  xScale: ScaleLinear<number, number>;
+  yScale: ScaleLinear<number, number>;
 }
 ```
 
-**Layout:**
-- Text: 12px/400 `--muted-foreground`.
-- Margin-top: 8px from chart bottom.
-- Max-width: matches chart width.
-- Italic styling.
+**Visual:**
+- Vertical line: 1px `--border` (#E0E0E0), full chart height.
+- Horizontal line: 1px `--border`, full chart width.
+- Intersection dot: 4px circle at cursor position.
 
-**Default text:** "Data points are plotted at actual time intervals. Early measurements are more frequent."
+**Responsive:**
+- Desktop only. Hidden on mobile (touch interactions use tap-based tooltips instead).
+
+**Accessibility:** `aria-hidden="true"`.
 
 ---
 
-### 2.7 StatCard
+### 3.7 ChartAxes
 
-Individual result card displaying one trajectory scenario.
+X and Y axes with tick marks and labels. Rendered via Visx `AxisBottom` and `AxisLeft`.
 
 **Props:**
 
 ```typescript
-interface StatCardProps {
-  id: string;                    // Trajectory ID
-  label: string;                 // "BUN <= 12"
-  color: string;                 // Left border color
-  egfrAt5yr: number;             // eGFR value at 5 years
-  egfrAt10yr: number;            // eGFR value at 10 years
-  dialysisProjection: string;    // "Not projected" | "~8 years" | etc.
-  selected?: boolean;            // Highlighted state (Variant A)
-  onClick?: () => void;          // Variant A: highlights chart line
+interface ChartAxesProps {
+  xScale: ScaleLinear<number, number>;
+  yScale: ScaleLinear<number, number>;
+  width: number;
+  height: number;
 }
 ```
 
-**States:**
+**X-Axis:**
+- Ticks at 12-month intervals (0 through 120).
+- Labels: "0", "1yr", "2yr", ... "10yr".
+- Mobile: every other label shown (0, 2yr, 4yr, 6yr, 8yr, 10yr).
+- Desktop: all labels shown.
+- Font: 12px/400 #888888.
 
-| State | Border-left | Background | Shadow | Outline |
-|-------|------------|-----------|--------|---------|
-| Default | 4px `{color}` | `--card` (#F8F9FA) | shadow-sm | none |
-| Hover | 4px `{color}` | white | shadow-md | none |
-| Selected | 4px `{color}` | white | shadow-lg | 2px `{color}` |
-| Focus | 4px `{color}` | `--card` | shadow-sm | 2px `--secondary` focus ring |
+**Y-Axis:**
+- Ticks: 0, 15, 30, 45, 60, 75, 90.
+- Font: 12px/400 #888888.
+- Axis title: "eGFR (mL/min/1.73m²)" -- 12px/500 #666666, rotated -90deg.
 
-**Layout:**
+**Responsive:**
+- Mobile: every-other x-label to prevent overlap.
+- Desktop: all labels shown.
 
-```
-+------------------------------------------+
-|  [color dot] BUN <= 12        16px/600   |  header row
-|                                          |
-|  eGFR at 5 years:                        |  14px/400 muted
-|  48 mL/min                    18px/600   |  value
-|                                          |
-|  eGFR at 10 years:                       |  14px/400 muted
-|  32 mL/min                    18px/600   |  value
-|                                          |
-|  Dialysis: Not projected      14px/400   |  footer
-+------------------------------------------+
-```
-
-- Padding: 16px. Border-radius: 8px.
-- Min-height: 120px. Min-width: 200px (desktop).
-- Left border: 4px solid, colored per trajectory.
-- Cursor: pointer (Variant A), default (Variant B).
-
-**Accessibility:**
-- Variant A: `role="button"`, `aria-pressed={selected}`, `tabindex="0"`.
-- Variant B: `role="region"`, `aria-label="Prediction for {label}"`.
-- Keyboard: Enter/Space to select (Variant A). Tab to navigate between cards.
+**Accessibility:** Axis text rendered in SVG `<text>` elements (readable by SVG-aware screen readers, but data table is the primary accessible alternative).
 
 ---
 
-### 2.8 StatCardGrid
+### 3.8 EndOfLineLabels
 
-Responsive container for stat cards.
+Text labels at the end of each trajectory line, showing the scenario name. Positioned at the right edge of the chart.
 
 **Props:**
 
 ```typescript
-interface StatCardGridProps {
-  children: React.ReactNode;     // 4 StatCard children
+interface EndOfLineLabelsProps {
+  trajectories: TrajectoryData[];
+  xScale: ScaleLinear<number, number>;
+  yScale: ScaleLinear<number, number>;
 }
 ```
 
-**Responsive Layout:**
+**Visual:**
+- Font: 12px/600, color matches trajectory line color.
+- Position: right edge of chart area, aligned vertically with the trajectory's final data point.
+- Collision avoidance: minimum 15px vertical separation between labels. If labels overlap, shift down with leader lines.
 
-| Breakpoint | Columns | Gap | Behavior |
-|------------|---------|-----|----------|
-| Mobile (<768px) | 1 | 12px | Stack vertically, full width |
-| Tablet (768-1024px) | 2 | 16px | 2x2 grid |
-| Desktop (>1024px) | 4 | 16px | Single row, equal width |
+**Responsive:**
+- Desktop: labels positioned in right margin of chart.
+- Mobile: labels shift below chart if clipped by viewport.
 
-**CSS:** `grid`, `grid-template-columns` responsive with Tailwind: `grid-cols-1 md:grid-cols-2 lg:grid-cols-4`.
+**Accessibility:** `aria-hidden="true"` (data table is the accessible alternative).
 
 ---
 
-### 2.9 ConfidenceBadge
+### 3.9 AccessibleDataTable
 
-Displays prediction confidence tier.
+Screen-reader-only data table providing full chart data in tabular format. Visually hidden but fully accessible.
 
 **Props:**
 
 ```typescript
-interface ConfidenceBadgeProps {
-  tier: 1 | 2;
-}
-```
-
-**Variants:**
-
-| Tier | Label | Background | Text Color | Icon |
-|------|-------|-----------|-----------|------|
-| 1 | Basic Prediction | `--card` (#F8F9FA) | `--muted-foreground` | circle-half |
-| 2 | Enhanced Prediction | `--primary-light` (#E8F5F0) | `--primary` (#1D9E75) | circle-check |
-
-**Layout:**
-- Inline badge: height 28px, padding 4px 12px, border-radius 14px (pill).
-- Icon: 14px, 4px margin-right. Text: 13px/500.
-- Positioned: top-right of results section header, aligned with "Your Prediction" heading.
-
-**Accessibility:**
-- `role="status"`, `aria-label="Prediction confidence: {tier label}"`.
-
----
-
-### 2.10 UnlockPrompt
-
-CTA card shown when prediction is Tier 1, prompting user to add Tier 2 fields.
-
-**Props:**
-
-```typescript
-interface UnlockPromptProps {
-  visible: boolean;              // Show only when tier === 1
-  onAction: () => void;          // Navigate to form with Tier 2 expanded
-}
-```
-
-**Layout:**
-
-```
-+------------------------------------------+
-|  [sparkle icon]                          |
-|                                          |
-|  Add both your hemoglobin and glucose    |  16px/400
-|  results to sharpen your prediction.     |
-|                                          |
-|  [Add Lab Values]             button     |  44px secondary
-+------------------------------------------+
-```
-
-- Background: `--primary-light` (#E8F5F0) with 1px `--primary` 20% border.
-- Padding: 16px. Border-radius: 8px.
-- Position: between chart footnote and stat cards.
-- Hidden when `tier === 2`.
-
----
-
-### 2.11 ChartDataTable (Screen Reader Alternative)
-
-Hidden data table providing chart data for screen readers.
-
-**Props:**
-
-```typescript
-interface ChartDataTableProps {
-  data: TrajectoryData[];
-  className?: string;            // "sr-only" (visually hidden)
+interface AccessibleDataTableProps {
+  trajectories: TrajectoryData[];
 }
 ```
 
@@ -700,277 +735,177 @@ interface ChartDataTableProps {
   <caption>Predicted eGFR values over 10 years for 4 scenarios</caption>
   <thead>
     <tr>
-      <th>Time</th>
-      <th>BUN ≤ 12</th>
-      <th>BUN 13-17</th>
-      <th>BUN 18-24</th>
-      <th>No Treatment</th>
+      <th scope="col">Time</th>
+      <th scope="col">BUN ≤ 12</th>
+      <th scope="col">BUN 13-17</th>
+      <th scope="col">BUN 18-24</th>
+      <th scope="col">No Treatment</th>
     </tr>
   </thead>
   <tbody>
-    <tr><td>Baseline</td><td>65</td>...</tr>
-    <tr><td>1 year</td><td>60</td>...</tr>
-    ...
+    <tr><td>Baseline</td><td>65</td><td>65</td><td>65</td><td>65</td></tr>
+    <tr><td>1 year</td><td>60</td><td>58</td><td>55</td><td>50</td></tr>
+    <!-- ... all time points -->
   </tbody>
 </table>
 ```
 
-- Visually hidden with `sr-only` but accessible to screen readers.
-- Placed immediately after the SVG chart element.
+- Visually hidden with `sr-only` (Tailwind) but accessible to screen readers.
+- Placed immediately after the SVG chart element in the DOM.
+- Includes all time points and all 4 trajectories.
 
----
-
-## 3. Auth Components
-
-### 3.1 MagicLinkPrompt
-
-Email-only entry for requesting a magic link. No password field.
-
-**Props:**
-
-```typescript
-interface MagicLinkPromptProps {
-  mode: "save" | "signin";       // Determines heading text
-  email: string;
-  onEmailChange: (email: string) => void;
-  onSubmit: () => void;
-  loading?: boolean;
-  error?: string;                // "Email not found" etc.
-}
-```
-
-**Layout (save mode):**
-
-```
-Save your results                     20px/600
-
-Your results will be available        16px/400
-for 24 hours. Create a free
-account to save them permanently.
-
-Email
-+------------------------------------+
-| your@email.com                      |  48px
-+------------------------------------+
-[error text if present]
-
-+------------------------------------+
-| Send me a sign-in link             |  48px primary
-+------------------------------------+
-```
-
-**Layout (signin mode):**
-
-```
-Welcome back                          20px/600
-
-Enter your email to sign in.          16px/400
-
-Email
-+------------------------------------+
-| your@email.com                      |  48px
-+------------------------------------+
-
-+------------------------------------+
-| Send me a sign-in link             |  48px primary
-+------------------------------------+
-
-No account? Enter your lab            14px muted
-values first, then save.
-[Get Started]                         text link
-```
+**Responsive:** N/A (visually hidden on all breakpoints).
 
 **Accessibility:**
-- Email input: `type="email"`, `autocomplete="email"`.
-- Form: `role="form"`, `aria-label="Sign in with email"`.
-- On submit: focus moves to confirmation screen.
+- `<table>` with `<caption>`, `<th scope="col">`.
+- Full tabular data -- no truncation.
+- This is the primary accessible alternative to the visual chart.
 
 ---
 
-### 3.2 MagicLinkSent
+### 3.10 LoadingSkeleton
 
-Confirmation after magic link is sent.
+Placeholder content during the `/predict` API call. Shows skeleton chart and button while results load.
 
 **Props:**
 
 ```typescript
-interface MagicLinkSentProps {
-  email: string;                 // Partially masked: "j***@email.com"
-  onResend: () => void;
-  resendCooldown: number;        // Seconds remaining (starts at 60)
-}
-```
-
-**Layout:**
-
-```
-[Email icon]                          48px
-
-Check your email!                     20px/600
-
-We sent a sign-in link to            16px/400
-j***@email.com                        16px/600
-
-The link expires in 15 minutes.       14px muted
-
-+------------------------------------+
-| Resend link                        |  48px secondary
-+------------------------------------+
-(available in 58 seconds)             12px muted
-
-Didn't receive it?                    14px muted
-Check your spam folder.
-```
-
-**Behavior:**
-- Resend button disabled for 60 seconds after send, countdown shown.
-- On resend: reset countdown, show brief "Link sent" toast.
-
----
-
-### 3.3 SavePrompt
-
-Post-prediction overlay prompting account creation. Wraps MagicLinkPrompt in save mode.
-
-**Props:**
-
-```typescript
-interface SavePromptProps {
-  visible: boolean;
-  onDismiss: () => void;
-  onSubmit: (email: string) => void;
-}
-```
-
-**Behavior:**
-- Appears 2 seconds after results render (slide-up animation, 300ms ease-out).
-- Semi-transparent backdrop: `rgba(0,0,0,0.3)`.
-- Card: white, border-radius 12px, shadow-xl, max-width 480px (desktop), full-width minus 32px (mobile).
-- Dismiss: X button top-right (44px touch target) or tap backdrop.
-- Once dismissed: does not reappear during same session. Small "Save your results" text link appears in results header instead.
-
-**Accessibility:**
-- `role="dialog"`, `aria-modal="true"`, `aria-label="Save your results"`.
-- Focus trapped within dialog when open.
-- Escape key dismisses.
-- On open: focus moves to email input.
-- On dismiss: focus returns to trigger element.
-
----
-
-### 3.4 AuthBanner
-
-Contextual banner for auth state changes. Appears at top of page.
-
-**Props:**
-
-```typescript
-interface AuthBannerProps {
-  variant: "welcome" | "check-email" | "expired" | "error";
-  message?: string;
+interface LoadingSkeletonProps {
+  variant: "chart" | "button";
 }
 ```
 
 **Variants:**
 
-| Variant | Background | Icon | Text | Auto-dismiss |
-|---------|-----------|------|------|-------------|
-| welcome | `--primary-light` (#E8F5F0) | check-circle | "Welcome! Your results are saved." | 5 seconds |
-| check-email | `--secondary` 10% | mail | "Check your email for a sign-in link." | No |
-| expired | #FFF8E1 | clock | "Your sign-in link has expired." | No |
-| error | #FDECEA | alert-triangle | Custom message | No |
+| Variant | Dimensions | Shape |
+|---------|-----------|-------|
+| chart | 100% width, 200px (mobile) / 280px (tablet) / 340px (desktop) | Rounded rectangle, pulsing |
+| button | 100% width (mobile) / auto (desktop), 56px height | Rounded rectangle, pulsing |
+
+**Animation:**
+- Background: linear gradient sweep left-to-right.
+- Colors: `--card` (#F8F9FA) to `--border` (#E0E0E0) and back.
+- Duration: 1.5s, infinite loop. Uses Tailwind `animate-pulse`.
 
 **Layout:**
-- Full width, 48px height, 12px padding horizontal.
-- Text: 14px/500. Icon: 16px, 8px margin-right.
-- Dismiss X: 44px touch target, right-aligned.
-- Position: fixed, top of viewport, below header. z-index: 50.
-- Entrance: slide-down 200ms ease.
+- Chart skeleton: replaces chart area during loading.
+- Button skeleton: replaces PDF download button during loading.
+- Heading visible: "Your Prediction" -- 20px/600.
+- Subtext: "Calculating your prediction..." -- 16px/400 `--muted-foreground`.
+
+**Responsive:**
+- Chart skeleton: 200px (mobile), 280px (tablet), 340px (desktop).
+- Button skeleton: full-width mobile, auto-width desktop.
 
 **Accessibility:**
-- `role="alert"` for error/expired. `role="status"` for welcome/check-email.
-- `aria-live="polite"`.
+- `aria-busy="true"` on parent results container.
+- `aria-label="Loading prediction results"` on skeleton.
 
 ---
 
-### 3.5 SignInForm
+## 4. Results Components
 
-Full-page sign-in form. Wraps MagicLinkPrompt in signin mode.
+### 4.1 ChartContainer
 
-Same as MagicLinkPrompt with `mode="signin"` plus surrounding page layout (centered, max-width 400px, vertical centering on desktop).
-
----
-
-## 4. Layout Components
-
-### 4.1 PageLayout
-
-Top-level layout wrapper for all pages.
+Wrapper around the chart, summary sentence, PDF button, and footnote. Provides consistent spacing and max-width.
 
 **Props:**
 
 ```typescript
-interface PageLayoutProps {
-  children: React.ReactNode;
-  maxWidth?: "sm" | "md" | "lg";  // 480px | 640px | 960px. Default: "lg"
+interface ChartContainerProps {
+  children: React.ReactNode;        // PredictionChart + PDFDownloadButton + footnote
 }
 ```
 
 **Layout:**
 
 ```
-+--------------------------------------------------------------+
-| HEADER (fixed top)                                           |
-| [Logo]                              [Sign In / My Results]   |
-+--------------------------------------------------------------+
-|                                                              |
-|  +---------- max-width container ----------+                 |
-|  |                                         |                 |
-|  |  {children}                             |                 |
-|  |                                         |                 |
-|  +------------------------------------------+                 |
-|                                                              |
-+--------------------------------------------------------------+
-| FOOTER / DISCLAIMER                                          |
-+--------------------------------------------------------------+
++----------------------------------------------+
+|  Your Prediction                        20s  |
+|                                              |
+|  Here is how your kidney function may        |
+|  change over the next 10 years under         |
+|  four scenarios.                        16r  |
+|                                              |
+|  +------------------------------------------+|
+|  |  [PredictionChart]                       ||
+|  +------------------------------------------+|
+|  Footnote (12px italic muted)                |
+|                                              |
+|  +------------------------------------------+|
+|  | [PDF icon] Download Your Results (PDF)   ||
+|  +------------------------------------------+|
++----------------------------------------------+
 ```
 
-**Header:**
+- Max-width: 960px, centered.
+- Padding: 16px (mobile), 24px (tablet), 32px (desktop).
+- Heading: "Your Prediction" -- 20px/600.
+- Summary sentence: 16px/400, from `PredictionResponse.summary`.
+- Footnote: "Data points are plotted at actual time intervals. Early measurements are more frequent." -- 12px/400 #888888, italic. 8px below chart.
 
-| Breakpoint | Height | Logo | Nav |
-|------------|--------|------|-----|
-| Mobile | 48px | 28px logo mark | Icon button (44px) |
-| Tablet | 56px | Full logo | Text link |
-| Desktop | 64px | Full logo | Text link |
+**Responsive:**
+- Mobile: 16px padding, full-width.
+- Tablet: 24px padding, full-width.
+- Desktop: 32px padding, max-width 960px centered.
 
-- Background: white. Border-bottom: 1px `--border`.
-- Position: sticky top. z-index: 40.
-- Horizontal padding: same as content area.
-
-**Content Area:**
-
-| Breakpoint | Padding | Max-width |
-|------------|---------|-----------|
-| Mobile | 16px horizontal | 100% |
-| Tablet | 24px horizontal | 100% |
-| Desktop | 32px horizontal | 960px (centered) |
-
-**Footer:** See DisclaimerBar.
+**Accessibility:**
+- `<section aria-label="Your kidney health prediction">`.
 
 ---
 
-### 4.2 DisclaimerBar
+### 4.2 PDFDownloadButton
 
-Medical disclaimer display. Different behavior per breakpoint.
+Primary CTA to download prediction results as PDF. Triggers `POST /predict/pdf` (server-side Playwright render).
 
 **Props:**
 
 ```typescript
-interface DisclaimerBarProps {
-  text: string;                  // Full disclaimer text
-  shortText: string;             // One-line mobile version
-  expanded?: boolean;            // Mobile: expanded state
-  onToggle?: () => void;         // Mobile: expand/collapse
+interface PDFDownloadButtonProps {
+  predictionInput: PredictionInput;  // Re-sent to /predict/pdf (stateless)
+  isLoading: boolean;
+  error?: string;                    // "Download failed. Try again."
+}
+```
+
+**States:**
+
+| State | Background | Text | Icon | Extra |
+|-------|-----------|------|------|-------|
+| Default | `--primary` (#1D9E75) | "Download Your Results (PDF)" white 16px/600 | PDF icon, white, 20px | -- |
+| Hover | darken 10% (#178A65) | white | PDF icon | -- |
+| Loading | `--primary` 60% opacity | hidden | Spinner (white, 20px) centered | `aria-busy="true"` |
+| Error | `--primary` | white | PDF icon | Inline error below: "Download failed. Try again." 14px `--destructive` |
+| Disabled | `--neutral` (#AAA) | white 60% opacity | PDF icon dimmed | `aria-disabled` |
+
+**Layout:**
+- Height: 56px. Border-radius: 8px (`rounded-lg`).
+- Full-width on mobile. Auto-width on desktop (inline).
+- Margin-top: 16px from chart footnote.
+- PDF icon: 20px, 8px margin-right from label text.
+
+**Responsive:**
+- Mobile: full-width, 56px height.
+- Desktop: auto-width (content-driven), 56px height.
+
+**Accessibility:**
+- 44px minimum touch target (56px exceeds this).
+- `aria-busy="true"` during download.
+- Error message: `role="alert"`, inline below button.
+- Button label includes "PDF" for context: "Download Your Results (PDF)".
+
+---
+
+### 4.3 DisclaimerBlock
+
+Medical disclaimer. Sticky collapsed bar on mobile, inline full text on desktop. Required on all post-auth screens.
+
+**Props:**
+
+```typescript
+interface DisclaimerBlockProps {
+  isExpanded: boolean;              // Mobile expanded state
+  onToggle: () => void;             // Mobile expand/collapse
 }
 ```
 
@@ -991,68 +926,141 @@ Expanded (tap to toggle):
 | substitute for professional      |
 | medical advice. Always consult   |
 | your healthcare provider...      |
-|                                  |
 +----------------------------------+
 ```
 
 - Position: fixed bottom. z-index: 30.
-- Background: white. Border-top: 1px `--border`. Shadow-lg (upward).
+- Background: white. Border-top: 1px `--border`. Box-shadow: `shadow-up`.
 - Collapsed: 44px. Expanded: auto-height, max-height 40vh.
 - Transition: max-height 300ms ease.
-- Tap anywhere on bar to toggle (entire bar is touch target).
+- Tap anywhere on bar to toggle.
 
-**Tablet/Desktop (inline):**
+**Desktop (inline):**
 
 ```
 +----------------------------------------------+
 | This tool provides educational predictions   |
-| only and is not a substitute for professional|
-| medical advice. Always consult your          |
-| healthcare provider before making treatment  |
-| decisions.                                   |
+| only and is not a substitute for             |
+| professional medical advice. Always consult  |
+| your healthcare provider before making       |
+| treatment decisions.                         |
+|                                              |
+| [About] [Privacy] [Terms]                   |
 +----------------------------------------------+
 ```
 
 - Position: static, below content.
-- Background: `--card`. Padding: 16px. Border-radius: 8px.
+- Background: `--card` (#F8F9FA). Padding: 16px. Border-radius: 8px.
 - Text: 14px/400 `--muted-foreground`.
 - Margin-top: 32px.
+- Footer links (About, Privacy, Terms): text links, 14px `--muted-foreground`.
+
+**Responsive:**
+- Mobile: sticky collapsed bar with expand/collapse.
+- Desktop: inline full text with footer links.
 
 **Accessibility:**
-- `role="contentinfo"`.
-- Mobile toggle: `aria-expanded`, `aria-controls`.
-- Mobile: `aria-label="Medical disclaimer, tap to expand"`.
+- `role="region"`, `aria-label="Medical disclaimer"`.
+- Mobile: `aria-expanded` on toggle trigger, `aria-controls` pointing to content.
+- Mobile collapsed: `aria-label="Medical disclaimer, tap to expand"`.
 
 ---
 
-### 4.3 LoadingSkeleton
+## 5. Layout Components
 
-Placeholder content during API calls.
+### 5.1 AppShell
+
+Top-level layout wrapper providing Header + Footer (absorbed into DisclaimerBlock) + content area. Used on all pages.
 
 **Props:**
 
 ```typescript
-interface LoadingSkeletonProps {
-  variant: "chart" | "card" | "text" | "form";
+interface AppShellProps {
+  children: React.ReactNode;
+  maxWidth?: "sm" | "md" | "lg";    // 400px | 640px | 960px. Default: "lg"
 }
 ```
 
-**Variants:**
+**Layout:**
 
-| Variant | Dimensions | Shape |
-|---------|-----------|-------|
-| chart | 100% width, 200px (mobile) / 340px (desktop) | Rounded rectangle, pulsing |
-| card | 100% width, 120px height | Rounded rectangle, pulsing |
-| text | 60-80% width, 16px height | Rounded pill, pulsing |
-| form | 100% width, 48px height | Rounded rectangle, pulsing |
+```
++--------------------------------------------------------------+
+| HEADER (sticky top)                                          |
+| [Logo]                                                       |
++--------------------------------------------------------------+
+|                                                              |
+|  +---------- max-width container ----------+                 |
+|  |                                         |                 |
+|  |  {children}                             |                 |
+|  |                                         |                 |
+|  +------------------------------------------+                 |
+|                                                              |
++--------------------------------------------------------------+
+| DISCLAIMER / FOOTER (see DisclaimerBlock)                    |
++--------------------------------------------------------------+
+```
 
-**Animation:**
-- Background: linear gradient sweep left-to-right.
-- Colors: `--card` (#F8F9FA) to `--border` (#E0E0E0) and back.
-- Duration: 1.5s, infinite loop.
-- Uses Tailwind `animate-pulse` or custom shimmer.
+**Header:**
+
+| Breakpoint | Height | Logo | Nav |
+|------------|--------|------|-----|
+| Mobile | 48px | 28px logo mark | None (lean launch: no accounts) |
+| Tablet | 56px | Full logo | None |
+| Desktop | 64px | Full logo | None |
+
+- Background: white. Border-bottom: 1px `--border`.
+- Position: sticky top. z-index: 40.
+- No "Sign In" link, no navigation links (lean launch has no accounts).
+- Logo: `<a href="/">` wrapping logo image.
+
+**Content Area:**
+
+| Breakpoint | Horizontal Padding | Max-width |
+|------------|-------------------|-----------|
+| Mobile | 16px | 100% |
+| Tablet | 24px | 100% |
+| Desktop | 32px | 960px (centered) |
+
+**Footer:** Absorbed into DisclaimerBlock. No separate Footer component for lean launch.
+
+**Responsive:**
+- Header height adjusts per breakpoint.
+- Content area max-width capped at 960px, centered.
+- Horizontal padding increases with breakpoint.
 
 **Accessibility:**
-- `aria-busy="true"` on parent container.
-- `aria-label="Loading"` on skeleton element.
-- `role="progressbar"` (indeterminate).
+- `<header>` element with logo as `<a href="/" aria-label="KidneyHood home">`.
+- `<main>` element wrapping content area.
+- Skip-to-content link: visually hidden, first focusable element, targets `<main>`.
+
+---
+
+## Deferred to Phase 2
+
+The following components from the original v1.0 spec are **not included** in the lean launch. They are preserved in the Phase 2 backlog for future development.
+
+| Component | Reason for Deferral |
+|-----------|---------------------|
+| `RadioGroup` (SexRadioGroup) | Sex field removed -- required fields only (age, BUN, creatinine, potassium) |
+| `Toggle` (SGLT2 inhibitor) | Optional/silent fields removed |
+| `Select` (CKD diagnosis, proteinuria) | Optional/silent fields removed |
+| `FormSection` (collapsible) | No progressive disclosure needed -- all 4 fields are required and visible |
+| `SubmitButton` (standalone) | Absorbed into PredictionForm as an internal element |
+| `StatCard` | Stat cards deferred -- summary sentence above chart replaces them |
+| `StatCardGrid` | Deferred with StatCard |
+| `ConfidenceBadge` | Single confidence level -- no tiers in lean launch |
+| `UnlockPrompt` | No tiers, no upsell to enhanced prediction |
+| `ChartFootnote` (standalone) | Absorbed into ChartContainer as inline text |
+| `SavePrompt` (dialog) | No accounts, no saving -- lead gen model |
+| `AuthBanner` | Simplified auth flow uses inline states, not banner notifications |
+| `SignInForm` | No accounts -- MagicLinkForm handles email entry |
+| `PageLayout` (v1) | Replaced by AppShell (Header + Footer combined) |
+| `Header` (standalone) | Absorbed into AppShell |
+| `Footer` (standalone) | Absorbed into DisclaimerBlock |
+| `AccountDashboard` | No accounts |
+| `HistoryPage` | No multi-visit tracking |
+| `FormErrorSummary` (standalone) | Absorbed into PredictionForm as an internal element |
+
+---
+
+*End of component specifications. 21 components across 5 groups: Auth (3), Form (4), Chart (10), Results (3), Layout (1).*
