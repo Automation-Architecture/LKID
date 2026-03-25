@@ -1,0 +1,1654 @@
+{
+  "openapi": "3.1.0",
+  "info": {
+    "title": "KidneyHood Patient Outcome Prediction API",
+    "version": "1.0.0",
+    "description": "API for the KidneyHood.org patient outcome prediction application. Enables patients to enter kidney health lab values, view eGFR trajectory predictions, and manage their accounts via magic link authentication.\n\nKey architectural decisions:\n- No BFF — frontend calls API directly (Decision #7)\n- Magic link auth only — no passwords (Decision #1)\n- PDF export deferred to Phase 2b\n- Guest data stored server-side with httpOnly cookie, 24hr TTL (Decision #4)\n- Predictions are compute-on-demand, never stored (Decision #10)\n- Audit log uses ON DELETE SET NULL for user_id (Decision #14)",
+    "contact": {
+      "name": "KidneyHood Engineering",
+      "email": "engineering@kidneyhood.org"
+    },
+    "license": {
+      "name": "Proprietary"
+    }
+  },
+  "servers": [
+    {
+      "url": "https://api.kidneyhood.org/api/v1",
+      "description": "Production"
+    },
+    {
+      "url": "https://staging-api.kidneyhood.org/api/v1",
+      "description": "Staging"
+    },
+    {
+      "url": "http://localhost:8000/api/v1",
+      "description": "Local development"
+    }
+  ],
+  "tags": [
+    { "name": "Auth", "description": "Magic link authentication endpoints" },
+    { "name": "User", "description": "User profile management" },
+    { "name": "Lab Entries", "description": "Lab value storage and retrieval" },
+    { "name": "Prediction", "description": "eGFR trajectory prediction" },
+    { "name": "Infrastructure", "description": "Health check and operational endpoints" }
+  ],
+  "x-cors-policy": {
+    "description": "CORS configuration for direct frontend-to-API communication (no BFF, Decision #7)",
+    "allowed_origins": [
+      "https://kidneyhood.org",
+      "https://www.kidneyhood.org",
+      "https://staging.kidneyhood.org",
+      "http://localhost:3000"
+    ],
+    "allowed_methods": ["GET", "POST", "DELETE", "OPTIONS"],
+    "allowed_headers": ["Authorization", "Content-Type", "Accept", "X-Request-ID"],
+    "exposed_headers": ["X-RateLimit-Remaining", "Retry-After"],
+    "allow_credentials": true,
+    "max_age_seconds": 3600,
+    "notes": "allow_credentials is required for httpOnly session_token cookie (guest sessions). Preflight caching set to 1 hour."
+  },
+  "paths": {
+    "/auth/request-link": {
+      "post": {
+        "tags": ["Auth"],
+        "operationId": "requestMagicLink",
+        "summary": "Request a magic link email",
+        "description": "Sends a magic link to the provided email address. If no account exists, one is created automatically. Rate limited to 3 requests per email per 15 minutes.",
+        "security": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": { "$ref": "#/components/schemas/MagicLinkRequest" },
+              "example": {
+                "email": "patient@example.com"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Magic link sent successfully. Response is identical whether the email exists or not (prevents email enumeration).",
+            "headers": {
+              "X-RateLimit-Remaining": { "$ref": "#/components/headers/X-RateLimit-Remaining" },
+              "Retry-After": { "$ref": "#/components/headers/Retry-After" }
+            },
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/MagicLinkResponse" },
+                "example": {
+                  "message": "If an account exists for this email, a magic link has been sent.",
+                  "expires_in": 900
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid email format",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/ErrorResponse" },
+                "example": {
+                  "error": {
+                    "code": "VALIDATION_ERROR",
+                    "message": "Invalid request data",
+                    "details": [
+                      { "field": "email", "message": "Must be a valid email address" }
+                    ]
+                  }
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Rate limit exceeded",
+            "headers": {
+              "Retry-After": { "$ref": "#/components/headers/Retry-After" }
+            },
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/ErrorResponse" },
+                "example": {
+                  "error": {
+                    "code": "RATE_LIMIT_EXCEEDED",
+                    "message": "Too many magic link requests. Please try again later.",
+                    "details": []
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/auth/verify": {
+      "post": {
+        "tags": ["Auth"],
+        "operationId": "verifyMagicLink",
+        "summary": "Verify magic link token and create session",
+        "description": "Validates the token from the magic link email. Returns a JWT access token and refresh token. Tokens are single-use and expire after 15 minutes. If a guest session_token cookie is present, guest data is migrated to the authenticated account.",
+        "security": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": { "$ref": "#/components/schemas/VerifyTokenRequest" },
+              "example": {
+                "token": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.abc123def456"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Token verified, session created",
+            "headers": {
+              "Set-Cookie": {
+                "description": "Clears guest session_token cookie if present",
+                "schema": { "type": "string" }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/AuthTokenResponse" },
+                "example": {
+                  "access_token": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiJhMWIyYzNkNC1lNWY2LTc4OTAtYWJjZC1lZjEyMzQ1Njc4OTAiLCJleHAiOjE3NDMwMTAwMDB9.signature",
+                  "refresh_token": "rt_a1b2c3d4e5f67890abcdef1234567890",
+                  "token_type": "bearer",
+                  "expires_in": 3600,
+                  "user": {
+                    "id": "a1b2c3d4-e5f6-7890-abcd-ef1234567890",
+                    "email": "patient@example.com",
+                    "name": null,
+                    "date_of_birth": null,
+                    "sex": null,
+                    "created_at": "2026-03-25T10:00:00Z"
+                  },
+                  "guest_data_migrated": false
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Token is invalid, expired, or already used",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/ErrorResponse" },
+                "example": {
+                  "error": {
+                    "code": "INVALID_TOKEN",
+                    "message": "This magic link has expired or has already been used.",
+                    "details": []
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/auth/refresh": {
+      "post": {
+        "tags": ["Auth"],
+        "operationId": "refreshToken",
+        "summary": "Refresh an expired access token",
+        "description": "Exchanges a valid refresh token for a new access token and refresh token pair. The old refresh token is invalidated (rotation).",
+        "security": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": { "$ref": "#/components/schemas/RefreshTokenRequest" },
+              "example": {
+                "refresh_token": "rt_a1b2c3d4e5f67890abcdef1234567890"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "New token pair issued",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/AuthTokenResponse" },
+                "example": {
+                  "access_token": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiJhMWIyYzNkNC1lNWY2LTc4OTAtYWJjZC1lZjEyMzQ1Njc4OTAiLCJleHAiOjE3NDMwMTM2MDB9.newsignature",
+                  "refresh_token": "rt_f6e5d4c3b2a1098765fedcba0987654321",
+                  "token_type": "bearer",
+                  "expires_in": 3600,
+                  "user": {
+                    "id": "a1b2c3d4-e5f6-7890-abcd-ef1234567890",
+                    "email": "patient@example.com",
+                    "name": "Jane Doe",
+                    "date_of_birth": "1968-05-15",
+                    "sex": "female",
+                    "created_at": "2026-03-20T14:30:00Z"
+                  },
+                  "guest_data_migrated": false
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Refresh token is invalid or expired",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/ErrorResponse" },
+                "example": {
+                  "error": {
+                    "code": "INVALID_REFRESH_TOKEN",
+                    "message": "Refresh token is invalid or has been revoked.",
+                    "details": []
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/auth/logout": {
+      "post": {
+        "tags": ["Auth"],
+        "operationId": "logout",
+        "summary": "Invalidate the current session",
+        "description": "Revokes the current access token and its associated refresh token. Client should discard stored tokens.",
+        "security": [{ "BearerAuth": [] }],
+        "responses": {
+          "200": {
+            "description": "Session invalidated successfully",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "message": { "type": "string" }
+                  },
+                  "required": ["message"]
+                },
+                "example": {
+                  "message": "Session invalidated successfully."
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Not authenticated",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/ErrorResponse" },
+                "example": {
+                  "error": {
+                    "code": "UNAUTHENTICATED",
+                    "message": "Authentication required.",
+                    "details": []
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/me": {
+      "get": {
+        "tags": ["User"],
+        "operationId": "getCurrentUser",
+        "summary": "Get current user profile",
+        "description": "Returns the profile of the currently authenticated user.",
+        "security": [{ "BearerAuth": [] }],
+        "responses": {
+          "200": {
+            "description": "User profile returned",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/UserProfile" },
+                "example": {
+                  "id": "a1b2c3d4-e5f6-7890-abcd-ef1234567890",
+                  "email": "patient@example.com",
+                  "name": "Jane Doe",
+                  "date_of_birth": "1968-05-15",
+                  "sex": "female",
+                  "created_at": "2026-03-20T14:30:00Z",
+                  "updated_at": "2026-03-25T09:15:00Z",
+                  "lab_entry_count": 3
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Not authenticated",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/ErrorResponse" },
+                "example": {
+                  "error": {
+                    "code": "UNAUTHENTICATED",
+                    "message": "Authentication required.",
+                    "details": []
+                  }
+                }
+              }
+            }
+          }
+        }
+      },
+      "delete": {
+        "tags": ["User"],
+        "operationId": "deleteCurrentUser",
+        "summary": "Delete account and all associated data",
+        "description": "Permanently deletes the authenticated user's account, all lab entries, and magic link tokens. Audit log entries are retained with user_id set to NULL (ON DELETE SET NULL per Decision #14). This action is irreversible. HIPAA: fulfills the right to delete.",
+        "security": [{ "BearerAuth": [] }],
+        "responses": {
+          "200": {
+            "description": "Account and data deleted. Audit records retained with NULL user_id.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "message": { "type": "string" }
+                  },
+                  "required": ["message"]
+                },
+                "example": {
+                  "message": "Your account and all associated data have been permanently deleted."
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Not authenticated",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/ErrorResponse" },
+                "example": {
+                  "error": {
+                    "code": "UNAUTHENTICATED",
+                    "message": "Authentication required.",
+                    "details": []
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/lab-entries": {
+      "post": {
+        "tags": ["Lab Entries"],
+        "operationId": "createLabEntry",
+        "summary": "Store a new lab entry",
+        "description": "Creates a new lab entry for the authenticated user. Each entry represents a single visit date. Fields are validated against clinical ranges. The server computes egfr_calculated from creatinine, age_at_visit, and sex using the CKD-EPI 2021 formula unless egfr_override is provided.",
+        "security": [{ "BearerAuth": [] }],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": { "$ref": "#/components/schemas/LabEntryCreate" },
+              "example": {
+                "visit_date": "2026-03-15",
+                "bun": 35.0,
+                "creatinine": 1.80,
+                "potassium": 4.5,
+                "age_at_visit": 58,
+                "sex": "male",
+                "hemoglobin": 12.5,
+                "glucose": 110.0,
+                "egfr_override": null,
+                "phosphorus": 4.2,
+                "albumin": 3.8,
+                "bicarbonate": 22.0,
+                "uric_acid": 7.1,
+                "bp_systolic": 140,
+                "bp_diastolic": 88,
+                "bp_on_medication": true,
+                "hba1c": 6.8,
+                "calcium": 9.2,
+                "upcr": 500.00,
+                "upcr_unit": "mg_per_g",
+                "diagnosis_stage": "3b",
+                "height_inches": 70,
+                "weight_lbs": 185
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Lab entry created successfully",
+            "headers": {
+              "Location": {
+                "description": "URL of the created resource",
+                "schema": { "type": "string", "example": "/api/v1/lab-entries/b2c3d4e5-f6a7-8901-bcde-f23456789012" }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/LabEntry" },
+                "example": {
+                  "id": "b2c3d4e5-f6a7-8901-bcde-f23456789012",
+                  "user_id": "a1b2c3d4-e5f6-7890-abcd-ef1234567890",
+                  "visit_date": "2026-03-15",
+                  "bun": 35.0,
+                  "creatinine": 1.80,
+                  "potassium": 4.5,
+                  "age_at_visit": 58,
+                  "sex": "male",
+                  "hemoglobin": 12.5,
+                  "glucose": 110.0,
+                  "egfr_override": null,
+                  "egfr_calculated": 38.2,
+                  "phosphorus": 4.2,
+                  "albumin": 3.8,
+                  "bicarbonate": 22.0,
+                  "uric_acid": 7.1,
+                  "bp_systolic": 140,
+                  "bp_diastolic": 88,
+                  "bp_on_medication": true,
+                  "hba1c": 6.8,
+                  "calcium": 9.2,
+                  "upcr": 500.00,
+                  "upcr_unit": "mg_per_g",
+                  "diagnosis_stage": "3b",
+                  "height_inches": 70,
+                  "weight_lbs": 185,
+                  "created_at": "2026-03-25T12:00:00Z",
+                  "updated_at": "2026-03-25T12:00:00Z"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Validation error — one or more fields out of range or missing",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/ErrorResponse" },
+                "example": {
+                  "error": {
+                    "code": "VALIDATION_ERROR",
+                    "message": "One or more fields failed validation.",
+                    "details": [
+                      { "field": "bun", "message": "BUN must be between 5 and 150 mg/dL." },
+                      { "field": "creatinine", "message": "Creatinine must be between 0.3 and 15.0 mg/dL." }
+                    ]
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Not authenticated",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/ErrorResponse" },
+                "example": {
+                  "error": {
+                    "code": "UNAUTHENTICATED",
+                    "message": "Authentication required.",
+                    "details": []
+                  }
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Unprocessable entity — structurally valid JSON but semantically invalid",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/ErrorResponse" },
+                "example": {
+                  "error": {
+                    "code": "UNPROCESSABLE_ENTITY",
+                    "message": "Request body could not be processed.",
+                    "details": [
+                      { "field": "visit_date", "message": "Visit date cannot be in the future." }
+                    ]
+                  }
+                }
+              }
+            }
+          }
+        }
+      },
+      "get": {
+        "tags": ["Lab Entries"],
+        "operationId": "listLabEntries",
+        "summary": "List all lab entries for the current user",
+        "description": "Returns all lab entries for the authenticated user, ordered by visit_date descending (most recent first). Supports optional pagination.",
+        "security": [{ "BearerAuth": [] }],
+        "parameters": [
+          {
+            "name": "limit",
+            "in": "query",
+            "required": false,
+            "schema": { "type": "integer", "minimum": 1, "maximum": 100, "default": 50 },
+            "description": "Maximum number of entries to return"
+          },
+          {
+            "name": "offset",
+            "in": "query",
+            "required": false,
+            "schema": { "type": "integer", "minimum": 0, "default": 0 },
+            "description": "Number of entries to skip"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "List of lab entries",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/LabEntryList" },
+                "example": {
+                  "entries": [
+                    {
+                      "id": "b2c3d4e5-f6a7-8901-bcde-f23456789012",
+                      "user_id": "a1b2c3d4-e5f6-7890-abcd-ef1234567890",
+                      "visit_date": "2026-03-15",
+                      "bun": 35.0,
+                      "creatinine": 1.80,
+                      "potassium": 4.5,
+                      "age_at_visit": 58,
+                      "sex": "male",
+                      "hemoglobin": 12.5,
+                      "glucose": 110.0,
+                      "egfr_override": null,
+                      "egfr_calculated": 38.2,
+                      "phosphorus": 4.2,
+                      "albumin": 3.8,
+                      "bicarbonate": 22.0,
+                      "uric_acid": 7.1,
+                      "bp_systolic": 140,
+                      "bp_diastolic": 88,
+                      "bp_on_medication": true,
+                      "hba1c": 6.8,
+                      "calcium": 9.2,
+                      "upcr": 500.00,
+                      "upcr_unit": "mg_per_g",
+                      "diagnosis_stage": "3b",
+                      "height_inches": 70,
+                      "weight_lbs": 185,
+                      "created_at": "2026-03-25T12:00:00Z",
+                      "updated_at": "2026-03-25T12:00:00Z"
+                    },
+                    {
+                      "id": "c3d4e5f6-a7b8-9012-cdef-345678901234",
+                      "user_id": "a1b2c3d4-e5f6-7890-abcd-ef1234567890",
+                      "visit_date": "2025-12-01",
+                      "bun": 30.0,
+                      "creatinine": 1.60,
+                      "potassium": 4.3,
+                      "age_at_visit": 57,
+                      "sex": "male",
+                      "hemoglobin": 13.0,
+                      "glucose": 105.0,
+                      "egfr_override": null,
+                      "egfr_calculated": 42.1,
+                      "phosphorus": 3.9,
+                      "albumin": 4.0,
+                      "bicarbonate": 23.0,
+                      "uric_acid": 6.8,
+                      "bp_systolic": 135,
+                      "bp_diastolic": 85,
+                      "bp_on_medication": true,
+                      "hba1c": 6.5,
+                      "calcium": 9.4,
+                      "upcr": 450.00,
+                      "upcr_unit": "mg_per_g",
+                      "diagnosis_stage": "3b",
+                      "height_inches": 70,
+                      "weight_lbs": 183,
+                      "created_at": "2025-12-01T10:00:00Z",
+                      "updated_at": "2025-12-01T10:00:00Z"
+                    }
+                  ],
+                  "total": 2,
+                  "limit": 50,
+                  "offset": 0
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Not authenticated",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/ErrorResponse" },
+                "example": {
+                  "error": {
+                    "code": "UNAUTHENTICATED",
+                    "message": "Authentication required.",
+                    "details": []
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/lab-entries/{id}": {
+      "get": {
+        "tags": ["Lab Entries"],
+        "operationId": "getLabEntry",
+        "summary": "Get a single lab entry",
+        "description": "Returns a single lab entry by ID. The entry must belong to the authenticated user.",
+        "security": [{ "BearerAuth": [] }],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": { "type": "string", "format": "uuid" },
+            "description": "Lab entry UUID"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Lab entry returned",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/LabEntry" },
+                "example": {
+                  "id": "b2c3d4e5-f6a7-8901-bcde-f23456789012",
+                  "user_id": "a1b2c3d4-e5f6-7890-abcd-ef1234567890",
+                  "visit_date": "2026-03-15",
+                  "bun": 35.0,
+                  "creatinine": 1.80,
+                  "potassium": 4.5,
+                  "age_at_visit": 58,
+                  "sex": "male",
+                  "hemoglobin": 12.5,
+                  "glucose": 110.0,
+                  "egfr_override": null,
+                  "egfr_calculated": 38.2,
+                  "phosphorus": 4.2,
+                  "albumin": 3.8,
+                  "bicarbonate": 22.0,
+                  "uric_acid": 7.1,
+                  "bp_systolic": 140,
+                  "bp_diastolic": 88,
+                  "bp_on_medication": true,
+                  "hba1c": 6.8,
+                  "calcium": 9.2,
+                  "upcr": 500.00,
+                  "upcr_unit": "mg_per_g",
+                  "diagnosis_stage": "3b",
+                  "height_inches": 70,
+                  "weight_lbs": 185,
+                  "created_at": "2026-03-25T12:00:00Z",
+                  "updated_at": "2026-03-25T12:00:00Z"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Not authenticated",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/ErrorResponse" },
+                "example": {
+                  "error": {
+                    "code": "UNAUTHENTICATED",
+                    "message": "Authentication required.",
+                    "details": []
+                  }
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Lab entry not found or does not belong to user",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/ErrorResponse" },
+                "example": {
+                  "error": {
+                    "code": "NOT_FOUND",
+                    "message": "Lab entry not found.",
+                    "details": []
+                  }
+                }
+              }
+            }
+          }
+        }
+      },
+      "delete": {
+        "tags": ["Lab Entries"],
+        "operationId": "deleteLabEntry",
+        "summary": "Delete a lab entry",
+        "description": "Permanently deletes a lab entry. The entry must belong to the authenticated user. The associated audit log record is retained with user_id preserved (the lab entry deletion itself is logged; the audit record's user_id uses ON DELETE SET NULL only when the user account is deleted, per Decision #14).",
+        "security": [{ "BearerAuth": [] }],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": { "type": "string", "format": "uuid" },
+            "description": "Lab entry UUID"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Lab entry deleted",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "message": { "type": "string" }
+                  },
+                  "required": ["message"]
+                },
+                "example": {
+                  "message": "Lab entry deleted successfully."
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Not authenticated",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/ErrorResponse" },
+                "example": {
+                  "error": {
+                    "code": "UNAUTHENTICATED",
+                    "message": "Authentication required.",
+                    "details": []
+                  }
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Lab entry not found or does not belong to user",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/ErrorResponse" },
+                "example": {
+                  "error": {
+                    "code": "NOT_FOUND",
+                    "message": "Lab entry not found.",
+                    "details": []
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/predict": {
+      "post": {
+        "tags": ["Prediction"],
+        "operationId": "predict",
+        "summary": "Run eGFR trajectory prediction",
+        "description": "Computes eGFR trajectory predictions. Supports two modes:\n\n**Authenticated users:** Provide `lab_entry_ids` referencing stored lab entries. The server reads all referenced entries and runs the prediction engine.\n\n**Guests:** Provide `lab_entries` array with inline lab data. Guest data is stored server-side in a session with 24hr TTL (httpOnly cookie, Decision #4). The guest session_token is read from the cookie automatically.\n\nThe prediction engine returns 4 trajectory lines (none, bun24, bun17, bun12), each with 15 data points at months [0, 3, 6, 9, 12, 18, 24, 36, 48, 60, 72, 84, 96, 108, 120]. Results are NOT stored (compute-on-demand, Decision #10).\n\nConfidence tiers:\n- Tier 1: Required fields only (BUN, creatinine, potassium, age, sex)\n- Tier 2: Tier 1 + BOTH hemoglobin AND glucose (Decision #12)\n- Tier 3: Tier 2 + 3 or more visits with lab entries\n\nRate limited: 10 requests per minute for guests, 30 for authenticated users.",
+        "security": [
+          {},
+          { "BearerAuth": [] },
+          { "GuestSession": [] }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": { "$ref": "#/components/schemas/PredictRequest" },
+              "examples": {
+                "authenticated_single_visit": {
+                  "summary": "Authenticated user — single visit",
+                  "value": {
+                    "lab_entry_ids": ["b2c3d4e5-f6a7-8901-bcde-f23456789012"]
+                  }
+                },
+                "authenticated_multi_visit": {
+                  "summary": "Authenticated user — 3 visits (Tier 3)",
+                  "value": {
+                    "lab_entry_ids": [
+                      "b2c3d4e5-f6a7-8901-bcde-f23456789012",
+                      "c3d4e5f6-a7b8-9012-cdef-345678901234",
+                      "d4e5f6a7-b8c9-0123-defa-456789012345"
+                    ]
+                  }
+                },
+                "guest_tier1": {
+                  "summary": "Guest — Tier 1 (required fields only)",
+                  "value": {
+                    "lab_entries": [
+                      {
+                        "visit_date": "2026-03-25",
+                        "bun": 20.0,
+                        "creatinine": 1.2,
+                        "potassium": 4.5,
+                        "age_at_visit": 65,
+                        "sex": "male"
+                      }
+                    ]
+                  }
+                },
+                "guest_tier2": {
+                  "summary": "Guest — Tier 2 (required + hemoglobin AND glucose)",
+                  "value": {
+                    "lab_entries": [
+                      {
+                        "visit_date": "2026-03-25",
+                        "bun": 35.0,
+                        "creatinine": 1.80,
+                        "potassium": 4.5,
+                        "age_at_visit": 58,
+                        "sex": "male",
+                        "hemoglobin": 12.5,
+                        "glucose": 110.0,
+                        "bp_systolic": 140,
+                        "bp_diastolic": 88,
+                        "bp_on_medication": true,
+                        "upcr": 500.00,
+                        "upcr_unit": "mg_per_g",
+                        "diagnosis_stage": "3b"
+                      }
+                    ]
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Prediction computed successfully",
+            "headers": {
+              "X-RateLimit-Remaining": { "$ref": "#/components/headers/X-RateLimit-Remaining" },
+              "Retry-After": { "$ref": "#/components/headers/Retry-After" },
+              "Set-Cookie": {
+                "description": "Sets session_token httpOnly cookie for guest users (24hr TTL). Not present for authenticated users.",
+                "schema": { "type": "string" }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/PredictionResponse" },
+                "examples": {
+                  "tier1_response": {
+                    "summary": "Tier 1 prediction (required fields only)",
+                    "value": {
+                      "egfr_calculated": 55,
+                      "confidence_tier": 1,
+                      "unlock_prompt": "Add hemoglobin and glucose results to sharpen your estimate.",
+                      "trajectories": {
+                        "none": [55, 52, 50, 48, 45, 41, 37, 30, 24, 19, 16, 13, 11, 10, 9],
+                        "bun24": [55, 54, 53, 52, 51, 50, 49, 47, 45, 43, 41, 40, 39, 38, 37],
+                        "bun17": [55, 55, 56, 57, 58, 59, 60, 62, 63, 64, 65, 65, 66, 66, 67],
+                        "bun12": [55, 56, 58, 60, 63, 67, 71, 77, 81, 84, 86, 87, 88, 89, 90]
+                      },
+                      "time_points_months": [0, 3, 6, 9, 12, 18, 24, 36, 48, 60, 72, 84, 96, 108, 120],
+                      "dial_ages": {
+                        "none": 73,
+                        "bun24": null,
+                        "bun17": null,
+                        "bun12": null
+                      },
+                      "slope": null,
+                      "slope_description": null,
+                      "visit_count": 1,
+                      "created_at": "2026-03-25T12:00:00Z"
+                    }
+                  },
+                  "tier2_response": {
+                    "summary": "Tier 2 prediction (with hemoglobin AND glucose)",
+                    "value": {
+                      "egfr_calculated": 38,
+                      "confidence_tier": 2,
+                      "unlock_prompt": "Add 2 more visit dates to unlock trend analysis.",
+                      "trajectories": {
+                        "none": [38, 36, 34, 32, 30, 27, 24, 19, 16, 13, 11, 10, 9, 8, 7],
+                        "bun24": [38, 37, 37, 36, 36, 35, 35, 34, 33, 33, 32, 32, 31, 31, 30],
+                        "bun17": [38, 38, 39, 40, 41, 42, 44, 46, 48, 49, 50, 51, 51, 52, 52],
+                        "bun12": [38, 39, 41, 43, 46, 49, 53, 58, 62, 65, 67, 68, 69, 70, 71]
+                      },
+                      "time_points_months": [0, 3, 6, 9, 12, 18, 24, 36, 48, 60, 72, 84, 96, 108, 120],
+                      "dial_ages": {
+                        "none": 68,
+                        "bun24": null,
+                        "bun17": null,
+                        "bun12": null
+                      },
+                      "slope": null,
+                      "slope_description": null,
+                      "visit_count": 1,
+                      "created_at": "2026-03-25T12:00:00Z"
+                    }
+                  },
+                  "tier3_response": {
+                    "summary": "Tier 3 prediction (3+ visits with slope)",
+                    "value": {
+                      "egfr_calculated": 38,
+                      "confidence_tier": 3,
+                      "unlock_prompt": null,
+                      "trajectories": {
+                        "none": [38, 36, 34, 32, 30, 27, 24, 19, 16, 13, 11, 10, 9, 8, 7],
+                        "bun24": [38, 37, 37, 36, 36, 35, 35, 34, 33, 33, 32, 32, 31, 31, 30],
+                        "bun17": [38, 38, 39, 40, 41, 42, 44, 46, 48, 49, 50, 51, 51, 52, 52],
+                        "bun12": [38, 39, 41, 43, 46, 49, 53, 58, 62, 65, 67, 68, 69, 70, 71]
+                      },
+                      "time_points_months": [0, 3, 6, 9, 12, 18, 24, 36, 48, 60, 72, 84, 96, 108, 120],
+                      "dial_ages": {
+                        "none": 68,
+                        "bun24": null,
+                        "bun17": null,
+                        "bun12": null
+                      },
+                      "slope": -3.2,
+                      "slope_description": "declining",
+                      "visit_count": 3,
+                      "created_at": "2026-03-25T12:00:00Z"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Validation error on inline lab data",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/ErrorResponse" },
+                "example": {
+                  "error": {
+                    "code": "VALIDATION_ERROR",
+                    "message": "One or more fields failed validation.",
+                    "details": [
+                      { "field": "lab_entries[0].bun", "message": "BUN must be between 5 and 150 mg/dL." },
+                      { "field": "lab_entries[0].sex", "message": "Sex is required. Must be one of: male, female, unknown." }
+                    ]
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "lab_entry_ids provided but user is not authenticated",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/ErrorResponse" },
+                "example": {
+                  "error": {
+                    "code": "UNAUTHENTICATED",
+                    "message": "Authentication required to use stored lab entries.",
+                    "details": []
+                  }
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "One or more lab_entry_ids not found",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/ErrorResponse" },
+                "example": {
+                  "error": {
+                    "code": "NOT_FOUND",
+                    "message": "One or more lab entries were not found.",
+                    "details": [
+                      { "field": "lab_entry_ids[0]", "message": "Lab entry b2c3d4e5-f6a7-8901-bcde-f23456789012 not found." }
+                    ]
+                  }
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Request is structurally valid but cannot be processed (e.g., must provide either lab_entry_ids or lab_entries, not both)",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/ErrorResponse" },
+                "example": {
+                  "error": {
+                    "code": "UNPROCESSABLE_ENTITY",
+                    "message": "Provide either lab_entry_ids (authenticated) or lab_entries (guest), not both.",
+                    "details": []
+                  }
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Rate limit exceeded",
+            "headers": {
+              "Retry-After": { "$ref": "#/components/headers/Retry-After" }
+            },
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/ErrorResponse" },
+                "example": {
+                  "error": {
+                    "code": "RATE_LIMIT_EXCEEDED",
+                    "message": "Too many prediction requests. Please try again later.",
+                    "details": []
+                  }
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Internal server error (prediction engine failure)",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/ErrorResponse" },
+                "example": {
+                  "error": {
+                    "code": "INTERNAL_ERROR",
+                    "message": "An unexpected error occurred. Please try again.",
+                    "details": []
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/health": {
+      "get": {
+        "tags": ["Infrastructure"],
+        "operationId": "healthCheck",
+        "summary": "Health check",
+        "description": "Returns service health status including database connectivity.",
+        "security": [],
+        "responses": {
+          "200": {
+            "description": "Service is healthy",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/HealthResponse" },
+                "example": {
+                  "status": "healthy",
+                  "version": "1.0.0",
+                  "database": "connected",
+                  "timestamp": "2026-03-25T12:00:00Z"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Service is unhealthy",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/HealthResponse" },
+                "example": {
+                  "status": "unhealthy",
+                  "version": "1.0.0",
+                  "database": "disconnected",
+                  "timestamp": "2026-03-25T12:00:00Z"
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  },
+  "components": {
+    "securitySchemes": {
+      "BearerAuth": {
+        "type": "http",
+        "scheme": "bearer",
+        "bearerFormat": "JWT",
+        "description": "JWT access token obtained from POST /auth/verify or POST /auth/refresh. Include as: Authorization: Bearer {token}"
+      },
+      "GuestSession": {
+        "type": "apiKey",
+        "in": "cookie",
+        "name": "session_token",
+        "description": "httpOnly cookie containing the guest session token. Set automatically by the server on first guest prediction. 24hr TTL (Decision #4). Full HIPAA protections apply to guest session data."
+      }
+    },
+    "headers": {
+      "X-RateLimit-Remaining": {
+        "description": "Number of requests remaining in the current rate limit window",
+        "schema": { "type": "integer", "example": 9 }
+      },
+      "Retry-After": {
+        "description": "Seconds until the rate limit window resets (only present when rate limited or approaching limit)",
+        "schema": { "type": "integer", "example": 60 }
+      }
+    },
+    "schemas": {
+      "MagicLinkRequest": {
+        "type": "object",
+        "required": ["email"],
+        "properties": {
+          "email": {
+            "type": "string",
+            "format": "email",
+            "maxLength": 255,
+            "description": "Patient's email address. Account is auto-created if it does not exist.",
+            "examples": ["patient@example.com"]
+          }
+        }
+      },
+      "MagicLinkResponse": {
+        "type": "object",
+        "required": ["message", "expires_in"],
+        "properties": {
+          "message": {
+            "type": "string",
+            "description": "Deliberately vague message (prevents email enumeration)"
+          },
+          "expires_in": {
+            "type": "integer",
+            "description": "Magic link TTL in seconds (default 900 = 15 minutes)"
+          }
+        }
+      },
+      "VerifyTokenRequest": {
+        "type": "object",
+        "required": ["token"],
+        "properties": {
+          "token": {
+            "type": "string",
+            "description": "The magic link token from the email URL"
+          }
+        }
+      },
+      "RefreshTokenRequest": {
+        "type": "object",
+        "required": ["refresh_token"],
+        "properties": {
+          "refresh_token": {
+            "type": "string",
+            "description": "The refresh token from a previous auth response"
+          }
+        }
+      },
+      "AuthTokenResponse": {
+        "type": "object",
+        "required": ["access_token", "refresh_token", "token_type", "expires_in", "user"],
+        "properties": {
+          "access_token": {
+            "type": "string",
+            "description": "JWT access token. Include in Authorization header for authenticated requests."
+          },
+          "refresh_token": {
+            "type": "string",
+            "description": "Refresh token for obtaining new access tokens. Single-use (rotation)."
+          },
+          "token_type": {
+            "type": "string",
+            "const": "bearer"
+          },
+          "expires_in": {
+            "type": "integer",
+            "description": "Access token TTL in seconds (default 3600 = 1 hour)"
+          },
+          "user": {
+            "$ref": "#/components/schemas/UserProfile"
+          },
+          "guest_data_migrated": {
+            "type": "boolean",
+            "description": "True if guest session data was migrated to the authenticated account during this verification"
+          }
+        }
+      },
+      "UserProfile": {
+        "type": "object",
+        "required": ["id", "email", "created_at"],
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid",
+            "description": "User UUID"
+          },
+          "email": {
+            "type": "string",
+            "format": "email",
+            "maxLength": 255,
+            "description": "User email"
+          },
+          "name": {
+            "type": ["string", "null"],
+            "maxLength": 255,
+            "description": "Display name"
+          },
+          "date_of_birth": {
+            "type": ["string", "null"],
+            "format": "date",
+            "description": "Date of birth in ISO 8601 format"
+          },
+          "sex": {
+            "oneOf": [
+              { "$ref": "#/components/schemas/SexEnum" },
+              { "type": "null" }
+            ],
+            "description": "Biological sex for eGFR calculation (Decision #3). Null until profile is completed."
+          },
+          "created_at": {
+            "type": "string",
+            "format": "date-time",
+            "description": "Account creation timestamp"
+          },
+          "updated_at": {
+            "type": ["string", "null"],
+            "format": "date-time",
+            "description": "Last profile update timestamp"
+          },
+          "lab_entry_count": {
+            "type": "integer",
+            "minimum": 0,
+            "description": "Total number of stored lab entries for this user"
+          }
+        }
+      },
+      "SexEnum": {
+        "type": "string",
+        "enum": ["male", "female", "unknown"],
+        "description": "Biological sex. Required for eGFR calculation (CKD-EPI 2021 formula). Decision #3: required field with three allowed values."
+      },
+      "LabEntryBase": {
+        "type": "object",
+        "description": "Base lab entry fields shared between create, stored, and inline schemas.",
+        "required": ["visit_date", "bun", "creatinine", "potassium", "age_at_visit", "sex"],
+        "properties": {
+          "visit_date": {
+            "type": "string",
+            "format": "date",
+            "description": "Date of the lab visit in ISO 8601 format. Cannot be in the future."
+          },
+          "bun": {
+            "type": "number",
+            "minimum": 5,
+            "maximum": 150,
+            "description": "Blood Urea Nitrogen in mg/dL"
+          },
+          "creatinine": {
+            "type": "number",
+            "minimum": 0.3,
+            "maximum": 15.0,
+            "description": "Serum creatinine in mg/dL"
+          },
+          "potassium": {
+            "type": "number",
+            "minimum": 2.0,
+            "maximum": 8.0,
+            "description": "Serum potassium in mEq/L"
+          },
+          "age_at_visit": {
+            "type": "integer",
+            "minimum": 18,
+            "maximum": 120,
+            "description": "Patient age at the time of the lab visit"
+          },
+          "sex": {
+            "$ref": "#/components/schemas/SexEnum"
+          },
+          "hemoglobin": {
+            "type": ["number", "null"],
+            "minimum": 4.0,
+            "maximum": 20.0,
+            "description": "Hemoglobin in g/dL. Optional. Required (along with glucose) for Tier 2 confidence (Decision #12)."
+          },
+          "glucose": {
+            "type": ["number", "null"],
+            "minimum": 40,
+            "maximum": 500,
+            "description": "Fasting glucose in mg/dL. Optional. Required (along with hemoglobin) for Tier 2 confidence (Decision #12)."
+          },
+          "egfr_override": {
+            "type": ["number", "null"],
+            "minimum": 1,
+            "maximum": 200,
+            "description": "Patient-provided eGFR value. If provided, used instead of the CKD-EPI calculation."
+          },
+          "phosphorus": {
+            "type": ["number", "null"],
+            "description": "Serum phosphorus in mg/dL. Optional."
+          },
+          "albumin": {
+            "type": ["number", "null"],
+            "description": "Serum albumin in g/dL. Optional."
+          },
+          "bicarbonate": {
+            "type": ["number", "null"],
+            "description": "Serum bicarbonate in mEq/L. Optional."
+          },
+          "uric_acid": {
+            "type": ["number", "null"],
+            "description": "Serum uric acid in mg/dL. Optional."
+          },
+          "bp_systolic": {
+            "type": ["integer", "null"],
+            "minimum": 60,
+            "maximum": 300,
+            "description": "Systolic blood pressure in mmHg. Optional."
+          },
+          "bp_diastolic": {
+            "type": ["integer", "null"],
+            "description": "Diastolic blood pressure in mmHg. Optional."
+          },
+          "bp_on_medication": {
+            "type": ["boolean", "null"],
+            "description": "Whether BP reading is while on blood pressure medication. Optional."
+          },
+          "hba1c": {
+            "type": ["number", "null"],
+            "description": "HbA1c percentage. Optional."
+          },
+          "calcium": {
+            "type": ["number", "null"],
+            "description": "Serum calcium in mg/dL. Optional."
+          },
+          "upcr": {
+            "type": ["number", "null"],
+            "minimum": 0,
+            "description": "Urine protein-to-creatinine ratio. Optional."
+          },
+          "upcr_unit": {
+            "type": ["string", "null"],
+            "enum": ["mg_per_g", "mg_per_mg", null],
+            "description": "Unit for UPCR measurement. Required if upcr is provided."
+          },
+          "diagnosis_stage": {
+            "type": ["string", "null"],
+            "description": "CKD diagnosis stage (e.g., '1', '2', '3a', '3b', '4', '5'). Optional."
+          },
+          "height_inches": {
+            "type": ["number", "null"],
+            "description": "Patient height in inches. Optional."
+          },
+          "weight_lbs": {
+            "type": ["number", "null"],
+            "description": "Patient weight in pounds. Optional."
+          }
+        }
+      },
+      "LabEntryCreate": {
+        "description": "Request body for creating a new lab entry. Extends LabEntryBase with no additional fields.",
+        "allOf": [
+          { "$ref": "#/components/schemas/LabEntryBase" }
+        ]
+      },
+      "InlineLabEntry": {
+        "description": "Inline lab entry data for guest predictions. Same validation rules as LabEntryCreate.",
+        "allOf": [
+          { "$ref": "#/components/schemas/LabEntryBase" }
+        ]
+      },
+      "LabEntry": {
+        "type": "object",
+        "description": "Stored lab entry returned from the API. Includes server-generated fields.",
+        "required": ["id", "user_id", "visit_date", "bun", "creatinine", "potassium", "age_at_visit", "sex", "egfr_calculated", "created_at", "updated_at"],
+        "allOf": [
+          { "$ref": "#/components/schemas/LabEntryBase" },
+          {
+            "type": "object",
+            "properties": {
+              "id": {
+                "type": "string",
+                "format": "uuid",
+                "description": "Lab entry UUID"
+              },
+              "user_id": {
+                "type": "string",
+                "format": "uuid",
+                "description": "Owning user UUID"
+              },
+              "egfr_calculated": {
+                "type": "number",
+                "description": "Server-calculated eGFR from CKD-EPI 2021 formula using creatinine, age_at_visit, and sex."
+              },
+              "created_at": {
+                "type": "string",
+                "format": "date-time"
+              },
+              "updated_at": {
+                "type": "string",
+                "format": "date-time"
+              }
+            }
+          }
+        ]
+      },
+      "LabEntryList": {
+        "type": "object",
+        "required": ["entries", "total", "limit", "offset"],
+        "properties": {
+          "entries": {
+            "type": "array",
+            "items": { "$ref": "#/components/schemas/LabEntry" }
+          },
+          "total": {
+            "type": "integer",
+            "minimum": 0,
+            "description": "Total number of lab entries for this user"
+          },
+          "limit": {
+            "type": "integer"
+          },
+          "offset": {
+            "type": "integer"
+          }
+        }
+      },
+      "PredictRequest": {
+        "type": "object",
+        "description": "Prediction request. Provide EITHER lab_entry_ids (authenticated users) OR lab_entries (guests), never both.",
+        "properties": {
+          "lab_entry_ids": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "format": "uuid"
+            },
+            "minItems": 1,
+            "maxItems": 20,
+            "description": "UUIDs of stored lab entries (for authenticated users). Server reads these entries and runs prediction."
+          },
+          "lab_entries": {
+            "type": "array",
+            "items": { "$ref": "#/components/schemas/InlineLabEntry" },
+            "minItems": 1,
+            "maxItems": 20,
+            "description": "Inline lab entry data (for guests). Data is stored in server-side session with 24hr TTL (Decision #4)."
+          }
+        },
+        "oneOf": [
+          {
+            "required": ["lab_entry_ids"],
+            "properties": {
+              "lab_entries": false
+            }
+          },
+          {
+            "required": ["lab_entries"],
+            "properties": {
+              "lab_entry_ids": false
+            }
+          }
+        ]
+      },
+      "TrajectoryData": {
+        "type": "object",
+        "required": ["none", "bun24", "bun17", "bun12"],
+        "description": "Four trajectory arrays, each containing 15 eGFR values at the time points specified in time_points_months.",
+        "properties": {
+          "none": {
+            "type": "array",
+            "items": { "type": "number" },
+            "minItems": 15,
+            "maxItems": 15,
+            "description": "Trajectory with no BUN intervention (current path)"
+          },
+          "bun24": {
+            "type": "array",
+            "items": { "type": "number" },
+            "minItems": 15,
+            "maxItems": 15,
+            "description": "Trajectory with BUN target 18-24 mg/dL"
+          },
+          "bun17": {
+            "type": "array",
+            "items": { "type": "number" },
+            "minItems": 15,
+            "maxItems": 15,
+            "description": "Trajectory with BUN target 13-17 mg/dL"
+          },
+          "bun12": {
+            "type": "array",
+            "items": { "type": "number" },
+            "minItems": 15,
+            "maxItems": 15,
+            "description": "Trajectory with BUN target <=12 mg/dL (most aggressive intervention)"
+          }
+        }
+      },
+      "DialAges": {
+        "type": "object",
+        "required": ["none", "bun24", "bun17", "bun12"],
+        "description": "Predicted age at which eGFR reaches the dialysis threshold (12 mL/min/1.73m2) for each trajectory. Null if eGFR does not reach dialysis threshold within 10 years.",
+        "properties": {
+          "none": {
+            "type": ["integer", "null"]
+          },
+          "bun24": {
+            "type": ["integer", "null"]
+          },
+          "bun17": {
+            "type": ["integer", "null"]
+          },
+          "bun12": {
+            "type": ["integer", "null"]
+          }
+        }
+      },
+      "PredictionResponse": {
+        "type": "object",
+        "required": ["egfr_calculated", "confidence_tier", "trajectories", "time_points_months", "dial_ages", "visit_count", "created_at"],
+        "properties": {
+          "egfr_calculated": {
+            "type": "number",
+            "description": "Current eGFR computed from the most recent lab entry using CKD-EPI 2021. If egfr_override was provided, this reflects the override value."
+          },
+          "confidence_tier": {
+            "type": "integer",
+            "enum": [1, 2, 3],
+            "description": "Prediction confidence tier. 1=required fields only. 2=Tier 1 + BOTH hemoglobin AND glucose (Decision #12). 3=Tier 2 + 3 or more visits."
+          },
+          "unlock_prompt": {
+            "type": ["string", "null"],
+            "description": "User-facing message suggesting how to improve confidence. Null at Tier 3."
+          },
+          "trajectories": {
+            "$ref": "#/components/schemas/TrajectoryData"
+          },
+          "time_points_months": {
+            "type": "array",
+            "items": { "type": "integer" },
+            "minItems": 15,
+            "maxItems": 15,
+            "description": "Fixed array of month offsets from current date: [0, 3, 6, 9, 12, 18, 24, 36, 48, 60, 72, 84, 96, 108, 120]",
+            "examples": [[0, 3, 6, 9, 12, 18, 24, 36, 48, 60, 72, 84, 96, 108, 120]]
+          },
+          "dial_ages": {
+            "$ref": "#/components/schemas/DialAges"
+          },
+          "slope": {
+            "type": ["number", "null"],
+            "description": "eGFR slope (mL/min/1.73m2 per year) calculated from 3+ visits. Negative = declining. Null if fewer than 3 visits."
+          },
+          "slope_description": {
+            "type": ["string", "null"],
+            "enum": ["improving", "stable", "declining", null],
+            "description": "Human-readable slope category. Null if slope is null."
+          },
+          "visit_count": {
+            "type": "integer",
+            "minimum": 1,
+            "description": "Number of lab entries used in this prediction"
+          },
+          "created_at": {
+            "type": "string",
+            "format": "date-time",
+            "description": "Timestamp of when the prediction was computed"
+          }
+        }
+      },
+      "HealthResponse": {
+        "type": "object",
+        "required": ["status", "version", "database", "timestamp"],
+        "properties": {
+          "status": {
+            "type": "string",
+            "enum": ["healthy", "unhealthy"]
+          },
+          "version": {
+            "type": "string",
+            "description": "API version string"
+          },
+          "database": {
+            "type": "string",
+            "enum": ["connected", "disconnected"]
+          },
+          "timestamp": {
+            "type": "string",
+            "format": "date-time"
+          }
+        }
+      },
+      "ErrorResponse": {
+        "type": "object",
+        "required": ["error"],
+        "description": "Standardized error response envelope (Decision #9)",
+        "properties": {
+          "error": {
+            "type": "object",
+            "required": ["code", "message", "details"],
+            "properties": {
+              "code": {
+                "type": "string",
+                "description": "Machine-readable error code",
+                "enum": [
+                  "VALIDATION_ERROR",
+                  "UNAUTHENTICATED",
+                  "FORBIDDEN",
+                  "NOT_FOUND",
+                  "UNPROCESSABLE_ENTITY",
+                  "RATE_LIMIT_EXCEEDED",
+                  "INVALID_TOKEN",
+                  "INVALID_REFRESH_TOKEN",
+                  "INTERNAL_ERROR"
+                ]
+              },
+              "message": {
+                "type": "string",
+                "description": "Human-readable error message"
+              },
+              "details": {
+                "type": "array",
+                "items": { "$ref": "#/components/schemas/ErrorDetail" },
+                "description": "Field-level error details. Empty array for non-validation errors."
+              }
+            }
+          }
+        }
+      },
+      "ErrorDetail": {
+        "type": "object",
+        "required": ["field", "message"],
+        "properties": {
+          "field": {
+            "type": "string",
+            "description": "The field path that caused the error (e.g., 'bun', 'lab_entries[0].creatinine')"
+          },
+          "message": {
+            "type": "string",
+            "description": "Human-readable error message for this field"
+          }
+        }
+      }
+    }
+  }
+}

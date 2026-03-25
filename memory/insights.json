@@ -1,0 +1,189 @@
+[
+  {
+    "id": "INS-001",
+    "artifact": "bootstrap",
+    "category": "insight",
+    "summary": "Parallelization reduces delivery time",
+    "context": "Agents working on independent tasks simultaneously complete faster than sequential work",
+    "impact": "Significant time savings when tasks have clear boundaries",
+    "applicability": "All agent team projects with independent work streams",
+    "created_by": "system",
+    "timestamp": "2026-03-25T00:00:00Z"
+  },
+  {
+    "id": "INS-002",
+    "artifact": "bootstrap",
+    "category": "insight",
+    "summary": "Early alignment reduces rework",
+    "context": "Two structured meetings before implementation catch misalignment before it becomes code",
+    "impact": "Reduces rework by surfacing conflicts during planning",
+    "applicability": "All projects using the Discovery Phase SOP",
+    "created_by": "system",
+    "timestamp": "2026-03-25T00:00:00Z"
+  },
+  {
+    "id": "INS-003",
+    "artifact": "sop",
+    "category": "insight",
+    "summary": "PRD must be a post-synthesis document, not a parallel draft",
+    "context": "Mid-project we discovered the PM was drafting the PRD in parallel with domain agents' V1 documents. This violated the SOP's intent: the PRD should synthesize all finalized V2 domain documents after Meeting 2, not compete with them. The SOP was revised to v1.1 with an explicit critical rule: 'The PRD and architecture document are NOT created in parallel with domain drafts.'",
+    "impact": "Prevents the PRD from locking in decisions before cross-domain debate has occurred. Ensures every agent's final position is reflected. Future projects must enforce the strict sequence: V1 drafts -> Meeting 1 -> V2 drafts -> Meeting 2 -> PRD synthesis.",
+    "applicability": "All multi-agent discovery phases where a PM produces a binding specification document",
+    "created_by": "discovery-phase",
+    "timestamp": "2026-03-25T12:00:00Z"
+  },
+  {
+    "id": "INS-004",
+    "artifact": "PRD",
+    "category": "insight",
+    "summary": "Executive-first PRD format is more scannable than flat multi-section format",
+    "context": "The final PRD uses an executive summary + appendices structure: Section 1 (Executive Summary) gives the full picture in one page, then Sections 2-5 cover milestones, roles, technical considerations, and open questions. Each domain agent's V2 document becomes an appendix (A through F). This is far more scannable than a flat 17-section format where critical context is buried in Section 12.",
+    "impact": "Stakeholders can read Section 1 and know the project. Engineers dive into their appendix. Reduces 'nobody reads the PRD' problem. Adopt this structure for future PRDs.",
+    "applicability": "Any project producing a PRD longer than 5 pages, especially with multiple domain specialists",
+    "created_by": "discovery-phase",
+    "timestamp": "2026-03-25T12:00:00Z"
+  },
+  {
+    "id": "INS-005",
+    "artifact": "sop",
+    "category": "insight",
+    "summary": "Two-meeting SOP structure (V1 -> debate -> V2 -> synthesis) catches conflicts before code",
+    "context": "The V1 -> Meeting 1 -> V2 -> Meeting 2 -> PRD flow surfaced 14 binding decisions at Meeting 1 alone, including fundamental changes like magic-link-only auth (replacing password auth from the original spec), separate storage/prediction endpoints, and guest data as PHI. Without structured debate, these would have been discovered during integration when the cost of change is 10x higher. Luca's notes show he caught rate limiting misalignment, pagination style mismatch, and token storage inconsistencies during cross-review.",
+    "impact": "Forces every domain expert to commit to a position (V1), defend it under scrutiny (Meeting 1), revise based on feedback (V2), and align with all other domains (Meeting 2). The two-pass structure is essential -- a single meeting is insufficient.",
+    "applicability": "All projects using agent teams with 3+ domain specialists",
+    "created_by": "discovery-phase",
+    "timestamp": "2026-03-25T12:00:00Z"
+  },
+  {
+    "id": "INS-006",
+    "artifact": "PRD",
+    "category": "insight",
+    "summary": "Frontend carries the majority of ticket load -- plan capacity accordingly",
+    "context": "Harshit (Frontend Developer) owns ~40 tickets (~54% of total): 18 stories and 26 subtasks spanning all 4 epics. The API Designer owns ~18, Database Engineer ~12, and other roles are single digits. This 54% frontend weight is structural: every user-facing feature requires form components, chart rendering, responsive layouts, state management, AND API integration -- each generating subtasks.",
+    "impact": "In sprint planning, frontend is the bottleneck. Consider splitting frontend work across multiple agents in future projects, or staggering sprints so backend completes first. Never assume equal distribution across roles.",
+    "applicability": "Web application projects with rich interactive UI (charts, forms, multi-step flows)",
+    "created_by": "discovery-phase",
+    "timestamp": "2026-03-25T12:00:00Z"
+  },
+  {
+    "id": "INS-007",
+    "artifact": "architecture",
+    "category": "insight",
+    "summary": "HIPAA compliance shapes every layer -- it is not a bolt-on",
+    "context": "HIPAA requirements permeated every agent's domain: Gay Mark designed RBAC, KMS encryption, audit log with ON DELETE SET NULL, and a purge cron job. John added CORS, TLS enforcement, audit logging on every endpoint, and minimal data returns. Harshit handles httpOnly cookies for guest sessions, secure token storage, and no PHI in client state. Inga designed consent UX and disclaimer placement. Yuri built HIPAA into every QA gate. The Meeting 1 decision that guest data is PHI (Decision #4) had cascading impact on all six domains.",
+    "impact": "In regulated domains, compliance must be a day-one architectural constraint, not a pre-launch checklist item. Every agent's V1 draft should include a compliance section. The CTO should enforce this during V1 review.",
+    "applicability": "Any project handling PHI, PII, financial data, or other regulated information",
+    "created_by": "discovery-phase",
+    "timestamp": "2026-03-25T12:00:00Z"
+  },
+  {
+    "id": "INS-008",
+    "artifact": "architecture",
+    "category": "insight",
+    "summary": "Compute-on-demand minimizes HIPAA surface area",
+    "context": "Decision #10 (no prediction result storage) means the rules engine recomputes trajectories on every request. This eliminates an entire table of PHI (prediction results tied to patients), removes a GET /predictions endpoint, and simplifies the data model to five tables instead of six. The tradeoff is compute cost per request, but for MVP scale (100 patients soft launch) this is negligible.",
+    "impact": "When working with sensitive data, favor stateless computation over persistent storage unless there is a clear business need for historical results. Fewer stored PHI touchpoints means a smaller compliance surface, simpler auditing, and easier data deletion.",
+    "applicability": "Healthcare, finance, and other regulated domains where reducing stored sensitive data has compliance benefits",
+    "created_by": "discovery-phase",
+    "timestamp": "2026-03-25T12:00:00Z"
+  },
+  {
+    "id": "INS-009",
+    "artifact": "PRD",
+    "category": "insight",
+    "summary": "Guest-to-user promotion is a critical conversion flow that spans all 6 domains",
+    "context": "The guest-to-account migration flow touches every agent: Inga designs the save prompt UX and magic link screens. Harshit implements httpOnly cookie handling, form state preservation, and post-auth data display. John designs the /auth/verify endpoint that accepts a guest session token and migrates data atomically. Gay Mark designs the guest_sessions table (JSONB, 24hr TTL) and the migration query that parses JSONB into proper lab_entries rows. Yuri tests the entire chain end-to-end. Husser defines the prompt copy and timing.",
+    "impact": "Any feature that crosses all domain boundaries should be identified early and tracked as a cross-cutting concern. It needs explicit coordination tickets and should be discussed as a unit during meetings, not piecemeal per domain.",
+    "applicability": "Projects with guest/anonymous-to-authenticated user flows, freemium conversions, or any state transition that spans frontend, API, database, and UX",
+    "created_by": "discovery-phase",
+    "timestamp": "2026-03-25T12:00:00Z"
+  },
+  {
+    "id": "INS-010",
+    "artifact": "PRD",
+    "category": "insight",
+    "summary": "Confidence tiers create a progressive data quality UX -- users see value immediately",
+    "context": "The three-tier confidence system (Tier 1: required fields only, Tier 2: + hemoglobin AND glucose, Tier 3: + 3 visits with slope) means users get a prediction with just 5 fields, then unlock better accuracy by providing more data. Decision #12 (both hemoglobin AND glucose required for Tier 2, not either/or) was debated at Meeting 1 and became a binding decision that affected API logic, frontend unlock prompts, and 8 explicit QA test cases.",
+    "impact": "Progressive data quality tiers reduce time-to-first-value for users while incentivizing deeper engagement. The tier rules must be defined precisely because they affect API, frontend, UX copy, and QA simultaneously. Any ambiguity (like 'either hemoglobin or glucose') will propagate inconsistently across domains.",
+    "applicability": "Applications where input completeness affects output quality -- health tools, financial calculators, risk assessments",
+    "created_by": "discovery-phase",
+    "timestamp": "2026-03-25T12:00:00Z"
+  },
+  {
+    "id": "INS-011",
+    "artifact": "sop",
+    "category": "insight",
+    "summary": "Cross-agent dependency mapping prevents sprint blockers",
+    "context": "The API contract is the critical path: Harshit cannot build the service layer, Yuri cannot write contract tests, and Gay Mark cannot finalize column names until John publishes the OpenAPI spec. Luca's cross-review caught that rate limiting units (per-minute vs. per-hour), pagination style (offset vs. cursor), and access token lifetime (15min vs. 1hr) were inconsistent between the architecture doc and John's contract. These would have been Sprint 1 integration blockers.",
+    "impact": "Sprint 0 must include dependency resolution as a gate. The CTO should maintain a dependency graph and verify all cross-agent interfaces are consistent before sprint planning begins. API-first projects should treat the OpenAPI spec as a Sprint 0 deliverable.",
+    "applicability": "Any project with 3+ agents where one agent's output is another's input -- especially API-first projects",
+    "created_by": "discovery-phase",
+    "timestamp": "2026-03-25T12:00:00Z"
+  },
+  {
+    "id": "INS-012",
+    "artifact": "discovery-phase",
+    "category": "insight",
+    "summary": "Agent workspace isolation (read-only cross-access) prevents merge conflicts at scale",
+    "context": "Each agent writes only to /agents/{name}/ and reads other agents' folders as read-only. Approved artifacts are promoted to /artifacts/. This workspace isolation meant 7 agents could draft V1 and V2 documents in parallel without a single merge conflict. The rule 'agents may read but NOT modify another agent's artifacts' is enforced by convention, not tooling, but held throughout Discovery.",
+    "impact": "For agent teams of 5+, workspace isolation is essential. Without it, concurrent edits to shared files create constant conflicts. The promotion model (drafts -> artifacts) also creates a natural review gate. Consider enforcing this with filesystem permissions or branch protection in future projects.",
+    "applicability": "All agent team projects with 3+ agents producing written artifacts concurrently",
+    "created_by": "discovery-phase",
+    "timestamp": "2026-03-25T12:00:00Z"
+  },
+  {
+    "id": "INS-013",
+    "artifact": "discovery-phase",
+    "category": "insight",
+    "summary": "Contract-first development with MSW enables true parallel frontend/backend work",
+    "context": "The OpenAPI 3.1 spec serves as the binding interface. Harshit planned MSW mock handlers matching John's published contract, allowing frontend development to proceed without a running backend. Schemathesis auto-generates contract tests from the same spec. This means frontend, backend, and QA all build against the same contract independently -- integration is the last step, not the first.",
+    "impact": "Contract-first is not just an architectural pattern; it is an organizational pattern. It decouples agent schedules. Without it, the frontend agent would be blocked for the first 2 sprints waiting for backend endpoints. Invest time in Sprint 0 to get the contract locked and published.",
+    "applicability": "All projects with separate frontend and backend agents or teams",
+    "created_by": "discovery-phase",
+    "timestamp": "2026-03-25T12:00:00Z"
+  },
+  {
+    "id": "INS-014",
+    "artifact": "discovery-phase",
+    "category": "insight",
+    "summary": "QA as a blocking gate at every sprint boundary catches issues before they compound",
+    "context": "Yuri defined 5 QA gates per sprint (Spec Review, Contract Lock, Component Review, Integration, Pre-Release), all blocking. Every story requires explicit QA sign-off before moving to Done. Coverage thresholds are PR-blocking (90% backend, 85% frontend, 100% contract endpoints, 0 critical accessibility violations). This front-loads quality rather than discovering issues in a final QA sprint.",
+    "impact": "Embedding QA gates throughout the process rather than at the end prevents the 'QA crunch' anti-pattern where a backlog of untested features creates a bottleneck before release. The tradeoff is slower individual story velocity, but the release is always in a shippable state.",
+    "applicability": "All projects with a dedicated QA role, especially regulated domains where compliance verification is required",
+    "created_by": "discovery-phase",
+    "timestamp": "2026-03-25T12:00:00Z"
+  },
+  {
+    "id": "INS-015",
+    "artifact": "discovery-phase",
+    "category": "insight",
+    "summary": "Designing for a 60+ audience forces better UX for everyone",
+    "context": "The KidneyHood target audience (60+ CKD patients) drove multiple design constraints: 44px minimum touch targets (WCAG 2.5.5 AAA), 16px minimum input font size (prevents iOS zoom), large radio buttons, explicit units next to fields (not in disappearing placeholder text), plain-language error messages, magic link auth (no passwords to remember), and progressive disclosure (single screen, not multi-step). Inga framed every decision against: 'Can a 68-year-old with declining vision use this on a phone?'",
+    "impact": "Accessibility constraints improve the experience for all users, not just the target demographic. When the audience demands larger targets, clearer labels, and simpler flows, the result is a more usable product across all demographics. Adopt this lens early in UX planning.",
+    "applicability": "Any consumer-facing application, especially healthcare, government services, or products targeting older demographics",
+    "created_by": "discovery-phase",
+    "timestamp": "2026-03-25T12:00:00Z"
+  },
+  {
+    "id": "INS-016",
+    "artifact": "discovery-phase",
+    "category": "insight",
+    "summary": "Decision authority split (CTO for technical, PM for product) resolves deadlocks efficiently",
+    "context": "The SOP assigns clear decision authority: CTO (Luca) has final vote on technical disputes (frameworks, tools, architecture), PM (Husser) has final vote on product disputes (scope, priority, UX). When both concerns conflict, CTO defers to PM on user impact, PM defers to CTO on technical feasibility. This resolved 14 decisions at Meeting 1 without prolonged debate. For example, Luca decided Visx (technical choice) while Husser decided PDF deferral (scope choice).",
+    "impact": "Without clear decision authority, multi-agent teams can deadlock on cross-cutting issues. The dual-authority model prevents analysis paralysis while respecting domain expertise. Every agent team should have this split defined before Meeting 1.",
+    "applicability": "All multi-agent projects with both technical and product decision-making requirements",
+    "created_by": "discovery-phase",
+    "timestamp": "2026-03-25T12:00:00Z"
+  },
+  {
+    "id": "INS-017",
+    "artifact": "discovery-phase",
+    "category": "insight",
+    "summary": "Multi-owner tickets require explicit primary ownership to avoid diffusion of responsibility",
+    "context": "Several tickets have shared ownership: SPEC-18 (Harshit, John, Gay Mark), SPEC-22 (John, Gay Mark), SPEC-24 (Harshit, John), SPEC-30 (Gay Mark, John). The CLAUDE.md agent ownership table maps these, but during Discovery we observed that multi-label tickets risk the bystander effect -- each agent assumes another will act first. The guest session implementation (SPEC-18) spans frontend cookie handling, API session management, and database storage.",
+    "impact": "For multi-owner tickets, designate a primary owner who is accountable for coordination and a secondary who contributes. Use the Jira description to specify which subtasks belong to which agent. Track these during sprint standups to prevent drift.",
+    "applicability": "Any project using agent labels for ticket assignment where features span multiple domains",
+    "created_by": "discovery-phase",
+    "timestamp": "2026-03-25T12:00:00Z"
+  }
+]

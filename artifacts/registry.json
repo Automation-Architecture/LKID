@@ -1,0 +1,25 @@
+{
+  "artifacts": [
+    {
+      "id": "PRD",
+      "file": "PRD.md",
+      "version": "2.0",
+      "status": "approved",
+      "format": "Executive-First",
+      "author": "Husser (Product Manager)",
+      "created": "2026-03-25",
+      "description": "Final Product Requirements Document — binding contract for Development Phase",
+      "dependencies": ["docs/prd-sprint-timeline.excalidraw", "docs/prd-agent-workload.excalidraw"]
+    },
+    {
+      "id": "LEAN-LAUNCH",
+      "file": "lean-launch-mvp-prd.md",
+      "version": "2.0",
+      "status": "approved",
+      "author": "CEO Test (Brad + Full Team Review)",
+      "created": "2026-03-25",
+      "description": "Lean Launch MVP PRD — CEO Test output, scope reduction from 89 to ~20-25 tickets, binding scope for Development Phase",
+      "dependencies": ["PRD.md"]
+    }
+  ]
+}

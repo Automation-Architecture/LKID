@@ -1,0 +1,211 @@
+[
+  {
+    "id": "ANTI-001",
+    "artifact": "bootstrap",
+    "category": "anti-pattern",
+    "summary": "Tight coupling between frontend and backend",
+    "context": "FE code that depends on BE implementation details rather than contracts",
+    "impact": "Changes in one layer break the other; blocks parallel work",
+    "applicability": "All projects with separate FE/BE",
+    "created_by": "system",
+    "timestamp": "2026-03-25T00:00:00Z"
+  },
+  {
+    "id": "ANTI-002",
+    "artifact": "bootstrap",
+    "category": "anti-pattern",
+    "summary": "Undefined API contracts",
+    "context": "Starting implementation without agreed request/response schemas",
+    "impact": "Integration failures, rework, and blocked dependencies",
+    "applicability": "All API-driven projects",
+    "created_by": "system",
+    "timestamp": "2026-03-25T00:00:00Z"
+  },
+  {
+    "id": "ANTI-003",
+    "artifact": "bootstrap",
+    "category": "anti-pattern",
+    "summary": "Skipping QA validation",
+    "context": "Marking work complete without QA review or test coverage",
+    "impact": "Defects ship to production; rework costs increase",
+    "applicability": "All projects",
+    "created_by": "system",
+    "timestamp": "2026-03-25T00:00:00Z"
+  },
+  {
+    "id": "ANTI-004",
+    "artifact": "bootstrap",
+    "category": "anti-pattern",
+    "summary": "Overwriting other agent artifacts",
+    "context": "An agent modifying files owned by another agent",
+    "impact": "Lost work, merge conflicts, broken trust between agents",
+    "applicability": "All agent team projects",
+    "created_by": "system",
+    "timestamp": "2026-03-25T00:00:00Z"
+  },
+  {
+    "id": "ANTI-005",
+    "artifact": "sop",
+    "category": "anti-pattern",
+    "summary": "Drafting the PRD in parallel with domain documents",
+    "context": "The original SOP workflow allowed the PM to draft the PRD at the same time domain agents were producing their V1/V2 documents. This caused the PRD to be based on incomplete or pre-debate assumptions rather than finalized, cross-reviewed domain artifacts. The SOP was revised to v1.1 to enforce that the PRD is a post-Meeting-2 synthesis document, created ONLY after all V2 domain documents are finalized and agreed upon.",
+    "impact": "PRD contains stale decisions, contradicts domain docs, requires full rewrite after Meeting 2, wastes PM effort, and delays the transition to development",
+    "applicability": "Any multi-agent discovery process where a synthesis document (PRD, architecture doc) is produced from domain-specific inputs",
+    "created_by": "discovery-phase",
+    "timestamp": "2026-03-25T12:00:00Z"
+  },
+  {
+    "id": "ANTI-006",
+    "artifact": "db_design",
+    "category": "anti-pattern",
+    "summary": "Storing prediction results in the database",
+    "context": "Decision #10 explicitly rejected persisting prediction outputs. The rules engine recomputes trajectories on every request. Storing predictions would expand the HIPAA surface area (prediction trajectories are derived PHI), complicate the data model with a predictions table, and create staleness issues when the rules engine is updated.",
+    "impact": "Increased HIPAA compliance burden, stale prediction data if engine coefficients change, unnecessary database complexity, and a larger attack surface for PHI exposure",
+    "applicability": "Any health app with a compute-on-demand prediction model; applies whenever considering caching clinical computation results",
+    "created_by": "discovery-phase",
+    "timestamp": "2026-03-25T12:00:00Z"
+  },
+  {
+    "id": "ANTI-007",
+    "artifact": "architecture",
+    "category": "anti-pattern",
+    "summary": "Using a BFF layer unnecessarily",
+    "context": "Decision #7 rejected the backend-for-frontend pattern for MVP. A BFF (Next.js API routes proxying to FastAPI) would add a redundant network hop, duplicate error handling, complicate CORS configuration, and create a maintenance burden without providing meaningful value when the frontend can call FastAPI directly over HTTPS with proper CORS and credential support.",
+    "impact": "Added latency, duplicated logic, harder debugging of auth/cookie flows, unnecessary infrastructure complexity for a single-client application",
+    "applicability": "Single-client web apps where the API already handles CORS, auth, and rate limiting natively; BFF is justified when multiple clients need different API shapes",
+    "created_by": "discovery-phase",
+    "timestamp": "2026-03-25T12:00:00Z"
+  },
+  {
+    "id": "ANTI-008",
+    "artifact": "PRD",
+    "category": "anti-pattern",
+    "summary": "Password-based authentication for a health application",
+    "context": "Decision #1 chose magic link auth over passwords. The original spec referenced bcrypt and password storage (SPEC-20, SPEC-59, SPEC-60 all had to be rewritten). For a health app targeting 60+ patients with reduced digital literacy, passwords create credential stuffing risk, forgotten password support burden, bcrypt compute overhead, and UX friction that discourages adoption.",
+    "impact": "Security vulnerabilities (credential stuffing, password reuse), user abandonment due to forgotten passwords, increased support costs, storage of sensitive credential data expanding HIPAA surface",
+    "applicability": "Health applications targeting elderly or low-digital-literacy users; any app where reducing friction is critical to adoption",
+    "created_by": "discovery-phase",
+    "timestamp": "2026-03-25T12:00:00Z"
+  },
+  {
+    "id": "ANTI-009",
+    "artifact": "architecture",
+    "category": "anti-pattern",
+    "summary": "Caching predictions client-side",
+    "context": "Decision #10 mandates compute-on-demand: every chart render requires a fresh POST /predict call. Caching prediction results in the frontend (TanStack Query cache, localStorage, or Zustand) would contradict this principle. Predictions must reflect current engine logic and current lab data, not stale cached values.",
+    "impact": "Stale clinical data displayed to patients, potential patient safety issue if engine coefficients are updated but cached results persist, false sense of data freshness",
+    "applicability": "Any frontend consuming a stateless clinical computation endpoint; never cache health predictions",
+    "created_by": "discovery-phase",
+    "timestamp": "2026-03-25T12:00:00Z"
+  },
+  {
+    "id": "ANTI-010",
+    "artifact": "db_design",
+    "category": "anti-pattern",
+    "summary": "Skipping encryption for guest session data",
+    "context": "Decision #4 confirmed at Meeting 1 that ALL guest session data is PHI, including unauthenticated visitor lab values stored in the guest_sessions table. The original spec language about data being 'purged on close' was incorrect and had to be corrected everywhere. Guest data requires full HIPAA treatment: AES-256 encryption at rest via KMS, TLS in transit, audit logging, and a 24-hour TTL purge cron.",
+    "impact": "HIPAA violation, legal liability, potential breach notification requirements, regulatory penalties; guest data contains the same lab values as authenticated data and is equally sensitive",
+    "applicability": "Any health app with a guest/anonymous mode that collects clinical data before account creation",
+    "created_by": "discovery-phase",
+    "timestamp": "2026-03-25T12:00:00Z"
+  },
+  {
+    "id": "ANTI-011",
+    "artifact": "db_design",
+    "category": "anti-pattern",
+    "summary": "Denormalization in MVP schema",
+    "context": "Gay Mark's database design explicitly follows Third Normal Form (3NF) with no denormalization for MVP. Query patterns are simple (filter by user_id, order by visit_date) and do not warrant materialized views or redundant columns. Premature denormalization adds update anomaly risks and complicates migrations without measurable performance benefit at MVP scale (<100 users).",
+    "impact": "Update anomalies, schema rigidity, harder migrations, unnecessary complexity for simple query patterns",
+    "applicability": "MVP-stage projects with simple query patterns and small user bases; denormalize only when proven performance bottlenecks exist",
+    "created_by": "discovery-phase",
+    "timestamp": "2026-03-25T12:00:00Z"
+  },
+  {
+    "id": "ANTI-012",
+    "artifact": "db_design",
+    "category": "anti-pattern",
+    "summary": "Deleting audit log records when users are deleted",
+    "context": "Decision #14 mandates ON DELETE SET NULL on audit_log.user_id. Audit records must survive user account deletion indefinitely (HIPAA minimum: 6 years). Using ON DELETE CASCADE on the audit log FK would destroy the forensic trail needed for breach notifications, compliance audits, and regulatory investigations.",
+    "impact": "HIPAA violation — loss of required audit trail, inability to respond to breach notification requirements, failed compliance audits, destroyed forensic evidence",
+    "applicability": "Any HIPAA-regulated application with audit logging; any system where regulatory retention requirements outlive user account lifetimes",
+    "created_by": "discovery-phase",
+    "timestamp": "2026-03-25T12:00:00Z"
+  },
+  {
+    "id": "ANTI-013",
+    "artifact": "ux_spec",
+    "category": "anti-pattern",
+    "summary": "Using opacity dimming for disabled button states",
+    "context": "Inga's component spec for SubmitButton explicitly states: 'Opacity 1 (not 0.5, use distinct colors)' for the disabled state. Instead of reducing opacity to 0.5 (a common but poor pattern), disabled buttons use distinct colors (#CCCCCC background, #888888 text) at full opacity. Opacity dimming fails for users with low vision (common in the 60+ CKD audience), reduces contrast ratios below WCAG thresholds, and makes it ambiguous whether a button is disabled or just loading.",
+    "impact": "Accessibility failure for elderly users, WCAG contrast violations, user confusion between disabled and loading states, poor experience for low-vision patients",
+    "applicability": "Any application targeting elderly or low-vision users; general best practice for accessible UI design",
+    "created_by": "discovery-phase",
+    "timestamp": "2026-03-25T12:00:00Z"
+  },
+  {
+    "id": "ANTI-014",
+    "artifact": "sop",
+    "category": "anti-pattern",
+    "summary": "Mixing agent workspace files across boundaries",
+    "context": "The project has a critical rule: agents write ONLY in their own /agents/{name}/ folder and may read but NOT modify another agent's artifacts. This is enforced by the discovery SOP and CLAUDE.md. Violations cause merge conflicts, lost work, and broken trust. The approved contracts in /artifacts/ are the shared interface — agents interact through published contracts, not by editing each other's drafts.",
+    "impact": "Lost work, merge conflicts, inconsistent state between agent drafts, broken trust, violation of the contract-first development model",
+    "applicability": "All multi-agent team projects; any collaborative system where ownership boundaries must be respected",
+    "created_by": "discovery-phase",
+    "timestamp": "2026-03-25T12:00:00Z"
+  },
+  {
+    "id": "ANTI-015",
+    "artifact": "PRD",
+    "category": "anti-pattern",
+    "summary": "Large flat PRD documents without executive-first structure",
+    "context": "The final PRD uses an Executive-First format: Section 1 is a self-contained executive summary, Sections 2-5 cover milestones, roles, technical considerations, and open questions at a strategic level, and Appendices A-F contain the full domain-specific detail from each agent's V2 document. A flat PRD that mixes strategic overview with implementation detail forces every reader to wade through the entire document, makes cross-referencing difficult, and becomes unmaintainable as the project evolves.",
+    "impact": "Stakeholders cannot quickly assess project status, domain experts cannot find their sections, the document becomes a monolith that nobody reads completely, updates cause widespread merge conflicts",
+    "applicability": "Any PRD exceeding 5 pages; multi-domain projects where different audiences need different levels of detail",
+    "created_by": "discovery-phase",
+    "timestamp": "2026-03-25T12:00:00Z"
+  },
+  {
+    "id": "ANTI-016",
+    "artifact": "api_contract",
+    "category": "anti-pattern",
+    "summary": "Mismatched field names between API and database schema",
+    "context": "John Donaldson and Gay Mark identified that API field names must align 1:1 with database column names to minimize transformation layers. A concrete example: John's API uses 'age' in the request but Gay Mark's DB column is 'age_at_visit' — requiring an explicit mapping in the API layer. Luca's notes flag this and the 'sex' field location (users table vs. per-entry) as open alignment items. Undetected mismatches cause silent data corruption or runtime errors at integration time.",
+    "impact": "Integration failures, transformation bugs, silent data corruption, delayed integration sprints, rework for both API and DB teams",
+    "applicability": "Any project where API and database schemas are designed by different agents/teams; contract-first projects where schema alignment is critical",
+    "created_by": "discovery-phase",
+    "timestamp": "2026-03-25T12:00:00Z"
+  },
+  {
+    "id": "ANTI-017",
+    "artifact": "architecture",
+    "category": "anti-pattern",
+    "summary": "Storing JWT tokens in localStorage",
+    "context": "John Donaldson's API docs explicitly state: 'Store in memory (Zustand store). Do NOT put in localStorage.' Access tokens are held in-memory via Zustand; guest session tokens use httpOnly cookies set by the server. Storing JWTs in localStorage exposes them to XSS attacks — any injected script can read localStorage and exfiltrate tokens. For a HIPAA-regulated app, this is an unacceptable security risk.",
+    "impact": "XSS token theft, unauthorized API access, HIPAA security violation, potential patient data breach",
+    "applicability": "Any web application handling PHI or sensitive data; general security best practice for token storage",
+    "created_by": "discovery-phase",
+    "timestamp": "2026-03-25T12:00:00Z"
+  },
+  {
+    "id": "ANTI-018",
+    "artifact": "test_strategy",
+    "category": "anti-pattern",
+    "summary": "Using real patient data in test environments",
+    "context": "Yuri's test strategy mandates 'Synthetic test data only. No real patient data in any environment.' Gay Mark's seed data uses fixed UUIDs with deterministic values covering all tiers, boundary values, and edge cases. Using real patient data in dev/staging/CI environments violates HIPAA, creates legal liability, and is unnecessary when comprehensive synthetic data covers all test scenarios.",
+    "impact": "HIPAA violation, legal liability, potential breach if test environments are less secure than production, difficulty reproducing test failures with non-deterministic data",
+    "applicability": "All HIPAA-regulated applications; any project where test data could contain PII or PHI",
+    "created_by": "discovery-phase",
+    "timestamp": "2026-03-25T12:00:00Z"
+  },
+  {
+    "id": "ANTI-019",
+    "artifact": "db_design",
+    "category": "anti-pattern",
+    "summary": "Running migrations with the application service account",
+    "context": "Gay Mark's RBAC design enforces two separate database roles: app_service (DML only, INSERT-only on audit_log) and app_admin (ALL for DDL/migrations). The application runtime account must never have DDL privileges. If the application is compromised, an attacker with app_service credentials cannot ALTER or DROP tables, cannot UPDATE or DELETE audit records, and cannot run arbitrary DDL.",
+    "impact": "If compromised, attacker can destroy schema, drop tables, tamper with audit logs; violates least-privilege principle; HIPAA security rule violation",
+    "applicability": "Any production database with sensitive data; HIPAA-regulated systems; general database security best practice",
+    "created_by": "discovery-phase",
+    "timestamp": "2026-03-25T12:00:00Z"
+  }
+]

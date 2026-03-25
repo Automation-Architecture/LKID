@@ -1,0 +1,19 @@
+{
+  "type": "excalidraw",
+  "version": 2,
+  "source": "https://excalidraw.com",
+  "elements": [
+    {"type":"text","id":"title","x":200,"y":0,"width":400,"height":35,"text":"Role Workload Distribution","fontSize":28,"strokeColor":"#010101","fontFamily":1,"textAlign":"left","verticalAlign":"top","fillStyle":"solid","strokeWidth":2,"roughness":1,"opacity":100,"angle":0,"groupIds":[],"boundElements":null,"seed":1},
+    {"type":"text","id":"sub","x":210,"y":38,"width":350,"height":25,"text":"Stories + Subtasks by Role","fontSize":18,"strokeColor":"#636363","fontFamily":1,"textAlign":"left","verticalAlign":"top","fillStyle":"solid","strokeWidth":2,"roughness":1,"opacity":100,"angle":0,"groupIds":[],"boundElements":null,"seed":2},
+    {"type":"rectangle","id":"bar1","x":60,"y":100,"width":432,"height":60,"backgroundColor":"#004D43","fillStyle":"solid","roundness":{"type":3},"strokeColor":"#898A8D","strokeWidth":2,"roughness":1,"opacity":100,"angle":0,"groupIds":[],"boundElements":[{"type":"text","id":"bar1l"}],"seed":3},
+    {"type":"text","id":"bar1l","x":70,"y":115,"width":400,"height":30,"text":"Frontend Developer — 44 items (54%)","fontSize":20,"strokeColor":"#E6FF2B","fontFamily":1,"textAlign":"left","verticalAlign":"middle","containerId":"bar1","fillStyle":"solid","strokeWidth":2,"roughness":1,"opacity":100,"angle":0,"groupIds":[],"boundElements":null,"seed":4},
+    {"type":"rectangle","id":"bar2","x":60,"y":175,"width":192,"height":60,"backgroundColor":"#004D43","fillStyle":"solid","roundness":{"type":3},"strokeColor":"#898A8D","strokeWidth":2,"roughness":1,"opacity":80,"angle":0,"groupIds":[],"boundElements":[{"type":"text","id":"bar2l"}],"seed":5},
+    {"type":"text","id":"bar2l","x":70,"y":190,"width":180,"height":30,"text":"API Designer — 18 (24%)","fontSize":18,"strokeColor":"#FFFFFF","fontFamily":1,"textAlign":"left","verticalAlign":"middle","containerId":"bar2","fillStyle":"solid","strokeWidth":2,"roughness":1,"opacity":100,"angle":0,"groupIds":[],"boundElements":null,"seed":6},
+    {"type":"rectangle","id":"bar3","x":60,"y":250,"width":128,"height":60,"backgroundColor":"#E6FF2B","fillStyle":"solid","roundness":{"type":3},"strokeColor":"#898A8D","strokeWidth":2,"roughness":1,"opacity":100,"angle":0,"groupIds":[],"boundElements":[{"type":"text","id":"bar3l"}],"seed":7},
+    {"type":"text","id":"bar3l","x":70,"y":265,"width":110,"height":30,"text":"DB Eng — 12 (16%)","fontSize":16,"strokeColor":"#010101","fontFamily":1,"textAlign":"left","verticalAlign":"middle","containerId":"bar3","fillStyle":"solid","strokeWidth":2,"roughness":1,"opacity":100,"angle":0,"groupIds":[],"boundElements":null,"seed":8},
+    {"type":"rectangle","id":"bar4","x":60,"y":325,"width":48,"height":60,"backgroundColor":"#D8D8D8","fillStyle":"solid","roundness":{"type":3},"strokeColor":"#898A8D","strokeWidth":2,"roughness":1,"opacity":100,"angle":0,"groupIds":[],"boundElements":null,"seed":9},
+    {"type":"text","id":"bar4l","x":120,"y":340,"width":260,"height":30,"text":"PM (2) + UX (2) + QA (1) = 5 (6%)","fontSize":16,"strokeColor":"#636363","fontFamily":1,"textAlign":"left","verticalAlign":"top","fillStyle":"solid","strokeWidth":2,"roughness":1,"opacity":100,"angle":0,"groupIds":[],"boundElements":null,"seed":10},
+    {"type":"text","id":"total","x":60,"y":410,"width":400,"height":25,"text":"Total: 79 assigned items + 10 unowned infra tickets = 89","fontSize":16,"strokeColor":"#898A8D","fontFamily":1,"textAlign":"left","verticalAlign":"top","fillStyle":"solid","strokeWidth":2,"roughness":1,"opacity":100,"angle":0,"groupIds":[],"boundElements":null,"seed":11}
+  ],
+  "appState": {"viewBackgroundColor": "#FFFFFF"}
+}

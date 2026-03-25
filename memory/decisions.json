@@ -1,0 +1,178 @@
+[
+  {
+    "id": "DEC-001",
+    "artifact": "bootstrap",
+    "category": "decision",
+    "summary": "Use modular architecture",
+    "context": "Separate frontend (Next.js) and backend (FastAPI) services",
+    "impact": "Enables parallel development and independent deployment",
+    "applicability": "This project and similar web apps",
+    "created_by": "system",
+    "timestamp": "2026-03-25T00:00:00Z"
+  },
+  {
+    "id": "DEC-002",
+    "artifact": "bootstrap",
+    "category": "decision",
+    "summary": "Enforce API contracts before integration",
+    "context": "API contract must be approved by all agents before FE/BE integration begins",
+    "impact": "Prevents integration rework and unblocks parallel development",
+    "applicability": "All projects with API boundaries",
+    "created_by": "system",
+    "timestamp": "2026-03-25T00:00:00Z"
+  },
+  {
+    "id": "DEC-003",
+    "artifact": "PRD",
+    "category": "decision",
+    "summary": "Magic link authentication only — no passwords",
+    "context": "Decision #1: Passwordless auth eliminates credential stuffing, bcrypt overhead, and password reset flows. Tokens are single-use, 15-min TTL, stored as SHA-256 hashes.",
+    "impact": "No password_hash column in users table; four auth endpoints replace traditional registration/login; JWT access tokens (1hr) in memory, refresh tokens (7-day) with rotation",
+    "applicability": "john-donaldson, gay-mark, harshit, yuri",
+    "created_by": "husser",
+    "timestamp": "2026-03-25T12:00:00Z"
+  },
+  {
+    "id": "DEC-004",
+    "artifact": "PRD",
+    "category": "decision",
+    "summary": "PDF export deferred to Phase 2b",
+    "context": "Decision #2: PDF download is out of MVP scope to reduce complexity and keep the Sprint 0-4 timeline achievable.",
+    "impact": "No PDF endpoint in MVP API; E2E journey #5 (PDF download) is deferred; reduces frontend and API scope",
+    "applicability": "john-donaldson, harshit, yuri, inga",
+    "created_by": "husser",
+    "timestamp": "2026-03-25T12:00:00Z"
+  },
+  {
+    "id": "DEC-005",
+    "artifact": "PRD",
+    "category": "decision",
+    "summary": "Sex field is required — 'Prefer not to say' maps to 'unknown' with lower confidence",
+    "context": "Decision #3: Sex is a required field because the CKD-EPI 2021 formula uses it as an input. Three allowed values: male, female, unknown. UX presents a radio group (Male / Female / Prefer not to say) positioned after Age, before optional fields. 'Prefer not to say' maps to 'unknown' in the API and triggers a lower confidence indicator in the prediction. DB enforces CHECK (sex IN ('male', 'female', 'unknown')) with NOT NULL.",
+    "impact": "No nullable sex column; frontend radio group must include all three options; prediction engine applies lower confidence when sex='unknown'; QA must test sex='unknown' confidence behavior and sex-omitted validation error",
+    "applicability": "harshit, john-donaldson, gay-mark, inga, yuri",
+    "created_by": "husser",
+    "timestamp": "2026-03-25T12:00:00Z"
+  },
+  {
+    "id": "DEC-006",
+    "artifact": "PRD",
+    "category": "decision",
+    "summary": "All guest session data is PHI",
+    "context": "Decision #4: Confirmed at Meeting 1 that guest data — including unauthenticated session data — is classified as Protected Health Information. Save prompt shown post-prediction: 'Your results will be available for 24 hours. Create a free account to save them permanently.'",
+    "impact": "guest_sessions table requires full encryption and audit logging; 24-hour TTL with purge cron; HIPAA controls apply to all data from first interaction",
+    "applicability": "gay-mark, john-donaldson, harshit, yuri",
+    "created_by": "husser",
+    "timestamp": "2026-03-25T12:00:00Z"
+  },
+  {
+    "id": "DEC-007",
+    "artifact": "PRD",
+    "category": "decision",
+    "summary": "True linear time axis on eGFR trajectory chart",
+    "context": "Decision #5: Chart uses a true linear time axis (months 0-120) with a footnote explaining compressed first-year data density, rather than using a non-linear or categorical axis.",
+    "impact": "Visx chart must render proportional time spacing; UX must include explanatory footnote for users",
+    "applicability": "harshit, inga",
+    "created_by": "husser",
+    "timestamp": "2026-03-25T12:00:00Z"
+  },
+  {
+    "id": "DEC-008",
+    "artifact": "PRD",
+    "category": "decision",
+    "summary": "Visx (D3 + React) for charting with two spec variants",
+    "context": "Decision #6: Visx chosen because it renders to SVG, giving full control over accessibility attributes, line patterns, and responsive sizing. Two variants: Variant A (full interactive — tooltips, crosshairs, stat card highlighting) and Variant B (simplified static fallback). Variant selection blocked on Frontend Developer's Visx POC.",
+    "impact": "Frontend must implement Visx SVG chart; POC required in Sprint 0 to determine variant; UX delivers specs for both variants",
+    "applicability": "harshit, inga, yuri",
+    "created_by": "husser",
+    "timestamp": "2026-03-25T12:00:00Z"
+  },
+  {
+    "id": "DEC-009",
+    "artifact": "PRD",
+    "category": "decision",
+    "summary": "No BFF layer — frontend calls FastAPI directly",
+    "context": "Decision #7: Client components call FastAPI directly over HTTPS. No Next.js API routes as proxy. CORS configured on FastAPI with credentials support for httpOnly guest session cookies. Zustand for UI state, TanStack Query for server state.",
+    "impact": "No Next.js API routes needed; CORS must be configured on FastAPI; frontend uses Zustand + TanStack Query for state management",
+    "applicability": "harshit, john-donaldson",
+    "created_by": "husser",
+    "timestamp": "2026-03-25T12:00:00Z"
+  },
+  {
+    "id": "DEC-010",
+    "artifact": "PRD",
+    "category": "decision",
+    "summary": "Separate data storage from prediction computation",
+    "context": "Decision #8: POST /lab-entries persists lab values for authenticated users. POST /predict runs the rules engine — accepting either stored entry IDs (authenticated) or inline data (guests). Clean separation of persistent resources from stateless computation.",
+    "impact": "Two distinct API endpoints; reduces HIPAA surface area; simplifies data model; prediction endpoint is stateless",
+    "applicability": "john-donaldson, harshit, gay-mark, yuri",
+    "created_by": "husser",
+    "timestamp": "2026-03-25T12:00:00Z"
+  },
+  {
+    "id": "DEC-011",
+    "artifact": "PRD",
+    "category": "decision",
+    "summary": "Standardized error envelope for all API errors",
+    "context": "Decision #9: All 4xx/5xx responses return {error: {code, message, details[]}} with field-level details for validation errors. Database CHECK constraints mirror API validation ranges exactly (defense-in-depth).",
+    "impact": "Consistent error handling across frontend; DB CHECK constraints must match API validation; contract tests validate error envelope on every error response",
+    "applicability": "john-donaldson, harshit, gay-mark, yuri",
+    "created_by": "husser",
+    "timestamp": "2026-03-25T12:00:00Z"
+  },
+  {
+    "id": "DEC-012",
+    "artifact": "PRD",
+    "category": "decision",
+    "summary": "No prediction result storage — compute on demand",
+    "context": "Decision #10: Predictions are computed on demand and never persisted. No predictions table, no GET /predictions endpoint. The rules engine recomputes on every request.",
+    "impact": "No predictions table in DB; every chart render requires fresh POST /predict; minimizes HIPAA surface area; simplifies data model",
+    "applicability": "john-donaldson, gay-mark, harshit, yuri",
+    "created_by": "husser",
+    "timestamp": "2026-03-25T12:00:00Z"
+  },
+  {
+    "id": "DEC-013",
+    "artifact": "PRD",
+    "category": "decision",
+    "summary": "Sticky disclaimer footer on mobile, inline on desktop",
+    "context": "Decision #11: On mobile viewports, the medical disclaimer is displayed as a collapsed single-line sticky footer, expandable on tap. On desktop, it renders inline.",
+    "impact": "Frontend must implement responsive disclaimer component with collapse/expand behavior; legal confirmation pending for collapsed display (SPEC-87)",
+    "applicability": "harshit, inga, husser",
+    "created_by": "husser",
+    "timestamp": "2026-03-25T12:00:00Z"
+  },
+  {
+    "id": "DEC-014",
+    "artifact": "PRD",
+    "category": "decision",
+    "summary": "Tier 2 confidence requires BOTH hemoglobin AND glucose",
+    "context": "Decision #12: Confidence tiers defined as — Tier 1: required fields only; Tier 2: Tier 1 + BOTH hemoglobin AND glucose (not either/or); Tier 3: Tier 2 + 3 or more visit dates.",
+    "impact": "API must enforce both-or-neither logic for Tier 2; frontend unlock prompt guides users to provide both optional fields; QA tier transition tests must cover hemoglobin-only and glucose-only cases (both stay Tier 1)",
+    "applicability": "john-donaldson, harshit, yuri",
+    "created_by": "husser",
+    "timestamp": "2026-03-25T12:00:00Z"
+  },
+  {
+    "id": "DEC-015",
+    "artifact": "PRD",
+    "category": "decision",
+    "summary": "Test vectors from Lee are a patient safety blocker for Sprint 1",
+    "context": "Decision #13: The proprietary prediction engine is black-box tested. Lee (the domain expert/client) must deliver 10-20 validated input/output pairs before Sprint 1 begins. Without these test vectors, QA can only verify structural correctness (schema, status codes, response shape) but cannot validate clinical accuracy. This is classified as a patient safety blocker — the app must not launch with unvalidated prediction output.",
+    "impact": "Sprint 1 cannot validate prediction accuracy without test vectors; QA test cases for clinical correctness are blocked; mock data accuracy for MSW handlers depends on real test vectors; SPEC-80 tracks this as a Sprint 0 blocker",
+    "applicability": "yuri, john-donaldson, harshit, husser",
+    "created_by": "husser",
+    "timestamp": "2026-03-25T12:00:00Z"
+  },
+  {
+    "id": "DEC-016",
+    "artifact": "PRD",
+    "category": "decision",
+    "summary": "Audit trail survives user account deletion",
+    "context": "Decision #14: audit_log.user_id uses ON DELETE SET NULL so audit records persist indefinitely even after patient account deletion. HIPAA requires minimum 6-year retention. Account deletion cascades to lab_entries and magic_link_tokens but preserves audit records.",
+    "impact": "Database FK design uses SET NULL on audit_log; deletion logic must cascade to lab_entries and tokens but not audit records; QA E2E journey #9 tests this behavior",
+    "applicability": "gay-mark, john-donaldson, yuri",
+    "created_by": "husser",
+    "timestamp": "2026-03-25T12:00:00Z"
+  }
+]
