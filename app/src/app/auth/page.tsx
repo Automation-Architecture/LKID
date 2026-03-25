@@ -11,7 +11,11 @@ export default function AuthPage() {
           Enter your email for a magic link
         </p>
         <div className="space-y-3">
+          <label htmlFor="email" className="sr-only">
+            Email address
+          </label>
           <input
+            id="email"
             type="email"
             placeholder="you@example.com"
             className="h-12 w-full rounded-md border border-input px-3 text-base"

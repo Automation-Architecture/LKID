@@ -8,7 +8,7 @@ export default function Home() {
           KidneyHood
         </h1>
         <p className="text-lg text-muted-foreground">
-          Enter your email to get started
+          Understand your kidney health trajectory
         </p>
         <Link
           href="/auth"
