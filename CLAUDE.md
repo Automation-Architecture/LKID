@@ -48,9 +48,10 @@ Use Excalidraw MCP (`mcp__claude_ai_Excalidraw__create_view`) for all diagrams. 
 ```
 agent-teams/
 ├── artifacts/
-│   ├── PRD.md                    # Final PRD (reference for Phase 2)
 │   ├── lean-launch-mvp-prd.md    # Lean Launch MVP PRD — binding scope for Development
-│   └── registry.json             # Approved artifact registry
+│   ├── registry.json             # Approved artifact registry
+│   └── archive/
+│       └── PRD-v2-original.md    # Original PRD (89 tickets) — archived, reference only
 ├── agents/
 │   ├── gay_mark/drafts/          # db_design.md, db_docs.md, db_schema.sql
 │   ├── harshit/drafts/           # frontend_architecture.md, lean-launch-review.md
