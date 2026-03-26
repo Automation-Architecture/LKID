@@ -221,7 +221,7 @@ function AuthContent() {
   };
 
   return (
-    <main className="flex flex-1 flex-col items-center justify-center px-4 md:px-6 lg:px-8">
+    <main id="main-content" className="flex flex-1 flex-col items-center justify-center px-4 md:px-6 lg:px-8">
       {/* Mobile: no card wrapper, full-width with padding */}
       <div className="w-full max-w-[400px] md:hidden">
         {view === "email-entry" && (

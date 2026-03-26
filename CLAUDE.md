@@ -7,7 +7,7 @@
 **Jira:** [SPEC Board](https://automationarchitecture.atlassian.net/jira/software/c/projects/SPEC/boards/329/backlog) | [LKID Board](https://automationarchitecture.atlassian.net/jira/software/c/projects/LKID/boards/363)
 **Repo:** [github.com/Automation-Architecture/LKID](https://github.com/Automation-Architecture/LKID)
 **Specs:** `/Users/brad/IDE/kidneyhood/` (3 docx files)
-**Status:** Design Sprint PRs open (#1–#8). Awaiting kickoff. Backend research complete.
+**Status:** Sprint 1 complete (8/8 PRs merged). Prototype live at kidneyhood.vercel.app. Sprint 2 next.
 
 ## Sprint Plan
 
@@ -18,7 +18,7 @@
 | Sprint 3 — PDF, Polish & QA | Apr 13 – Apr 17 | 12 (LKID-4–5, 20–29) | Interactivity, PDF, disclaimers, tests, QA gate |
 
 **Ship date:** April 17, 2026
-**Blocker:** LKID-14 (rules engine) — 5 items pending Lee
+**Blocker:** LKID-14 (rules engine) — UNBLOCKED (Lee's calc spec received)
 
 ## Development Workflow
 
@@ -72,9 +72,9 @@ agent-teams/
 ├── agents/
 │   ├── gay_mark/drafts/          # db_design.md, db_docs.md, db_schema.sql
 │   ├── harshit/drafts/           # frontend_architecture.md, lean-launch-review.md
-│   ├── husser/drafts/            # lean-launch-stories.md, design-sprint-stories.md
-│   ├── inga/drafts/              # 7 UX files + design-sprint-meeting-1.md, lean-launch-review.md, design-sprint-sign-off.md
-│   ├── john_donaldson/drafts/    # api_contract.json, api_docs.md, lean-launch-review.md, backend-research.md
+│   ├── husser/drafts/            # lean-launch-stories.md, design-sprint-stories.md, client-dashboard-stories.md, week-1-product-update.md
+│   ├── inga/drafts/              # 7 UX files + design-sprint-meeting-1.md, lean-launch-review.md, design-sprint-sign-off.md, client-dashboard-mockup.md
+│   ├── john_donaldson/drafts/    # api_contract.json, api_docs.md, lean-launch-review.md, backend-research.md, week-1-technical-update.md
 │   ├── luca/drafts/              # architecture.md, lean-launch-review.md, sprint-progress.json, spec-tracker.json
 │   └── yuri/drafts/              # test_strategy.md, lean-launch-review.md, design-sprint-qa-report.md
 ├── docs/
@@ -86,13 +86,15 @@ agent-teams/
 │   ├── prd-sprint-timeline.excalidraw
 │   ├── prd-agent-workload.excalidraw
 │   ├── jira-lean-setup.md
-│   └── superpowers/specs/2026-03-25-prd-structure-design.md
+│   ├── superpowers/specs/2026-03-25-prd-structure-design.md
+│   └── superpowers/specs/2026-03-26-client-dashboard-design.md
 ├── memory/
 │   ├── patterns.json, anti_patterns.json, decisions.json
 │   ├── insights.json, tooling.json
 │   └── compressed_summary.md
 ├── app/                          # Empty — Development Phase
 ├── tests/                        # Empty — Development Phase
+├── server_side_calc_spec_v1.md
 ├── Resources/agent-teams-reference.md
 ├── launch-team.sh
 └── README.md
