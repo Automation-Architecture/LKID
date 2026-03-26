@@ -10,7 +10,7 @@ function Label({
     <label
       data-slot="label"
       className={cn(
-        "text-base font-semibold text-foreground select-none peer-disabled:cursor-not-allowed peer-disabled:opacity-50",
+        "text-base font-semibold text-foreground select-none",
         className
       )}
       {...props}

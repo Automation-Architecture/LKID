@@ -20,6 +20,9 @@ interface FormField {
   helper: string;
   readOnly?: boolean;
   defaultValue?: string;
+  min?: number;
+  max?: number;
+  step?: number;
 }
 
 const fields: FormField[] = [
@@ -54,6 +57,9 @@ const fields: FormField[] = [
     autoComplete: "off",
     placeholder: "",
     helper: "years",
+    min: 18,
+    max: 120,
+    step: 1,
   },
   {
     id: "bun",
@@ -64,6 +70,9 @@ const fields: FormField[] = [
     autoComplete: "off",
     placeholder: "",
     helper: "mg/dL \u2014 Normal range: 7\u201320",
+    min: 0,
+    max: 200,
+    step: 0.1,
   },
   {
     id: "creatinine",
@@ -74,6 +83,9 @@ const fields: FormField[] = [
     autoComplete: "off",
     placeholder: "",
     helper: "mg/dL \u2014 Normal range: 0.6\u20131.2",
+    min: 0,
+    max: 30,
+    step: 0.01,
   },
   {
     id: "potassium",
@@ -84,7 +96,22 @@ const fields: FormField[] = [
     autoComplete: "off",
     placeholder: "",
     helper: "mEq/L \u2014 Normal range: 3.5\u20135.0",
+    min: 0,
+    max: 15,
+    step: 0.1,
   },
+];
+
+function getField(id: string): FormField {
+  const field = fields.find((f) => f.id === id);
+  if (!field) throw new Error(`Unknown field: ${id}`);
+  return field;
+}
+
+const fieldRows: string[][] = [
+  ["email", "name"],
+  ["age", "bun"],
+  ["creatinine", "potassium"],
 ];
 
 export default function PredictPage() {
@@ -119,15 +146,11 @@ export default function PredictPage() {
 
             {/* Tablet + Desktop: 2-column grid */}
             <div className="hidden md:grid md:grid-cols-2 md:gap-4">
-              {/* Row 1: Email + Name */}
-              <FieldBlock field={fields[0]} />
-              <FieldBlock field={fields[1]} />
-              {/* Row 2: Age + BUN */}
-              <FieldBlock field={fields[2]} />
-              <FieldBlock field={fields[3]} />
-              {/* Row 3: Creatinine + Potassium */}
-              <FieldBlock field={fields[4]} />
-              <FieldBlock field={fields[5]} />
+              {fieldRows.map((row) =>
+                row.map((id) => (
+                  <FieldBlock key={id} field={getField(id)} />
+                ))
+              )}
             </div>
 
             <Button
@@ -186,6 +209,9 @@ function FieldBlock({ field }: { field: FormField }) {
           placeholder={field.placeholder}
           readOnly={field.readOnly}
           defaultValue={field.defaultValue}
+          min={field.min}
+          max={field.max}
+          step={field.step}
           aria-required={field.required}
           className={`h-12 text-base ${
             field.readOnly
