@@ -1,0 +1,68 @@
+{
+  "sprints": [
+    {
+      "name": "Sprint 1 — Design Sprint",
+      "dates": "Mar 30 - Apr 3",
+      "cards": [
+        { "id": "LKID-30", "title": "Design sprint kickoff", "status": "upcoming" },
+        { "id": "LKID-31", "title": "Revise user flows", "status": "done" },
+        { "id": "LKID-32", "title": "Revise wireframes", "status": "done" },
+        { "id": "LKID-33", "title": "Update component specs", "status": "done" },
+        { "id": "LKID-34", "title": "Scaffold prototype", "status": "done" },
+        { "id": "LKID-35", "title": "Build prototype screens", "status": "done" },
+        { "id": "LKID-36", "title": "Form validation + MSW", "status": "done" },
+        { "id": "LKID-37", "title": "Accessibility baseline", "status": "done" },
+        { "id": "LKID-38", "title": "Design sign-off", "status": "in_progress" },
+        { "id": "LKID-39", "title": "Client dashboard — scaffold page", "status": "upcoming" },
+        { "id": "LKID-40", "title": "Client dashboard — sprint tracker component", "status": "upcoming" },
+        { "id": "LKID-41", "title": "Client dashboard — spec tracker component", "status": "upcoming" },
+        { "id": "LKID-42", "title": "Client dashboard — weekly update component", "status": "upcoming" },
+        { "id": "LKID-43", "title": "Client dashboard — document library", "status": "upcoming" },
+        { "id": "LKID-44", "title": "Client dashboard — hero banner + timeline", "status": "upcoming" },
+        { "id": "LKID-45", "title": "Client dashboard — prototype embed", "status": "upcoming" },
+        { "id": "LKID-46", "title": "Client dashboard — populate data + deploy", "status": "upcoming" }
+      ]
+    },
+    {
+      "name": "Sprint 2 — Core Flow",
+      "dates": "Apr 6 - Apr 10",
+      "cards": [
+        { "id": "LKID-1", "title": "Clerk auth integration", "status": "upcoming" },
+        { "id": "LKID-2", "title": "PostgreSQL schema + Railway", "status": "upcoming" },
+        { "id": "LKID-3", "title": "FastAPI scaffold + health endpoint", "status": "upcoming" },
+        { "id": "LKID-6", "title": "Lead capture webhook", "status": "upcoming" },
+        { "id": "LKID-7", "title": "Magic link flow (Clerk)", "status": "upcoming" },
+        { "id": "LKID-8", "title": "Prediction form — required fields", "status": "upcoming" },
+        { "id": "LKID-9", "title": "Form validation + error handling", "status": "upcoming" },
+        { "id": "LKID-10", "title": "POST /predict endpoint", "status": "upcoming" },
+        { "id": "LKID-11", "title": "CKD-EPI 2021 eGFR calculation", "status": "upcoming" },
+        { "id": "LKID-12", "title": "No-treatment trajectory path", "status": "upcoming" },
+        { "id": "LKID-13", "title": "Three treatment trajectory paths", "status": "upcoming" },
+        { "id": "LKID-14", "title": "Rules engine integration", "status": "upcoming" },
+        { "id": "LKID-15", "title": "Interactive chart (Visx Variant A)", "status": "upcoming" },
+        { "id": "LKID-16", "title": "Chart tooltips + crosshair", "status": "upcoming" },
+        { "id": "LKID-17", "title": "Dialysis threshold line", "status": "upcoming" },
+        { "id": "LKID-18", "title": "BUN suppression stat card", "status": "upcoming" },
+        { "id": "LKID-19", "title": "End-to-end prediction flow", "status": "upcoming" }
+      ]
+    },
+    {
+      "name": "Sprint 3 — Polish & QA",
+      "dates": "Apr 13 - Apr 17",
+      "cards": [
+        { "id": "LKID-4", "title": "Playwright PDF generation", "status": "upcoming" },
+        { "id": "LKID-5", "title": "Disclaimer components", "status": "upcoming" },
+        { "id": "LKID-20", "title": "PDF download button + flow", "status": "upcoming" },
+        { "id": "LKID-21", "title": "Accessible data table", "status": "upcoming" },
+        { "id": "LKID-22", "title": "Loading skeleton states", "status": "upcoming" },
+        { "id": "LKID-23", "title": "Error boundary + fallbacks", "status": "upcoming" },
+        { "id": "LKID-24", "title": "Rate limiting (slowapi)", "status": "upcoming" },
+        { "id": "LKID-25", "title": "Prediction engine unit tests", "status": "upcoming" },
+        { "id": "LKID-26", "title": "E2E tests (happy + error path)", "status": "upcoming" },
+        { "id": "LKID-27", "title": "Golden-file boundary tests", "status": "upcoming" },
+        { "id": "LKID-28", "title": "axe-core accessibility audit", "status": "upcoming" },
+        { "id": "LKID-29", "title": "Pre-release QA gate", "status": "upcoming" }
+      ]
+    }
+  ]
+}
