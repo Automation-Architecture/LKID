@@ -7,7 +7,7 @@
 **Jira:** [SPEC Board](https://automationarchitecture.atlassian.net/jira/software/c/projects/SPEC/boards/329/backlog) | [LKID Board](https://automationarchitecture.atlassian.net/jira/software/c/projects/LKID/boards/363)
 **Repo:** [github.com/Automation-Architecture/LKID](https://github.com/Automation-Architecture/LKID)
 **Specs:** `/Users/brad/IDE/kidneyhood/` (3 docx files)
-**Status:** CEO Test + backend research complete. Design Sprint → Core Flow → QA.
+**Status:** Design Sprint PRs open (#1–#8). Awaiting kickoff. Backend research complete.
 
 ## Sprint Plan
 
@@ -19,6 +19,23 @@
 
 **Ship date:** April 17, 2026
 **Blocker:** LKID-14 (rules engine) — 5 items pending Lee
+
+## Development Workflow
+
+CTO (Luca) opens one PR per Jira card. Each card gets a feature branch (`feat/LKID-{number}-{description}`). Copilot is added as reviewer on every PR. Agents implement on their branches. PRs merge to `main` when approved.
+
+### Sprint 1 PRs (Design Sprint)
+
+| PR | Branch | Card | Owner |
+|----|--------|------|-------|
+| [#1](https://github.com/Automation-Architecture/LKID/pull/1) | `feat/LKID-31-revise-user-flows` | LKID-31 | Inga |
+| [#2](https://github.com/Automation-Architecture/LKID/pull/2) | `feat/LKID-32-revise-wireframes` | LKID-32 | Inga |
+| [#3](https://github.com/Automation-Architecture/LKID/pull/3) | `feat/LKID-33-revise-component-specs` | LKID-33 | Inga + Harshit |
+| [#4](https://github.com/Automation-Architecture/LKID/pull/4) | `feat/LKID-34-scaffold-prototype` | LKID-34 | Harshit |
+| [#5](https://github.com/Automation-Architecture/LKID/pull/5) | `feat/LKID-35-build-prototype-screens` | LKID-35 | Harshit + Inga |
+| [#6](https://github.com/Automation-Architecture/LKID/pull/6) | `feat/LKID-36-form-validation-msw` | LKID-36 | Harshit |
+| [#7](https://github.com/Automation-Architecture/LKID/pull/7) | `feat/LKID-37-accessibility-baseline` | LKID-37 | Harshit + Inga |
+| [#8](https://github.com/Automation-Architecture/LKID/pull/8) | `feat/LKID-38-design-sign-off` | LKID-38 | Inga (gate) |
 
 ## Team
 
@@ -56,18 +73,19 @@ agent-teams/
 │   ├── gay_mark/drafts/          # db_design.md, db_docs.md, db_schema.sql
 │   ├── harshit/drafts/           # frontend_architecture.md, lean-launch-review.md
 │   ├── husser/drafts/            # lean-launch-stories.md, design-sprint-stories.md
-│   ├── inga/drafts/              # 7 UX files + design-sprint-meeting-1.md, lean-launch-review.md
+│   ├── inga/drafts/              # 7 UX files + design-sprint-meeting-1.md, lean-launch-review.md, design-sprint-sign-off.md
 │   ├── john_donaldson/drafts/    # api_contract.json, api_docs.md, lean-launch-review.md, backend-research.md
-│   ├── luca/drafts/              # architecture.md, lean-launch-review.md
-│   └── yuri/drafts/              # test_strategy.md, lean-launch-review.md
+│   ├── luca/drafts/              # architecture.md, lean-launch-review.md, sprint-progress.json, spec-tracker.json
+│   └── yuri/drafts/              # test_strategy.md, lean-launch-review.md, design-sprint-qa-report.md
 ├── docs/
 │   ├── discovery-phase-engineering-sop.md
 │   ├── discovery-phase-flow.excalidraw
 │   ├── development-phase-engineering-sop.md
 │   ├── memory-system-reference.md
+│   ├── design-sprint/              # Placeholder files for each LKID PR branch
 │   ├── prd-sprint-timeline.excalidraw
 │   ├── prd-agent-workload.excalidraw
-│   ├── jira-lean-setup.md            # Manual setup instructions for LKID project
+│   ├── jira-lean-setup.md
 │   └── superpowers/specs/2026-03-25-prd-structure-design.md
 ├── memory/
 │   ├── patterns.json, anti_patterns.json, decisions.json

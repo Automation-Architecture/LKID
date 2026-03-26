@@ -5,6 +5,8 @@
 **Source:** CEO Test + Full Team Review
 **Status:** Approved
 
+> **Updated 2026-03-26:** Corrections from Lee's Server-Side Calculation Specification v1.0 applied — potassium removed from required inputs, dialysis threshold corrected to eGFR 12.
+
 ---
 
 ## Business Model
@@ -24,7 +26,7 @@ This reframe drives every scope decision below.
 **KEEP** -- All four trajectories with distinct colors, dash patterns, and labels. Client requirement.
 
 ### Q3. Confidence Tiers
-**SIMPLIFY** -- Required fields only (BUN, creatinine, potassium, age). No optional fields, no sex field, no tiers. Single confidence level.
+**SIMPLIFY** -- Required fields only (BUN, creatinine, age). No optional fields, no sex field, no tiers. Single confidence level.
 
 ### Q4. User Accounts
 **SIMPLIFY** -- No accounts, no dashboards, no saved history. Magic link serves solely as bot protection and email capture.
@@ -74,7 +76,7 @@ This reframe drives every scope decision below.
 
 | Keep | Defer | Simplify |
 |------|-------|----------|
-| Guest prediction form (4 required fields + name + email) | User accounts & dashboard | Auth: Clerk, magic link only, 15-min bot gate |
+| Guest prediction form (3 required fields + name + email) | User accounts & dashboard | Auth: Clerk, magic link only, 15-min bot gate |
 | All 4 trajectory lines (client req) | Multi-visit / slope analysis | Form: required fields only, no tiers, no sex field |
 | Interactive chart -- Variant A (client req) | Stat cards / unlock prompts | Infra: Railway (backend) + Vercel (frontend) |
 | PDF export via Playwright (client req) | HIPAA compliance apparatus | Staging: Vercel previews + Railway test DB |
@@ -96,7 +98,7 @@ User Flow:
   Landing page --> Enter email --> Magic link via Clerk (bot gate)
   --> Click link in email (deep-link buttons to Gmail/Outlook for 60+ users)
   --> Verified (15-min session, email pre-filled from Clerk)
-  --> Enter name + 4 lab values --> POST /predict --> Interactive chart
+  --> Enter name + 3 lab values --> POST /predict --> Interactive chart
   --> Download PDF --> Lead captured in DB for campaign
 
 Frontend:  Next.js 15 on Vercel (Clerk Next.js SDK for auth)
@@ -133,7 +135,7 @@ No `users`, `lab_entries`, `magic_link_tokens`, `guest_sessions`, or `audit_log`
 
 ### Components (~21, Reduced from ~40)
 
-**Form:** PredictionForm, NumberInput (x4), NameInput, EmailInput, FormErrorSummary
+**Form:** PredictionForm, NumberInput (x3), NameInput, EmailInput, FormErrorSummary
 **Chart:** PredictionChart, TrajectoryLines, PhaseBands, DialysisThreshold, Tooltips, Crosshair, ChartAxes, EndOfLineLabels, AccessibleDataTable, LoadingSkeleton
 **Results:** ChartContainer, PDFDownloadButton, DisclaimerBlock
 **Layout:** Header, Footer
@@ -191,7 +193,7 @@ Five checkpoints in one gate (replaces 5 gates per sprint):
 ### Simplified User Journey
 ```
 Landing --> Enter email --> Magic link sent (deep-link buttons: "Open Gmail" / "Open Outlook")
---> Click link --> Auto-redirect, verified --> Form (name + 4 lab values, email pre-filled)
+--> Click link --> Auto-redirect, verified --> Form (name + 3 lab values, email pre-filled)
 --> Submit --> Interactive chart (4 trajectories) + PDF download button + disclaimer
 ```
 
