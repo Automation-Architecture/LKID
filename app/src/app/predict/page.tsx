@@ -130,7 +130,7 @@ export default function PredictPage() {
   return (
     <>
       <Header />
-      <main className="flex flex-1 flex-col items-center px-4 pb-16 md:px-6 lg:px-8">
+      <main id="main-content" className="flex flex-1 flex-col items-center px-4 pb-16 md:px-6 lg:px-8">
         <div className="w-full max-w-[640px]">
           <h1 className="mt-6 text-xl font-semibold text-foreground md:mt-8">
             Enter Your Lab Values

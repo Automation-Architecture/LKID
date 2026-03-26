@@ -101,3 +101,34 @@
     @apply font-sans;
   }
 }
+
+/* Accessibility: respect reduced motion preference */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+}
+
+/* Accessibility: minimum touch target size for 60+ audience */
+@layer base {
+  button,
+  a,
+  [role="button"],
+  input,
+  select,
+  textarea {
+    min-height: 44px;
+  }
+
+  /* Ensure form inputs have 16px minimum font to prevent iOS zoom */
+  input,
+  select,
+  textarea {
+    font-size: max(16px, 1em);
+  }
+}
