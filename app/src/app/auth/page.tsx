@@ -27,7 +27,7 @@ function EmailEntryView({
   };
 
   return (
-    <form onSubmit={handleSubmit} className="space-y-4">
+    <form onSubmit={handleSubmit} aria-label="Sign in with email" className="space-y-4">
       <div>
         <h1 className="text-xl font-semibold text-foreground">Get Started</h1>
         <p className="mt-2 text-base text-foreground">

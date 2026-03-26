@@ -12,15 +12,15 @@ export function DisclaimerBlock() {
   return (
     <>
       {/* Mobile: sticky collapsed bar */}
-      <div className="fixed inset-x-0 bottom-0 z-50 md:hidden">
+      <div className="fixed inset-x-0 bottom-0 z-50 md:hidden" role="region" aria-label="Medical disclaimer">
         <button
           onClick={() => setExpanded(!expanded)}
           aria-expanded={expanded}
           aria-controls={contentId}
           className="flex min-h-[44px] w-full items-center justify-between bg-[#F8F9FA] px-4 py-2 text-sm text-muted-foreground shadow-[0_-2px_8px_rgba(0,0,0,0.08)]"
         >
-          <span id={contentId} className={expanded ? "" : "line-clamp-1"}>
-            {expanded ? fullText : "Medical disclaimer..."}
+          <span className={expanded ? "" : "line-clamp-1"}>
+            {expanded ? "" : "Medical disclaimer..."}
           </span>
           <svg
             className={`ml-2 size-4 shrink-0 transition-transform ${expanded ? "rotate-180" : ""}`}
@@ -32,6 +32,9 @@ export function DisclaimerBlock() {
             <path strokeLinecap="round" strokeLinejoin="round" d="M5 15l7-7 7 7" />
           </svg>
         </button>
+        <div id={contentId} className={expanded ? "bg-[#F8F9FA] px-4 pb-2 text-sm text-muted-foreground" : "hidden"}>
+          {fullText}
+        </div>
       </div>
 
       {/* Tablet/Desktop: inline footer */}
