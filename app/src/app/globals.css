@@ -1,0 +1,103 @@
+@import "tailwindcss";
+@import "tw-animate-css";
+@import "shadcn/tailwind.css";
+
+@custom-variant dark (&:is(.dark *));
+
+@theme {
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --font-sans: var(--font-sans);
+  --font-mono: var(--font-geist-mono);
+  --font-heading: var(--font-sans);
+  --color-sidebar-ring: var(--sidebar-ring);
+  --color-sidebar-border: var(--sidebar-border);
+  --color-sidebar-accent-foreground: var(--sidebar-accent-foreground);
+  --color-sidebar-accent: var(--sidebar-accent);
+  --color-sidebar-primary-foreground: var(--sidebar-primary-foreground);
+  --color-sidebar-primary: var(--sidebar-primary);
+  --color-sidebar-foreground: var(--sidebar-foreground);
+  --color-sidebar: var(--sidebar);
+  --color-chart-5: var(--chart-5);
+  --color-chart-4: var(--chart-4);
+  --color-chart-3: var(--chart-3);
+  --color-chart-2: var(--chart-2);
+  --color-chart-1: var(--chart-1);
+  --color-ring: var(--ring);
+  --color-input: var(--input);
+  --color-border: var(--border);
+  --color-destructive: var(--destructive);
+  --color-accent-foreground: var(--accent-foreground);
+  --color-accent: var(--accent);
+  --color-muted-foreground: var(--muted-foreground);
+  --color-muted: var(--muted);
+  --color-secondary-foreground: var(--secondary-foreground);
+  --color-secondary: var(--secondary);
+  --color-primary-foreground: var(--primary-foreground);
+  --color-primary: var(--primary);
+  --color-popover-foreground: var(--popover-foreground);
+  --color-popover: var(--popover);
+  --color-card-foreground: var(--card-foreground);
+  --color-card: var(--card);
+  --color-primary-light: var(--primary-light);
+  --color-secondary-light: var(--secondary-light);
+  --color-neutral: var(--neutral);
+  --radius-sm: calc(var(--radius) * 0.6);
+  --radius-md: calc(var(--radius) * 0.8);
+  --radius-lg: var(--radius);
+  --radius-xl: calc(var(--radius) * 1.4);
+  --radius-2xl: calc(var(--radius) * 1.8);
+  --radius-3xl: calc(var(--radius) * 2.2);
+  --radius-4xl: calc(var(--radius) * 2.6);
+}
+
+:root {
+  /* KidneyHood design tokens — from Inga's design-tokens.md */
+  --background: 0 0% 100%;
+  --foreground: 0 0% 10%;
+  --card: 210 17% 98%;
+  --card-foreground: 0 0% 10%;
+  --popover: 0 0% 100%;
+  --popover-foreground: 0 0% 10%;
+  --primary: 158 70% 37%;
+  --primary-light: 158 40% 93%;
+  --primary-foreground: 0 0% 100%;
+  --secondary: 213 68% 54%;
+  --secondary-light: 211 72% 72%;
+  --secondary-foreground: 0 0% 100%;
+  --neutral: 0 0% 67%;
+  --muted: 210 17% 98%;
+  --muted-foreground: 0 0% 40%;
+  --accent: 210 17% 98%;
+  --accent-foreground: 0 0% 10%;
+  --destructive: 0 64% 51%;
+  --border: 0 0% 88%;
+  --input: 0 0% 88%;
+  --ring: 213 68% 54%;
+  --chart-1: 158 70% 37%;
+  --chart-2: 213 68% 54%;
+  --chart-3: 211 72% 72%;
+  --chart-4: 0 0% 67%;
+  --chart-5: 0 64% 51%;
+  --radius: 0.375rem;
+  --sidebar: 210 17% 98%;
+  --sidebar-foreground: 0 0% 10%;
+  --sidebar-primary: 158 70% 37%;
+  --sidebar-primary-foreground: 0 0% 100%;
+  --sidebar-accent: 210 17% 98%;
+  --sidebar-accent-foreground: 0 0% 10%;
+  --sidebar-border: 0 0% 88%;
+  --sidebar-ring: 213 68% 54%;
+}
+
+@layer base {
+  * {
+    @apply border-border outline-ring/50;
+  }
+  body {
+    @apply bg-background text-foreground;
+  }
+  html {
+    @apply font-sans;
+  }
+}
