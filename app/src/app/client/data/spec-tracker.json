@@ -1,0 +1,82 @@
+{
+  "items": [
+    {
+      "spec_section": "Section 1 — Time Points Array",
+      "jira_card": "LKID-14",
+      "status": "done",
+      "notes": "Confirmed: 15-value array [0,1,3,6,12,18,24,36,48,60,72,84,96,108,120]. Maps to prediction module constant."
+    },
+    {
+      "spec_section": "Section 2 — Dialysis Threshold",
+      "jira_card": "LKID-14",
+      "status": "done",
+      "notes": "Corrected to eGFR 12 (was 15). All PRD and code references updated."
+    },
+    {
+      "spec_section": "Section 3.1 — CKD-EPI 2021 Formula",
+      "jira_card": "LKID-14",
+      "status": "unblocked",
+      "notes": "Race-free, sex-free population-average coefficients. Full pseudocode provided."
+    },
+    {
+      "spec_section": "Section 3.2 — No-Treatment Path",
+      "jira_card": "LKID-14",
+      "status": "unblocked",
+      "notes": "BUN-adjusted linear decline. Base rates by CKD stage + BUN modifier formula provided."
+    },
+    {
+      "spec_section": "Section 3.3 — Phase 1 Gain (Months 0-3)",
+      "jira_card": "LKID-14",
+      "status": "unblocked",
+      "notes": "Exponential saturation curve replaces prior step-up model. PHASE1_COEFF = 0.31."
+    },
+    {
+      "spec_section": "Section 3.4 — Phase 2 Gain (Months 3-24)",
+      "jira_card": "LKID-14",
+      "status": "unblocked",
+      "notes": "Logarithmic accumulation. Tier-specific gains: +8.0 / +6.0 / +4.0 eGFR pts."
+    },
+    {
+      "spec_section": "Section 3.5 — Post-Phase 2 Decline (Months 24-120)",
+      "jira_card": "LKID-14",
+      "status": "unblocked",
+      "notes": "Tier-specific annual decline rates: -0.5 / -1.0 / -1.5 mL/min/yr."
+    },
+    {
+      "spec_section": "Section 3.6 — Complete Engine Pseudocode",
+      "jira_card": "LKID-14",
+      "status": "unblocked",
+      "notes": "Full per-point calculation provided. Ready for Python implementation."
+    },
+    {
+      "spec_section": "Section 3.7 — BUN Suppression Estimate",
+      "jira_card": "LKID-18",
+      "status": "unblocked",
+      "notes": "NEW output: bun_suppression_estimate field added to /predict response. Powers stat card."
+    },
+    {
+      "spec_section": "Section 4 — Test Vectors (3)",
+      "jira_card": "LKID-27",
+      "status": "unblocked",
+      "notes": "3 golden-file vectors with exact outputs (±0.2 tolerance). Covers Stage 3a, 3b, and 5."
+    },
+    {
+      "spec_section": "Section 5 — Optional Field Modifiers",
+      "jira_card": null,
+      "status": "blocked",
+      "notes": "Deferred to post-MVP (Tier 2). Hemoglobin, CO2, albumin modify decline rate. Not in Sprint 2-3 scope."
+    },
+    {
+      "spec_section": "Correction — Potassium Removed",
+      "jira_card": null,
+      "status": "done",
+      "notes": "Acknowledged. Potassium removed from all input references. Required inputs: BUN, creatinine, age."
+    },
+    {
+      "spec_section": "Correction — eGFR Threshold 12 not 15",
+      "jira_card": null,
+      "status": "done",
+      "notes": "Acknowledged. All references updated from eGFR 15 to eGFR 12. Chart threshold line and dial_ages use 12."
+    }
+  ]
+}
