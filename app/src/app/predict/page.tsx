@@ -8,11 +8,12 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Lock } from "lucide-react";
+import { useFormValidation } from "@/lib/hooks/use-form-validation";
+import { PREDICT_FORM_RULES } from "@/lib/validation";
 
-interface FormField {
+interface FormFieldDef {
   id: string;
   label: string;
-  required: boolean;
   type: string;
   inputMode: "text" | "email" | "numeric" | "decimal";
   autoComplete: string;
@@ -25,11 +26,11 @@ interface FormField {
   step?: number;
 }
 
-const fields: FormField[] = [
+/* Potassium removed per Lee's v2.0 spec correction (Section 2.3) */
+const fields: FormFieldDef[] = [
   {
     id: "email",
     label: "Email",
-    required: false,
     type: "email",
     inputMode: "email",
     autoComplete: "email",
@@ -41,7 +42,6 @@ const fields: FormField[] = [
   {
     id: "name",
     label: "Name",
-    required: true,
     type: "text",
     inputMode: "text",
     autoComplete: "name",
@@ -51,20 +51,18 @@ const fields: FormField[] = [
   {
     id: "age",
     label: "Age",
-    required: true,
     type: "number",
     inputMode: "numeric",
     autoComplete: "off",
     placeholder: "",
     helper: "years",
     min: 18,
-    max: 120,
+    max: 100,
     step: 1,
   },
   {
     id: "bun",
     label: "BUN",
-    required: true,
     type: "number",
     inputMode: "numeric",
     autoComplete: "off",
@@ -77,32 +75,18 @@ const fields: FormField[] = [
   {
     id: "creatinine",
     label: "Creatinine",
-    required: true,
     type: "number",
     inputMode: "decimal",
     autoComplete: "off",
     placeholder: "",
     helper: "mg/dL \u2014 Normal range: 0.6\u20131.2",
-    min: 0.3,
-    max: 15.0,
-    step: 0.1,
-  },
-  {
-    id: "potassium",
-    label: "Potassium",
-    required: true,
-    type: "number",
-    inputMode: "decimal",
-    autoComplete: "off",
-    placeholder: "",
-    helper: "mEq/L \u2014 Normal range: 3.5\u20135.0",
-    min: 2.0,
-    max: 8.0,
+    min: 0.1,
+    max: 25.0,
     step: 0.1,
   },
 ];
 
-function getField(id: string): FormField {
+function getField(id: string): FormFieldDef {
   const field = fields.find((f) => f.id === id);
   if (!field) throw new Error(`Unknown field: ${id}`);
   return field;
@@ -111,17 +95,19 @@ function getField(id: string): FormField {
 const fieldRows: string[][] = [
   ["email", "name"],
   ["age", "bun"],
-  ["creatinine", "potassium"],
+  ["creatinine"],
 ];
 
 export default function PredictPage() {
   const router = useRouter();
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const form = useFormValidation(PREDICT_FORM_RULES);
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
+    form.markSubmitted();
+    if (!form.valid) return;
     setIsSubmitting(true);
-    // Simulate API call, then navigate to results
     setTimeout(() => {
       router.push("/results");
     }, 1500);
@@ -136,11 +122,15 @@ export default function PredictPage() {
             Enter Your Lab Values
           </h1>
 
-          <form onSubmit={handleSubmit} className="mt-6">
+          <form onSubmit={handleSubmit} noValidate className="mt-6">
+            <div aria-live="polite" className="sr-only">
+              {form.submitted && !form.valid && "Please correct the errors below."}
+            </div>
+
             {/* Mobile: single column */}
             <div className="space-y-3 md:hidden">
               {fields.map((field) => (
-                <FieldBlock key={field.id} field={field} />
+                <FieldBlock key={field.id} field={field} form={form} />
               ))}
             </div>
 
@@ -148,7 +138,7 @@ export default function PredictPage() {
             <div className="hidden md:grid md:grid-cols-2 md:gap-4">
               {fieldRows.map((row) =>
                 row.map((id) => (
-                  <FieldBlock key={id} field={getField(id)} />
+                  <FieldBlock key={id} field={getField(id)} form={form} />
                 ))
               )}
             </div>
@@ -164,6 +154,7 @@ export default function PredictPage() {
                     className="size-4 animate-spin"
                     viewBox="0 0 24 24"
                     fill="none"
+                    aria-hidden="true"
                   >
                     <circle
                       className="opacity-25"
@@ -193,12 +184,21 @@ export default function PredictPage() {
   );
 }
 
-function FieldBlock({ field }: { field: FormField }) {
+interface FieldBlockProps {
+  field: FormFieldDef;
+  form: ReturnType<typeof useFormValidation>;
+}
+
+function FieldBlock({ field, form }: FieldBlockProps) {
+  const isValidated = field.id in PREDICT_FORM_RULES;
+  const error = field.readOnly ? null : form.getFieldError(field.id);
+  const hasError = !!error;
+
   return (
     <div className="space-y-1.5">
       <Label htmlFor={field.id}>
         {field.label}
-        {field.required && " *"}
+        {isValidated && " *"}
       </Label>
       <div className="relative">
         <Input
@@ -212,19 +212,38 @@ function FieldBlock({ field }: { field: FormField }) {
           min={field.min}
           max={field.max}
           step={field.step}
-          aria-required={field.required}
+          aria-required={isValidated}
+          aria-invalid={hasError}
+          aria-describedby={
+            hasError ? `${field.id}-error` : field.helper ? `${field.id}-helper` : undefined
+          }
+          value={field.readOnly ? undefined : form.values[field.id]}
+          onChange={field.readOnly ? undefined : (e) => form.setValue(field.id, e.target.value)}
+          onBlur={field.readOnly ? undefined : () => form.setFieldTouched(field.id)}
           className={`h-12 text-base ${
             field.readOnly
               ? "cursor-default bg-[#F8F9FA] pr-10"
-              : ""
+              : hasError
+                ? "border-red-500 focus-visible:ring-red-500"
+                : ""
           }`}
         />
         {field.readOnly && (
-          <Lock className="absolute right-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
+          <Lock
+            className="absolute right-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground"
+            aria-hidden="true"
+          />
         )}
       </div>
-      {field.helper && (
-        <p className="text-sm text-muted-foreground">{field.helper}</p>
+      {hasError && (
+        <p id={`${field.id}-error`} className="text-sm text-red-600" role="alert">
+          {error}
+        </p>
+      )}
+      {!hasError && field.helper && (
+        <p id={`${field.id}-helper`} className="text-sm text-muted-foreground">
+          {field.helper}
+        </p>
       )}
     </div>
   );
