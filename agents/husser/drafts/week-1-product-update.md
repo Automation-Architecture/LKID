@@ -18,7 +18,7 @@ Lee, welcome to the first weekly update. This is where we show our work, and I w
 
 Seven prototype screens are live on Vercel right now. Not wireframes, not static images — these are real Next.js components with real routing that you can click through in your browser. The full journey is there: Landing page, Email Entry, Magic Link Sent, Expired Link, Prediction Form, Loading, and Results.
 
-Here is what that means in practice. You land on the homepage, hit "Get Started," enter an email address, and see the magic link confirmation screen — complete with deep-link buttons for Gmail and Outlook, because we know your target patients are 60 and older and we are not going to make them hunt through their inbox. From there, the flow moves to the Prediction Form (with your four input fields), through a loading state, and into the Results page where the chart and PDF download button live.
+Here is what that means in practice. You land on the homepage, hit "Get Started," enter an email address, and see the magic link confirmation screen — complete with deep-link buttons for Gmail and Outlook, because we know your target patients are 60 and older and we are not going to make them hunt through their inbox. From there, the flow moves to the Prediction Form (with three lab value fields — BUN, Creatinine, and Age), through a loading state, and into the Results page where the chart and PDF download button live.
 
 Every screen is responsive across mobile, tablet, and desktop. Every button meets the 44-pixel touch target minimum. Every input field uses 16-pixel font so iOS does not zoom on focus — a small detail that matters a lot for older users on phones.
 
@@ -36,7 +36,7 @@ This is the quality bar we are holding ourselves to — every card gets a QA rev
 
 We received your server-side calculation specification, and the team has reviewed it carefully. I want to acknowledge a few things specifically so you know we are paying attention.
 
-First, the eGFR threshold. Your spec corrects this to 12, not 15. Noted and adopted — our implementation will use 12. Second, potassium has been removed from the rules engine inputs. The prototype currently shows a potassium field on the form (it was in our original scope), but we have flagged this for removal to match your v2.0 spec. The prediction form will take BUN, creatinine, and age as its core inputs.
+First, the eGFR threshold. Your spec corrects this to 12, not 15. Noted and adopted — our implementation will use 12. Second, potassium has been removed from the rules engine inputs. The potassium field has been removed from the prototype form per your v2.0 spec. The prediction form now takes three lab inputs: BUN, creatinine, and age.
 
 Your Section 3 rules engine maps directly to LKID-14, which is the card where we implement the actual prediction logic in Sprint 2. That is the heart of the product — where your algorithm turns lab values into trajectories — and it is the single most important card in the backlog. The BUN suppression estimate you described in Section 3.7 is a new addition we had not scoped; we are tracking it and will discuss how it fits during Sprint 2 planning.
 

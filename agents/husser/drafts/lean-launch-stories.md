@@ -1,10 +1,43 @@
 # KidneyHood Lean Launch — User Stories
 
 **Author:** Husser (Product Manager)
-**Date:** 2026-03-25
+**Date:** 2026-03-26
 **Source:** Lean Launch Profile v2 (approved)
-**Status:** Draft — Pending CTO + QA review
+**Status:** Draft — Updated per Lee's calc spec v1.0 corrections (potassium removed, eGFR threshold 12, field counts corrected)
 **Total Stories:** 24 across 5 epics, 2 sprints
+
+---
+
+## LEAN-to-LKID Mapping
+
+LEAN-xxx numbering is used in this document for story authoring. LKID-xxx is the Jira ticket number used in sprint planning and PRs. The mapping is 1:1:
+
+| LEAN | LKID | Title |
+|------|------|-------|
+| LEAN-001 | LKID-1 | Clerk Project Setup & Configuration |
+| LEAN-002 | LKID-2 | Magic Link Request Form |
+| LEAN-003 | LKID-3 | Magic Link Verification & Redirect |
+| LEAN-004 | LKID-4 | Clerk Webhook — Lead Capture to Database |
+| LEAN-005 | LKID-5 | Leads Table & Database Setup |
+| LEAN-006 | LKID-6 | Lead Data Enrichment on Prediction |
+| LEAN-007 | LKID-7 | FastAPI Project Setup on Railway |
+| LEAN-008 | LKID-8 | Health Endpoint |
+| LEAN-009 | LKID-9 | Prediction Engine Integration |
+| LEAN-010 | LKID-10 | Predict Endpoint |
+| LEAN-011 | LKID-11 | Prediction Form — 3 Lab Value Fields |
+| LEAN-012 | LKID-12 | Prediction Form — Name Input & Email Pre-fill |
+| LEAN-013 | LKID-13 | Form Submission & API Integration |
+| LEAN-014 | LKID-14 | Interactive eGFR Trajectory Chart |
+| LEAN-015 | LKID-15 | Chart Interactivity — Tooltips, Crosshairs, Hover |
+| LEAN-016 | LKID-16 | Results Page Layout |
+| LEAN-017 | LKID-17 | PDF Generation Endpoint |
+| LEAN-018 | LKID-18 | PDF Download Button |
+| LEAN-019 | LKID-19 | Disclaimer Block Implementation |
+| LEAN-020 | LKID-20 | Rate Limiting with slowapi |
+| LEAN-021 | LKID-21 | Accessibility Audit — axe-core |
+| LEAN-022 | LKID-22 | Prediction Engine Unit Tests — Golden-File Boundary Pairs |
+| LEAN-023 | LKID-23 | E2E Tests — Happy Path & Error Path |
+| LEAN-024 | LKID-24 | Pre-Release QA Gate |
 
 ---
 
@@ -107,7 +140,7 @@
 
 **Acceptance Criteria:**
 - [ ] Railway managed Postgres provisioned and connected to FastAPI
-- [ ] `leads` table created with columns: `id` (UUID PK), `name` (VARCHAR, nullable), `email` (VARCHAR, NOT NULL), `bun` (NUMERIC, nullable), `creatinine` (NUMERIC, nullable), `potassium` (NUMERIC, nullable), `age` (INTEGER, nullable), `created_at` (TIMESTAMPTZ, DEFAULT NOW())
+- [ ] `leads` table created with columns: `id` (UUID PK), `name` (VARCHAR, nullable), `email` (VARCHAR, NOT NULL), `bun` (NUMERIC, nullable), `creatinine` (NUMERIC, nullable), `age` (INTEGER, nullable), `created_at` (TIMESTAMPTZ, DEFAULT NOW())
 - [ ] Unique constraint on `email` to support upsert behavior
 - [ ] Alembic migration script for the `leads` table
 - [ ] Connection string stored as Railway environment variable (not in code)
@@ -128,7 +161,7 @@
 **Acceptance Criteria:**
 - Given a verified user submits a prediction
 - When the `/predict` endpoint processes the request
-- Then the `leads` row matching the user's email is updated with `name`, `bun`, `creatinine`, `potassium`, and `age`
+- Then the `leads` row matching the user's email is updated with `name`, `bun`, `creatinine`, and `age`
 - Given the user submits multiple predictions
 - When each prediction is processed
 - Then the leads row is updated with the most recent values (last write wins)
@@ -189,7 +222,7 @@
 
 **Acceptance Criteria:**
 - [ ] Rules engine integrated as a Python module inside FastAPI (not a microservice)
-- [ ] Engine accepts 4 inputs: BUN, creatinine, potassium, age
+- [ ] Engine accepts 3 inputs: BUN, creatinine, age
 - [ ] Engine returns 4 trajectory arrays (one per management scenario), each with eGFR values over time
 - [ ] Engine coefficients are never exposed to the client, never logged, never in error responses
 - [ ] Engine is stateless — same inputs always produce same outputs (deterministic)
@@ -210,7 +243,7 @@
 
 **Acceptance Criteria:**
 - Given I am authenticated via Clerk JWT
-- When I POST to `/predict` with `{"name": "...", "bun": ..., "creatinine": ..., "potassium": ..., "age": ...}`
+- When I POST to `/predict` with `{"name": "...", "bun": ..., "creatinine": ..., "age": ...}`
 - Then I receive 200 with 4 trajectory arrays, each containing eGFR values over time
 - And my lead record is updated with name and lab values (LEAN-006)
 - Given I submit values outside valid ranges
@@ -229,14 +262,14 @@
 
 ## Epic 3: Interactive Chart & Form
 
-### LEAN-011: Prediction Form — 4 Lab Value Fields
+### LEAN-011: Prediction Form — 3 Lab Value Fields
 
-**Title:** Build the prediction form with 4 required lab value inputs
+**Title:** Build the prediction form with 3 required lab value inputs
 
-**Story:** As a verified user, I want to enter my BUN, creatinine, potassium, and age values in a clear form so that I can submit them for prediction.
+**Story:** As a verified user, I want to enter my BUN, creatinine, and age values in a clear form so that I can submit them for prediction.
 
 **Acceptance Criteria:**
-- [ ] Form has 4 NumberInput fields: BUN, creatinine, potassium, age
+- [ ] Form has 3 NumberInput fields: BUN, creatinine, age
 - [ ] Each field has a label, placeholder with expected range, and units where applicable
 - [ ] Client-side validation matches API validation ranges exactly
 - [ ] Inline error messages appear on blur for out-of-range values
@@ -305,7 +338,7 @@
 
 **Acceptance Criteria:**
 - [ ] Chart renders 4 trajectory lines with distinct colors and dash patterns
-- [ ] Dialysis threshold line displayed at eGFR 15
+- [ ] Dialysis threshold line displayed at eGFR 12
 - [ ] CKD phase bands shown as background fills
 - [ ] End-of-line labels for each trajectory with 15px collision avoidance
 - [ ] Chart axes are clearly labeled (time in months on X, eGFR on Y)
@@ -492,10 +525,9 @@
 
 **Acceptance Criteria:**
 - [ ] Golden-file test pairs: known inputs mapped to expected outputs (provided by Lee or derived from validated engine behavior)
-- [ ] Boundary tests for all 4 inputs at minimum, maximum, and edge-case values:
+- [ ] Boundary tests for all 3 inputs at minimum, maximum, and edge-case values:
   - BUN: lowest valid, highest valid, just below range, just above range
   - Creatinine: lowest valid, highest valid, boundary values
-  - Potassium: lowest valid, highest valid, boundary values
   - Age: lowest valid (18?), highest valid, boundary values
 - [ ] All 4 trajectory outputs validated for each test case
 - [ ] Edge cases: values at exact boundaries, floating-point precision cases
@@ -519,7 +551,7 @@
 
 **Happy path E2E:**
 - Given I am a new user on the landing page
-- When I enter my email, click the magic link, fill in name + 4 lab values, and submit
+- When I enter my email, click the magic link, fill in name + 3 lab values, and submit
 - Then I see the interactive chart with 4 trajectories
 - And I can download the PDF
 - And my lead is captured in the database
