@@ -6,7 +6,7 @@ export default function LandingPage() {
   return (
     <>
       <Header />
-      <main className="flex flex-1 flex-col">
+      <main id="main-content" className="flex flex-1 flex-col">
         {/* Mobile: stacked single-column layout */}
         <div className="mx-auto w-full max-w-[960px] px-4 pb-16 md:px-6 lg:px-8">
           {/* Mobile layout */}

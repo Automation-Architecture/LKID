@@ -82,6 +82,7 @@ function ResultsContent() {
               className="size-4 animate-spin"
               viewBox="0 0 24 24"
               fill="none"
+              aria-hidden="true"
             >
               <circle
                 className="opacity-25"
@@ -134,7 +135,7 @@ export default function ResultsPage() {
   return (
     <>
       <Header />
-      <main className="flex flex-1 flex-col items-center px-4 pb-16 md:px-6 lg:px-8">
+      <main id="main-content" className="flex flex-1 flex-col items-center px-4 pb-16 md:px-6 lg:px-8">
         <div className="mt-6 w-full max-w-[960px] md:mt-8">
           {loading ? <LoadingSkeleton /> : <ResultsContent />}
         </div>
