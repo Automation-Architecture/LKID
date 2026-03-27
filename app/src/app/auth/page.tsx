@@ -2,7 +2,8 @@
 
 import { useState, useEffect, useCallback, Suspense } from "react";
 import Link from "next/link";
-import { useSearchParams } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
+import { useSignIn } from "@clerk/nextjs";
 import { Header } from "@/components/header";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -12,17 +13,77 @@ import { Mail, AlertTriangle } from "lucide-react";
 
 type AuthView = "email-entry" | "link-sent" | "expired";
 
+function isValidEmail(email: string): boolean {
+  return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
+}
+
 function EmailEntryView({
   onSend,
 }: {
   onSend: (email: string) => void;
 }) {
+  const { signIn } = useSignIn();
   const [email, setEmail] = useState("");
+  const [error, setError] = useState<string | null>(null);
+  const [isSending, setIsSending] = useState(false);
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (email.trim()) {
-      onSend(email);
+    setError(null);
+
+    const trimmed = email.trim();
+    if (!trimmed) {
+      setError("Email is required");
+      return;
+    }
+    if (!isValidEmail(trimmed)) {
+      setError("Please enter a valid email address");
+      return;
+    }
+
+    if (!signIn) {
+      setError("Authentication is loading. Please try again.");
+      return;
+    }
+
+    setIsSending(true);
+    try {
+      // Step 1: Create sign-in attempt with email identifier
+      const createResult = await signIn.create({ identifier: trimmed });
+      if (createResult.error) {
+        setError(createResult.error.message || "Unable to start sign-in. Please try again.");
+        return;
+      }
+
+      // Step 2: Send the magic link email
+      const verificationUrl = `${window.location.origin}/predict`;
+      const sendResult = await signIn.emailLink.sendLink({
+        emailAddress: trimmed,
+        verificationUrl,
+      });
+      if (sendResult.error) {
+        setError(sendResult.error.message || "Unable to send sign-in link. Please try again.");
+        return;
+      }
+
+      onSend(trimmed);
+    } catch (err: unknown) {
+      if (
+        err &&
+        typeof err === "object" &&
+        "errors" in err &&
+        Array.isArray((err as { errors: unknown[] }).errors)
+      ) {
+        const clerkErrors = (err as { errors: Array<{ longMessage?: string; message?: string }> }).errors;
+        const message = clerkErrors[0]?.longMessage || clerkErrors[0]?.message || "Something went wrong";
+        setError(message);
+      } else if (err instanceof Error) {
+        setError(err.message);
+      } else {
+        setError("Unable to send sign-in link. Please try again.");
+      }
+    } finally {
+      setIsSending(false);
     }
   };
 
@@ -35,30 +96,64 @@ function EmailEntryView({
         </p>
       </div>
       <div className="space-y-1.5">
-        <Label htmlFor="email">Email</Label>
+        <Label htmlFor="auth-email">Email</Label>
         <Input
-          id="email"
+          id="auth-email"
           type="email"
           placeholder="your@email.com"
           autoComplete="email"
           inputMode="email"
           value={email}
-          onChange={(e) => setEmail(e.target.value)}
-          required
+          onChange={(e) => {
+            setEmail(e.target.value);
+            if (error) setError(null);
+          }}
+          aria-required
+          aria-invalid={!!error}
+          aria-describedby={error ? "auth-email-error" : undefined}
           className="h-12 text-base"
         />
+        {error && (
+          <p id="auth-email-error" className="text-sm text-red-600" role="alert">
+            {error}
+          </p>
+        )}
       </div>
       <Button
         type="submit"
+        disabled={isSending}
         className="h-12 w-full rounded-lg text-base font-semibold"
       >
-        Send me a sign-in link
+        {isSending ? (
+          <span className="flex items-center gap-2">
+            <svg
+              className="size-4 animate-spin"
+              viewBox="0 0 24 24"
+              fill="none"
+              aria-hidden="true"
+            >
+              <circle
+                className="opacity-25"
+                cx="12"
+                cy="12"
+                r="10"
+                stroke="currentColor"
+                strokeWidth="4"
+              />
+              <path
+                className="opacity-75"
+                fill="currentColor"
+                d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"
+              />
+            </svg>
+            Sending...
+          </span>
+        ) : (
+          "Send me a sign-in link"
+        )}
       </Button>
       <p className="text-sm text-muted-foreground">
-        Prototype only &mdash;{" "}
-        <Link href="/predict" className="text-secondary underline">
-          skip to predict
-        </Link>
+        No account? One will be created automatically.
       </p>
     </form>
   );
@@ -77,6 +172,8 @@ function MagicLinkSentView({
   email: string;
   onResend: () => void;
 }) {
+  const { signIn } = useSignIn();
+  const router = useRouter();
   const [countdown, setCountdown] = useState(60);
 
   useEffect(() => {
@@ -91,6 +188,36 @@ function MagicLinkSentView({
     }, 1000);
     return () => clearInterval(timer);
   }, []);
+
+  // Poll for verification completion
+  useEffect(() => {
+    if (!signIn) return;
+
+    let cancelled = false;
+
+    async function waitForLink() {
+      try {
+        const result = await signIn.emailLink.waitForVerification();
+        if (cancelled) return;
+
+        if (result.error) {
+          // Verification failed or expired — handled below
+          return;
+        }
+
+        // Verification succeeded — finalize to set active session, then redirect
+        await signIn.finalize();
+        router.push("/predict");
+      } catch {
+        // Silently handle — user may have navigated away
+      }
+    }
+
+    waitForLink();
+    return () => {
+      cancelled = true;
+    };
+  }, [signIn, router]);
 
   const handleResend = useCallback(() => {
     onResend();

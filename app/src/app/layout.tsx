@@ -24,8 +24,8 @@ export default function RootLayout({
     <html lang="en" className={`${inter.variable} h-full antialiased`}>
       <body className="min-h-full flex flex-col">
         <ClerkProvider
-          afterSignInUrl="/predict"
-          afterSignUpUrl="/predict"
+          signInFallbackRedirectUrl="/predict"
+          signUpFallbackRedirectUrl="/predict"
           appearance={{
             variables: {
               colorPrimary: "#004D43",

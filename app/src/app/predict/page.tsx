@@ -1,7 +1,8 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
+import { useUser, useAuth } from "@clerk/nextjs";
 import { Header } from "@/components/header";
 import { DisclaimerBlock } from "@/components/disclaimer-block";
 import { Button } from "@/components/ui/button";
@@ -10,6 +11,9 @@ import { Label } from "@/components/ui/label";
 import { Lock } from "lucide-react";
 import { useFormValidation } from "@/lib/hooks/use-form-validation";
 import { PREDICT_FORM_RULES } from "@/lib/validation";
+
+const API_URL = process.env.NEXT_PUBLIC_API_URL ?? "";
+const REQUEST_TIMEOUT_MS = 30_000;
 
 interface FormFieldDef {
   id: string;
@@ -34,10 +38,9 @@ const fields: FormFieldDef[] = [
     type: "email",
     inputMode: "email",
     autoComplete: "email",
-    placeholder: "j***@email.com",
+    placeholder: "your@email.com",
     helper: "Pre-filled from sign-in",
-    readOnly: true,
-    defaultValue: "j***@email.com",
+    readOnly: false, // dynamically set based on auth state
   },
   {
     id: "name",
@@ -98,19 +101,127 @@ const fieldRows: string[][] = [
   ["creatinine"],
 ];
 
+/** Error envelope from Decision #9: { error: { message, code, details[] } } */
+interface ApiErrorDetail {
+  field?: string;
+  message: string;
+}
+
+interface ApiErrorEnvelope {
+  error: {
+    message: string;
+    code?: string;
+    details?: ApiErrorDetail[];
+  };
+}
+
 export default function PredictPage() {
   const router = useRouter();
+  const { user, isLoaded: isUserLoaded } = useUser();
+  const { getToken } = useAuth();
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [submitError, setSubmitError] = useState<string | null>(null);
+  const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
   const form = useFormValidation(PREDICT_FORM_RULES);
 
-  const handleSubmit = (e: React.FormEvent) => {
+  // LKID-17: Pre-fill email from Clerk session
+  const clerkEmail = isUserLoaded ? (user?.primaryEmailAddress?.emailAddress ?? "") : "";
+  const isAuthenticated = isUserLoaded && !!user;
+  const [emailValue, setEmailValue] = useState("");
+
+  useEffect(() => {
+    if (clerkEmail) {
+      setEmailValue(clerkEmail);
+    }
+  }, [clerkEmail]);
+
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     form.markSubmitted();
+    setSubmitError(null);
+    setFieldErrors({});
+
     if (!form.valid) return;
+
     setIsSubmitting(true);
-    setTimeout(() => {
+
+    try {
+      // LKID-18: Build request payload
+      const payload = {
+        email: isAuthenticated ? clerkEmail : emailValue,
+        name: form.values.name,
+        age: Number(form.values.age),
+        bun: Number(form.values.bun),
+        creatinine: Number(form.values.creatinine),
+      };
+
+      // Get Clerk JWT for Authorization header
+      const headers: Record<string, string> = {
+        "Content-Type": "application/json",
+      };
+
+      const token = await getToken();
+      if (token) {
+        headers["Authorization"] = `Bearer ${token}`;
+      }
+
+      // POST to backend with timeout
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), REQUEST_TIMEOUT_MS);
+
+      const response = await fetch(`${API_URL}/predict`, {
+        method: "POST",
+        headers,
+        body: JSON.stringify(payload),
+        signal: controller.signal,
+      });
+
+      clearTimeout(timeoutId);
+
+      if (!response.ok) {
+        // Parse Decision #9 error envelope
+        let errorBody: ApiErrorEnvelope | null = null;
+        try {
+          errorBody = await response.json() as ApiErrorEnvelope;
+        } catch {
+          // Response body is not JSON
+        }
+
+        if (errorBody?.error) {
+          // Map field-level errors from details[]
+          if (errorBody.error.details && errorBody.error.details.length > 0) {
+            const fErrors: Record<string, string> = {};
+            for (const detail of errorBody.error.details) {
+              if (detail.field) {
+                fErrors[detail.field] = detail.message;
+              }
+            }
+            if (Object.keys(fErrors).length > 0) {
+              setFieldErrors(fErrors);
+            }
+          }
+          setSubmitError(errorBody.error.message);
+        } else {
+          setSubmitError(`Server error (${response.status}). Please try again.`);
+        }
+        return;
+      }
+
+      // Success: store result and redirect
+      const result = await response.json();
+      sessionStorage.setItem("prediction_result", JSON.stringify(result));
       router.push("/results");
-    }, 1500);
+    } catch (err: unknown) {
+      if (err instanceof DOMException && err.name === "AbortError") {
+        setSubmitError("Request timed out. Please check your connection and try again.");
+      } else if (err instanceof TypeError && err.message.includes("fetch")) {
+        setSubmitError("Network error. Please check your connection and try again.");
+      } else {
+        setSubmitError("An unexpected error occurred. Please try again.");
+      }
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
   return (
@@ -127,10 +238,28 @@ export default function PredictPage() {
               {form.submitted && !form.valid && "Please correct the errors below."}
             </div>
 
+            {/* API-level error banner */}
+            {submitError && (
+              <div
+                role="alert"
+                className="mb-4 rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700"
+              >
+                {submitError}
+              </div>
+            )}
+
             {/* Mobile: single column */}
             <div className="space-y-3 md:hidden">
               {fields.map((field) => (
-                <FieldBlock key={field.id} field={field} form={form} />
+                <FieldBlock
+                  key={field.id}
+                  field={field}
+                  form={form}
+                  isAuthenticated={isAuthenticated}
+                  emailValue={emailValue}
+                  onEmailChange={setEmailValue}
+                  apiFieldError={fieldErrors[field.id]}
+                />
               ))}
             </div>
 
@@ -138,7 +267,15 @@ export default function PredictPage() {
             <div className="hidden md:grid md:grid-cols-2 md:gap-4">
               {fieldRows.map((row) =>
                 row.map((id) => (
-                  <FieldBlock key={id} field={getField(id)} form={form} />
+                  <FieldBlock
+                    key={id}
+                    field={getField(id)}
+                    form={form}
+                    isAuthenticated={isAuthenticated}
+                    emailValue={emailValue}
+                    onEmailChange={setEmailValue}
+                    apiFieldError={fieldErrors[id]}
+                  />
                 ))
               )}
             </div>
@@ -187,12 +324,32 @@ export default function PredictPage() {
 interface FieldBlockProps {
   field: FormFieldDef;
   form: ReturnType<typeof useFormValidation>;
+  isAuthenticated: boolean;
+  emailValue: string;
+  onEmailChange: (value: string) => void;
+  apiFieldError?: string;
 }
 
-function FieldBlock({ field, form }: FieldBlockProps) {
+function FieldBlock({ field, form, isAuthenticated, emailValue, onEmailChange, apiFieldError }: FieldBlockProps) {
+  const isEmail = field.id === "email";
+  const isReadOnly = isEmail && isAuthenticated;
   const isValidated = field.id in PREDICT_FORM_RULES;
-  const error = field.readOnly ? null : form.getFieldError(field.id);
+  const formError = isReadOnly ? null : form.getFieldError(field.id);
+  const error = apiFieldError || formError;
   const hasError = !!error;
+
+  // For the email field, use emailValue prop; for others, use form state
+  const inputValue = isEmail
+    ? emailValue
+    : form.values[field.id];
+
+  const handleChange = isEmail
+    ? (e: React.ChangeEvent<HTMLInputElement>) => onEmailChange(e.target.value)
+    : (e: React.ChangeEvent<HTMLInputElement>) => form.setValue(field.id, e.target.value);
+
+  const handleBlur = isReadOnly
+    ? undefined
+    : () => form.setFieldTouched(field.id);
 
   return (
     <div className="space-y-1.5">
@@ -206,9 +363,8 @@ function FieldBlock({ field, form }: FieldBlockProps) {
           type={field.type}
           inputMode={field.inputMode}
           autoComplete={field.autoComplete}
-          placeholder={field.placeholder}
-          readOnly={field.readOnly}
-          defaultValue={field.defaultValue}
+          placeholder={isEmail && isAuthenticated ? "" : field.placeholder}
+          readOnly={isReadOnly}
           min={field.min}
           max={field.max}
           step={field.step}
@@ -217,18 +373,18 @@ function FieldBlock({ field, form }: FieldBlockProps) {
           aria-describedby={
             hasError ? `${field.id}-error` : field.helper ? `${field.id}-helper` : undefined
           }
-          value={field.readOnly ? undefined : form.values[field.id]}
-          onChange={field.readOnly ? undefined : (e) => form.setValue(field.id, e.target.value)}
-          onBlur={field.readOnly ? undefined : () => form.setFieldTouched(field.id)}
+          value={inputValue ?? ""}
+          onChange={isReadOnly ? undefined : handleChange}
+          onBlur={handleBlur}
           className={`h-12 text-base ${
-            field.readOnly
+            isReadOnly
               ? "cursor-default bg-[#F8F9FA] pr-10"
               : hasError
                 ? "border-red-500 focus-visible:ring-red-500"
                 : ""
           }`}
         />
-        {field.readOnly && (
+        {isReadOnly && (
           <Lock
             className="absolute right-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground"
             aria-hidden="true"
@@ -242,7 +398,7 @@ function FieldBlock({ field, form }: FieldBlockProps) {
       )}
       {!hasError && field.helper && (
         <p id={`${field.id}-helper`} className="text-sm text-muted-foreground">
-          {field.helper}
+          {isEmail && isAuthenticated ? "Pre-filled from sign-in" : field.helper}
         </p>
       )}
     </div>
