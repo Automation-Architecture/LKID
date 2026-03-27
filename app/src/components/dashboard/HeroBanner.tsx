@@ -27,13 +27,9 @@ export function HeroBanner() {
 
   return (
     <section className="space-y-6">
-      <div>
-        <h1 className="text-2xl font-bold md:text-3xl" style={{ color: "#004D43" }}>
-          KidneyHood
-        </h1>
-        <p className="mt-1 text-base" style={{ color: "#636363" }}>
-          Project Dashboard
-        </p>
+      <div className="flex items-center gap-3">
+        <span className="text-2xl font-bold" style={{ color: "#004D43" }}>KidneyHood</span>
+        <span className="text-sm font-medium" style={{ color: "#636363" }}>Project Dashboard</span>
       </div>
 
       {/* Timeline bar */}
@@ -42,13 +38,17 @@ export function HeroBanner() {
           <span>Mar 30</span>
           <span>Apr 17</span>
         </div>
-        <div className="relative h-3 w-full overflow-hidden rounded-full" style={{ backgroundColor: "#D8D8D8" }}>
-          {/* Sprint segments */}
-          {SPRINTS.map((sprint, i) => {
+        <div className="relative h-3 w-full overflow-hidden rounded-full" style={{ backgroundColor: "#E5E7EB" }}>
+          {/* Sprint segments — teal only, opacity varies by status */}
+          {SPRINTS.map((sprint) => {
             const left = getSprintPosition(sprint.start);
             const end = getSprintPosition(sprint.end);
             const width = end - left;
-            const colors = ["#004D43", "#2563eb", "#7c3aed"];
+            const sprintEnd = new Date(sprint.end);
+            const now = new Date();
+            const isCompleted = now > sprintEnd;
+            const isCurrent = now >= new Date(sprint.start) && now <= sprintEnd;
+            if (!isCompleted && !isCurrent) return null;
             return (
               <div
                 key={sprint.name}
@@ -56,8 +56,8 @@ export function HeroBanner() {
                 style={{
                   left: `${left}%`,
                   width: `${width}%`,
-                  backgroundColor: colors[i],
-                  opacity: 0.3,
+                  backgroundColor: "#004D43",
+                  opacity: isCompleted ? 1 : 0.4,
                 }}
               />
             );

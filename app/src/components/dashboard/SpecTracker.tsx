@@ -1,5 +1,12 @@
 import specData from "@/app/client/data/spec-tracker.json";
 
+const STATUS_LABELS: Record<string, string> = {
+  done: "Done",
+  in_progress: "In Progress",
+  unblocked: "Unblocked",
+  blocked: "Blocked",
+};
+
 const STATUS_BADGE: Record<string, { bg: string; text: string }> = {
   done: { bg: "#DCFCE7", text: "#166534" },
   in_progress: { bg: "#FEF3C7", text: "#92400E" },
@@ -13,7 +20,7 @@ export function SpecTracker() {
   return (
     <section className="space-y-4">
       <div className="flex items-baseline justify-between">
-        <h2 className="text-xl font-bold" style={{ color: "#004D43" }}>
+        <h2 className="text-2xl font-bold" style={{ color: "#004D43" }}>
           Spec Acknowledgment
         </h2>
         <span className="text-sm" style={{ color: "#636363" }}>
@@ -21,14 +28,15 @@ export function SpecTracker() {
         </span>
       </div>
 
-      <div className="overflow-x-auto">
+      <div className="overflow-hidden rounded-xl border" style={{ borderColor: "#D8D8D8" }}>
+       <div className="overflow-x-auto">
         <table className="w-full text-sm">
           <thead>
             <tr style={{ backgroundColor: "#004D43" }}>
-              <th className="rounded-tl-lg px-4 py-3 text-left font-semibold text-white">Spec Item</th>
-              <th className="px-4 py-3 text-left font-semibold text-white">Card</th>
-              <th className="px-4 py-3 text-left font-semibold text-white">Status</th>
-              <th className="rounded-tr-lg px-4 py-3 text-left font-semibold text-white">Notes</th>
+              <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-white" style={{ width: "35%" }}>Spec Item</th>
+              <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-white" style={{ width: "15%" }}>Card</th>
+              <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-white" style={{ width: "15%" }}>Status</th>
+              <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-white" style={{ width: "35%" }}>Notes</th>
             </tr>
           </thead>
           <tbody>
@@ -54,7 +62,7 @@ export function SpecTracker() {
                       className="inline-block rounded-full px-3 py-1 text-xs font-medium"
                       style={{ backgroundColor: badge.bg, color: badge.text }}
                     >
-                      {item.status}
+                      {STATUS_LABELS[item.status] ?? item.status}
                     </span>
                   </td>
                   <td className="px-4 py-3 text-sm" style={{ color: "#636363" }}>
@@ -65,6 +73,7 @@ export function SpecTracker() {
             })}
           </tbody>
         </table>
+       </div>
       </div>
     </section>
   );

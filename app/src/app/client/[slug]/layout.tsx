@@ -23,8 +23,9 @@ export default function DashboardLayout({
       <main className="mx-auto max-w-[1024px] px-6 py-10 md:px-8 lg:px-0">
         {children}
       </main>
-      <footer className="border-t py-6 text-center text-sm" style={{ borderColor: "#D8D8D8", color: "#636363" }}>
-        Powered by Automation Architecture
+      <footer className="mt-16 border-t py-6 text-center text-xs" style={{ borderColor: "#D8D8D8", color: "#898A8D" }}>
+        <p>Powered by Automation Architecture</p>
+        <p className="mt-1">Last updated: March 26, 2026</p>
       </footer>
     </div>
   );

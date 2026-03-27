@@ -30,7 +30,7 @@ const UPCOMING = [
 export function Horizon() {
   return (
     <section className="space-y-6">
-      <h2 className="text-xl font-bold" style={{ color: "#004D43" }}>
+      <h2 className="text-2xl font-bold" style={{ color: "#004D43" }}>
         What&#39;s Coming
       </h2>
 
@@ -42,14 +42,14 @@ export function Horizon() {
             style={{ backgroundColor: "#FFFFFF", borderColor: "#D8D8D8" }}
           >
             <div className="flex items-center justify-between">
-              <h3 className="text-base font-bold" style={{ color: "#010101" }}>
+              <h3 className="text-lg font-semibold" style={{ color: "#010101" }}>
                 {sprint.name}
               </h3>
               <span
                 className="rounded-full px-3 py-1 text-xs font-medium"
                 style={{
-                  backgroundColor: sprint.status === "up_next" ? "#E6FF2B" : "#F3F4F6",
-                  color: sprint.status === "up_next" ? "#004D43" : "#6B7280",
+                  backgroundColor: sprint.status === "up_next" ? "#FEF3C7" : "#F3F4F6",
+                  color: sprint.status === "up_next" ? "#92400E" : "#6B7280",
                 }}
               >
                 {sprint.status === "up_next" ? "Up Next" : "Planned"}
@@ -72,15 +72,18 @@ export function Horizon() {
 
       {/* Ship date */}
       <div
-        className="rounded-xl p-6 text-center"
+        className="relative flex items-center gap-4 rounded-xl px-8 py-6"
         style={{ backgroundColor: "#004D43" }}
       >
-        <p className="text-sm font-medium" style={{ color: "#E6FF2B" }}>
-          Target Launch
-        </p>
-        <p className="mt-1 text-2xl font-bold text-white">
-          April 17, 2026
-        </p>
+        <div style={{ width: "4px", height: "32px", backgroundColor: "#E6FF2B", borderRadius: "2px", flexShrink: 0 }} />
+        <div>
+          <p className="text-sm" style={{ color: "rgba(255,255,255,0.8)" }}>
+            Target Launch
+          </p>
+          <p className="mt-1 text-lg font-bold text-white">
+            April 17, 2026
+          </p>
+        </div>
       </div>
     </section>
   );

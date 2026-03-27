@@ -30,7 +30,7 @@ const DOCUMENTS = [
 export function DocumentLibrary() {
   return (
     <section className="space-y-4">
-      <h2 className="text-xl font-bold" style={{ color: "#004D43" }}>
+      <h2 className="text-2xl font-bold" style={{ color: "#004D43" }}>
         Documents
       </h2>
 
@@ -38,14 +38,14 @@ export function DocumentLibrary() {
         {DOCUMENTS.map((doc) => (
           <div
             key={doc.name}
-            className="flex items-start gap-4 rounded-lg border p-4"
+            className="flex items-start gap-4 rounded-lg border px-5 py-4"
             style={{ backgroundColor: "#FFFFFF", borderColor: "#D8D8D8" }}
           >
             <div
               className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg text-xs font-bold"
               style={{
-                backgroundColor: doc.type === "pdf" ? "#FEE2E2" : "#DBEAFE",
-                color: doc.type === "pdf" ? "#991B1B" : "#1E40AF",
+                backgroundColor: "#F3F4F6",
+                color: "#636363",
               }}
             >
               {doc.type === "pdf" ? "PDF" : "MD"}

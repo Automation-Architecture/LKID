@@ -1,10 +1,10 @@
 export function PrototypePreview() {
   return (
-    <section className="space-y-4">
-      <h2 className="text-xl font-bold" style={{ color: "#004D43" }}>
+    <section className="rounded-xl" style={{ backgroundColor: "#004D43", padding: "40px" }}>
+      <h2 className="text-2xl font-bold text-white">
         Live Prototype
       </h2>
-      <p className="text-sm" style={{ color: "#636363" }}>
+      <p className="mt-2 text-base" style={{ color: "rgba(255,255,255,0.8)" }}>
         Click through all 7 screens — real layout, real components, chart placeholder.
         This is a working Next.js application, not a static mockup.
       </p>
@@ -12,8 +12,8 @@ export function PrototypePreview() {
         href="https://kidneyhood.vercel.app"
         target="_blank"
         rel="noopener noreferrer"
-        className="inline-flex h-14 items-center justify-center rounded-lg px-8 text-base font-bold transition-opacity hover:opacity-90"
-        style={{ backgroundColor: "#E6FF2B", color: "#004D43" }}
+        className="mt-6 inline-flex items-center justify-center rounded-lg px-8 text-base font-bold hover:bg-[#D4ED26] focus:outline-none focus:ring-2 focus:ring-white focus:ring-offset-2"
+        style={{ height: "52px", backgroundColor: "#E6FF2B", color: "#004D43" }}
       >
         View Prototype &rarr;
       </a>

@@ -17,7 +17,7 @@ const STATUS_LABELS: Record<string, string> = {
 export function SprintTracker() {
   return (
     <section className="space-y-6">
-      <h2 className="text-xl font-bold" style={{ color: "#004D43" }}>
+      <h2 className="text-2xl font-bold" style={{ color: "#004D43" }}>
         Sprint Progress
       </h2>
 
@@ -26,21 +26,22 @@ export function SprintTracker() {
         return (
           <div key={sprint.name} className="space-y-3">
             <div className="flex items-baseline justify-between">
-              <h3 className="text-base font-semibold" style={{ color: "#010101" }}>
+              <h3 className="text-lg font-semibold" style={{ color: "#010101" }}>
                 {sprint.name}
               </h3>
               <span className="text-sm" style={{ color: "#636363" }}>
                 {doneCount} of {sprint.cards.length} complete
               </span>
             </div>
-            <div className="grid grid-cols-2 gap-2 md:grid-cols-4">
+            <div className="grid grid-cols-2 gap-3 md:grid-cols-3 lg:grid-cols-4">
               {sprint.cards.map((card) => {
                 const style = STATUS_STYLES[card.status] ?? STATUS_STYLES.upcoming;
                 return (
                   <div
                     key={card.id}
-                    className="rounded-lg border p-3"
+                    className="border p-3 md:p-4"
                     style={{
+                      borderRadius: "10px",
                       backgroundColor: style.bg,
                       borderColor: style.border,
                     }}
@@ -50,7 +51,7 @@ export function SprintTracker() {
                     </div>
                     <div
                       className="mt-1 line-clamp-2 text-sm"
-                      style={{ color: style.text }}
+                      style={{ color: "#010101" }}
                     >
                       {card.title}
                     </div>

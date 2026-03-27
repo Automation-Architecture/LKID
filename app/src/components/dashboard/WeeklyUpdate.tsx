@@ -46,17 +46,17 @@ Key tradeoffs: Railway over AWS for simplicity (MVP doesn't need auto-scaling). 
 export function WeeklyUpdate() {
   return (
     <section className="space-y-6">
-      <h2 className="text-xl font-bold" style={{ color: "#004D43" }}>
+      <h2 className="text-2xl font-bold" style={{ color: "#004D43" }}>
         Weekly Updates
       </h2>
 
       {UPDATES.map((update) => (
         <div
           key={update.date}
-          className="rounded-xl border p-6 md:p-8"
+          className="rounded-xl border p-5 md:p-8"
           style={{ backgroundColor: "#FFFFFF", borderColor: "#D8D8D8" }}
         >
-          <h3 className="text-lg font-bold" style={{ color: "#004D43" }}>
+          <h3 className="text-2xl font-bold" style={{ color: "#004D43" }}>
             {update.title}
           </h3>
           <p className="mt-1 text-sm" style={{ color: "#636363" }}>
@@ -66,7 +66,7 @@ export function WeeklyUpdate() {
           {/* Highlights */}
           <ul className="mt-4 space-y-2">
             {update.highlights.map((h, i) => (
-              <li key={i} className="flex items-start gap-2 text-sm" style={{ color: "#010101" }}>
+              <li key={i} className="flex items-start gap-2 text-base" style={{ color: "#010101" }}>
                 <span style={{ color: "#166534" }}>&#10003;</span>
                 {h}
               </li>
@@ -79,17 +79,17 @@ export function WeeklyUpdate() {
           <div className="space-y-3">
             <div className="flex items-center gap-2">
               <div
-                className="flex h-8 w-8 items-center justify-center rounded-full text-xs font-bold text-white"
+                className="flex h-6 w-6 items-center justify-center rounded-full text-xs font-medium text-white"
                 style={{ backgroundColor: "#004D43" }}
               >
                 H
               </div>
               <div>
-                <div className="text-sm font-semibold" style={{ color: "#010101" }}>Product Update</div>
+                <div className="text-lg font-semibold" style={{ color: "#010101" }}>Product Update</div>
                 <div className="text-xs" style={{ color: "#636363" }}>Husser — Product Manager</div>
               </div>
             </div>
-            <div className="space-y-3 text-sm leading-relaxed" style={{ color: "#010101" }}>
+            <div className="space-y-3 text-base leading-relaxed" style={{ color: "#010101" }}>
               {update.productUpdate.split("\n\n").map((p, i) => (
                 <p key={i}>{p}</p>
               ))}
@@ -102,17 +102,17 @@ export function WeeklyUpdate() {
           <div className="space-y-3">
             <div className="flex items-center gap-2">
               <div
-                className="flex h-8 w-8 items-center justify-center rounded-full text-xs font-bold text-white"
-                style={{ backgroundColor: "#2563eb" }}
+                className="flex h-6 w-6 items-center justify-center rounded-full text-xs font-medium"
+                style={{ backgroundColor: "#D8D8D8", color: "#636363" }}
               >
                 JD
               </div>
               <div>
-                <div className="text-sm font-semibold" style={{ color: "#010101" }}>Technical Update</div>
+                <div className="text-lg font-semibold" style={{ color: "#010101" }}>Technical Update</div>
                 <div className="text-xs" style={{ color: "#636363" }}>John Donaldson — API Designer</div>
               </div>
             </div>
-            <div className="space-y-3 text-sm leading-relaxed" style={{ color: "#010101" }}>
+            <div className="space-y-3 text-base leading-relaxed" style={{ color: "#010101" }}>
               {update.technicalUpdate.split("\n\n").map((p, i) => (
                 <p key={i}>{p}</p>
               ))}
