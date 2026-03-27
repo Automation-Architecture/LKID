@@ -125,12 +125,20 @@ function ResultsContent() {
 
 export default function ResultsPage() {
   const [loading, setLoading] = useState(true);
+  const [hasData, setHasData] = useState(true);
 
   useEffect(() => {
+    if (typeof window !== "undefined" && !sessionStorage.getItem("prediction_result")) {
+      setHasData(false);
+      window.location.href = "/predict";
+      return;
+    }
     // Simulate loading delay
     const timer = setTimeout(() => setLoading(false), 2000);
     return () => clearTimeout(timer);
   }, []);
+
+  if (!hasData) return null;
 
   return (
     <>

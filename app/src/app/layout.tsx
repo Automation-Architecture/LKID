@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import { Inter } from "next/font/google";
+import { ClerkProvider } from "@clerk/nextjs";
 import { SkipNav } from "@/components/skip-nav";
 import "./globals.css";
 
@@ -22,8 +23,20 @@ export default function RootLayout({
   return (
     <html lang="en" className={`${inter.variable} h-full antialiased`}>
       <body className="min-h-full flex flex-col">
-        <SkipNav />
-        {children}
+        <ClerkProvider
+          afterSignInUrl="/predict"
+          afterSignUpUrl="/predict"
+          appearance={{
+            variables: {
+              colorPrimary: "#004D43",
+              borderRadius: "0.5rem",
+              fontSize: "1rem",
+            },
+          }}
+        >
+          <SkipNav />
+          {children}
+        </ClerkProvider>
       </body>
     </html>
   );
