@@ -1,6 +1,9 @@
+import { CheckCircle2 } from "lucide-react";
+
 interface UpdateData {
   title: string;
   date: string;
+  sprint: number;
   highlights: string[];
   productUpdate: string;
   technicalUpdate: string;
@@ -11,6 +14,7 @@ const UPDATES: UpdateData[] = [
   {
     title: "Week 1 — Design Sprint",
     date: "March 26, 2026",
+    sprint: 1,
     highlights: [
       "7 prototype screens built and deployed — real Next.js components, not mockups",
       "QA pass complete — 7 issues found, all resolved",
@@ -56,9 +60,14 @@ export function WeeklyUpdate() {
           className="rounded-xl border p-5 md:p-8"
           style={{ backgroundColor: "#FFFFFF", borderColor: "#D8D8D8" }}
         >
-          <h3 className="text-2xl font-bold" style={{ color: "#004D43" }}>
-            {update.title}
-          </h3>
+          <div className="flex items-center gap-3">
+            <h3 className="text-2xl font-bold" style={{ color: "var(--brand-teal)" }}>
+              {update.title}
+            </h3>
+            <span className="rounded-full border px-3 py-0.5 text-xs font-medium" style={{ borderColor: "var(--brand-teal)", color: "var(--brand-teal)" }}>
+              Sprint {update.sprint}
+            </span>
+          </div>
           <p className="mt-1 text-sm" style={{ color: "#636363" }}>
             {update.date}
           </p>
@@ -67,13 +76,13 @@ export function WeeklyUpdate() {
           <ul className="mt-4 space-y-2">
             {update.highlights.map((h, i) => (
               <li key={i} className="flex items-start gap-2 text-base" style={{ color: "#010101" }}>
-                <span style={{ color: "#166534" }}>&#10003;</span>
+                <CheckCircle2 size={16} className="mt-0.5 shrink-0" style={{ color: "#166534" }} />
                 {h}
               </li>
             ))}
           </ul>
 
-          <hr className="my-6" style={{ borderColor: "#E8E8E8" }} />
+          <hr className="my-7" style={{ borderColor: "#E8E8E8" }} />
 
           {/* Product Update */}
           <div className="space-y-3">
@@ -96,7 +105,7 @@ export function WeeklyUpdate() {
             </div>
           </div>
 
-          <hr className="my-6" style={{ borderColor: "#E8E8E8" }} />
+          <hr className="my-7" style={{ borderColor: "#E8E8E8" }} />
 
           {/* Technical Update */}
           <div className="space-y-3">

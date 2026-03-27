@@ -1,3 +1,5 @@
+import { FileText, FileCode } from "lucide-react";
+
 const DOCUMENTS = [
   {
     name: "Lean Launch MVP PRD",
@@ -42,13 +44,10 @@ export function DocumentLibrary() {
             style={{ backgroundColor: "#FFFFFF", borderColor: "#D8D8D8" }}
           >
             <div
-              className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg text-xs font-bold"
-              style={{
-                backgroundColor: "#F3F4F6",
-                color: "#636363",
-              }}
+              className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg"
+              style={{ backgroundColor: "var(--status-upcoming-bg)", color: "var(--brand-body)" }}
             >
-              {doc.type === "pdf" ? "PDF" : "MD"}
+              {doc.type === "pdf" ? <FileText size={20} /> : <FileCode size={20} />}
             </div>
             <div className="flex-1">
               <div className="flex items-center gap-2">
