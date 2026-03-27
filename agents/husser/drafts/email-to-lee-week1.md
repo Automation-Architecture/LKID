@@ -38,7 +38,7 @@ Sprint 2 kicks off April 6. This is where your algorithm comes to life — the r
 
 As we gear up for Sprint 2 and the rules engine implementation, we had a clinical data scientist review the calc spec alongside the v2.0 formulas to make sure we build this right. A handful of questions came up that we'd love your input on — you know this model better than anyone.
 
-1. **Phase 1 formula** — The calc spec uses `PHASE1_COEFF = 0.31` (the Spearman-derived coefficient), but the v2.0 spec in Section 9.5 uses `eGFR * 0.08 + rate differential`. They produce slightly different numbers for the same patient. Which model should we be validating the test vectors against?
+1. **Phase 1 formula** — The calc spec uses `PHASE1_COEFF = 0.31` (the Spearman-derived coefficient), but the v2.0 spec in Section 9.5 uses `eGFR * 0.08 + rate differential` where `phase1_real = (rate_P1 - newRate) * 0.5`. Two sub-questions: (a) Which model should we validate the test vectors against? (b) For our simplified lean launch (no 5-pillar model), is it correct to use the CKD-stage base decline rate as `rate_P1`?
 
 2. **Stage 5 recovery range** — Test Vector 2 (eGFR 10, BUN 53) projects recovery to eGFR 27.4 at BUN ≤12. Our reviewer noted that's a +17.4 point gain, which is at the outer edge of plausibility for Stage 5 patients. Is this projection something the pilot cohort supports as a representative outcome, or more of an outlier scenario like Patient 108?
 
