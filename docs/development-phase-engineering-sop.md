@@ -166,7 +166,21 @@ When merging multiple PRs in a single session:
 
 **Rationale:** Merging PRs #14, #15, #16 in sequence without pre-rebasing caused downstream PRs to conflict with updated main.
 
-### Rule 5: Stale Branch Detection
+### Rule 5: Document Graduation
+
+When a document becomes binding (referenced in a closed Jira card, signed off by Luca or Husser, no open revision comments), the owning agent must:
+
+1. Copy the document to their `agents/{name}/outputs/` folder.
+2. Update the Key Documents table in `CLAUDE.md` — set Status to `Final` and verify the path is correct.
+3. The original in `drafts/` remains as the working copy. The `outputs/` copy is the point-in-time finalized version.
+
+Husser audits the Key Documents table during daily board sweeps. Any binding document missing from the table or with a stale path is a sweep finding.
+
+**Merge checklist addition:** Before merging any PR that modifies a document listed in Key Documents, verify the table row is updated in the same PR.
+
+**Rationale:** Sprint 2 closed with 11 binding documents but only 9 listed in the Key Documents table. Agent `outputs/` folders were empty because no graduation criteria existed.
+
+### Rule 6: Stale Branch Detection
 
 Any PR branch more than 2 days behind main must be rebased before QA review, not after. This check applies at:
 

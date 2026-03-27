@@ -1,77 +1,57 @@
-# Backend Engineering Meeting Report
+# Document Structure Chatroom Report
 
-**Problem**: Resolve Yuri's QA findings across PRs #14-17 — validation range conflicts, merge order, action items
-**Agents**: 3 | **Rounds**: 2 (converged early)
+**Problem**: Should we restructure ~150 repo documents into centralized directories before Sprint 3?
+**Agents**: 2 | **Rounds**: 2 (converged early)
 **Date**: 2026-03-27
 
 ## Participants
 
 | Agent | Role | Final Confidence |
 |-------|------|-----------------|
-| Luca | CTO / Chair | 8/10 |
-| John Donaldson | API / Backend Engineer | 8/10 |
-| Gay Mark | Database Engineer | 8/10 |
+| Husser | Product Manager / Board Nanny | 8/10 |
+| Luca | CTO / Orchestrator | 9/10 |
 
 ## Consensus
 
-All three agents converged on the following binding decisions:
+Both agents converged on the same conclusion by Round 2:
 
-### Authoritative Validation Ranges
+1. **Do NOT restructure directories before ship date (April 9).** The risk of broken path references in CLAUDE.md and agent SOPs outweighs the discoverability benefit. CLAUDE.md is code-adjacent config — corrupting it mid-sprint affects every agent simultaneously.
 
-| Field | Frontend | Pydantic (API) | DB CHECK | Notes |
-|-------|----------|---------------|----------|-------|
-| BUN | 5–100 (soft cap, warning above) | 5–150 | 5–150 | Frontend warns but allows submission up to 150 |
-| Creatinine | 0.3–20.0 | 0.3–20.0 | 0.3–20.0 | **DB migration needed** (currently 15.0 max). Pending Lee confirmation for prod. |
-| Potassium | 2.0–8.0 | 2.0–8.0 | (not constrained) | All layers agree |
-| Age | 18–120 | 18–120 | 18–120 | All layers agree |
-| Hemoglobin | 4.0–20.0 | 4.0–20.0 | (not constrained) | Main branch values are correct; PR16 widening must revert |
-| Glucose | 40–500 | 40–500 | (not constrained) | Main branch values are correct; PR16 widening must revert |
+2. **The real problem is an incomplete Key Documents table in CLAUDE.md**, not directory structure. Fix the index, not the filesystem.
 
-### Key Decisions
+3. **Empty outputs/ folders are a process gap.** Nobody graduates docs because there's no graduation criteria — adding new folders doesn't fix that.
 
-1. **Creatinine min stays at 0.3** — Values below 0.3 are not realistic for the CKD patient population. John conceded his 0.1 position.
-2. **Creatinine max widens to 20.0** — Stage 5 patients pre-dialysis can reach 15-18 mg/dL. All three agreed 20.0 covers the clinical tail with margin. Luca conceded from 15.0, John conceded from 25.0.
-3. **BUN Pydantic max = 150** — Luca's tiebreaker: Pydantic matches DB at 150. Frontend soft-caps at 100 with a UX warning. Gay Mark's concern about untested engine territory is valid but addressed at the UX layer, not the API validation layer.
-4. **Gay Mark cuts an Alembic migration** to widen creatinine max from 15.0 to 20.0. Migration deploys before PR16 merges.
-5. **Flag creatinine max=20.0 for Lee confirmation** before Sprint 3 prod release. Not a Sprint 2 blocker.
+4. **Defer the full restructure to post-ship (after April 9 retrospective)** as a standalone maintenance PR with a script that updates all path references atomically.
 
-### Merge Order (Binding)
+## Recommended Action (3 items, all doable today)
 
-1. Gay Mark's DB migration (creatinine max 15.0 → 20.0)
-2. PR #16 (fixtures + CI — with Pydantic range reverts)
-3. PR #15 (leads write — John rebases onto current main)
-4. PR #14 (prediction form — Harshit updates validation.ts)
-5. PR #17 (k6 + visual regression — rebase after PR16)
+### 1. Expand Key Documents table in CLAUDE.md
+Add all missing binding documents with a Status column. Zero risk, fixes discoverability immediately.
 
-## Key Disagreement (Resolved)
+### 2. Add graduation trigger to Development Phase SOP
+One paragraph: any artifact that enters the Key Documents table must move to the agent's `outputs/` folder. Cross-agent, not just Yuri. Agent who owns the artifact is responsible for updating the CLAUDE.md row when it graduates.
 
-**BUN Pydantic max: 100 vs 150**
+### 3. Add CLAUDE.md maintenance rule to merge checklist
+Any agent whose artifact is referenced in Key Documents updates that row when the artifact changes. Prevents table drift.
 
-Gay Mark argued Pydantic should cap at 100 because the prediction engine hasn't been tested above BUN=53. Luca and John argued Pydantic should match DB at 150 to maintain layer consistency, with the frontend handling the UX concern.
+### Post-ship (after April 9)
+Execute the full restructure (docs/governance/, docs/technical/, docs/clinical/, docs/reports/, docs/specs/, docs/reference/) as a dedicated PR. Use `artifacts/registry.json` as the graduation mechanism. Husser executes promotions; Luca reviews the PR.
 
-**Resolution (Luca's call):** Pydantic = 150, frontend = 100 soft cap with warning. The prediction engine will produce results for BUN 100-150 that are extrapolations beyond test vectors — the UX warning makes this transparent to the user.
+## Key Disagreement (Minor)
 
-## Action Items
+- **Husser** wanted the restructure PR at "Sprint 3 close" (April 9)
+- **Luca** pushed for "post-ship, post-retrospective" to avoid collision with the QA gate
 
-| Owner | Action | PR |
-|-------|--------|-----|
-| **Gay Mark** | Alembic migration: creatinine max 15.0 → 20.0 | New PR (merge first) |
-| **John** | Rebase PR #15 onto current main after PR16 merges | PR #15 |
-| **John** | Add 3-segment JWT guard to lead write | PR #15 |
-| **Harshit** | Update validation.ts: creatinine 0.3–20.0, BUN soft cap 100 / hard 150, hemoglobin 4.0–20.0, glucose 40–500 | PR #14 |
-| **Harshit** | Fix error envelope parsing: `body.error.details[].message` not `body.detail[].msg` | PR #14 |
-| **Yuri/Fixtures** | Revert PR16 Pydantic ranges to match binding table. Update factory boundaries. | PR #16 |
-| **Husser** | Add Lee confirmation of creatinine max=20.0 as Q6 on LKID-14 | Jira comment |
+Luca's timing is more conservative and both agreed the difference is days, not weeks.
 
 ## Unresolved Risks
 
-1. **Creatinine max=20.0 is a clinical estimate, not a confirmed value.** Lee must sign off before prod. If Lee says the ceiling should be different, one migration + one Pydantic bump handles it.
-2. **BUN values 100-150 produce extrapolated predictions.** The engine was tested only up to BUN=53. A UX warning is the agreed mitigation, but the predictions in that range may be less accurate.
-3. **Hemoglobin and glucose have no DB CHECK constraints.** They're validated only at Pydantic. If a future code path bypasses Pydantic, invalid values could reach the DB. Low risk for MVP.
+- The Key Documents table will drift again by mid-Sprint 3 unless the maintenance rule is actually enforced during Husser's daily sweeps
+- Yuri's QA reports folder will grow by 8-10 more files in Sprint 3 before restructure happens
+- "Defer to post-ship" is what was said last sprint — needs a concrete Jira card to prevent indefinite deferral
 
 ## Debate Highlights
 
-- **Luca moved the most** — conceded creatinine max from 15.0 to 20.0 after Gay Mark's clinical argument about Stage 5 patients. Originally insisted "no DB migration needed," ended agreeing one was necessary.
-- **John moved on creatinine min** — dropped 0.1 to 0.3 after Gay Mark argued it's not realistic for CKD patients. Also dropped 25.0 to 20.0 for creatinine max.
-- **Gay Mark held firm on DB-as-floor** while conceding that one migration was needed. His position was the most stable across rounds.
-- The critical insight: **the DB constraint at 15.0 was an implementation artifact, not a clinical decision.** All three agents agreed the original constraint was too tight for Stage 5 patients.
+- **Strongest shared insight:** "Two copies of truth is worse than one imperfect location" (Husser, Round 1). Both agents independently identified that a promotion workflow creating duplicates would be worse than the current scattered-but-single-source state.
+- **Mind change:** Husser conceded entirely on the restructure timing after Luca framed CLAUDE.md as "code-adjacent config." Husser also dropped the QA SOP promotion idea in favor of Luca's Dev SOP location.
+- **Convergence speed:** Both agents arrived at nearly identical proposals independently in Round 1, then refined to full agreement in Round 2. High confidence in the conclusion.
