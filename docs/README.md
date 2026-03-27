@@ -6,7 +6,23 @@ Engineering documentation and standard operating procedures.
 
 | File | Description |
 |------|-------------|
-| `discovery-phase-engineering-sop.md` | Discovery Phase SOP (v2.0) — strict 6-step sequential flow: V1 drafts → Meeting 1 debate → V2 revision → Meeting 2 cross-review → PRD synthesis |
-| `discovery-phase-flow.excalidraw` | Visual diagram of the discovery phase order of operations (open with Excalidraw VS Code extension) |
+| `discovery-phase-engineering-sop.md` | Discovery Phase SOP (v2.0) — strict 6-step sequential flow |
+| `discovery-phase-flow.excalidraw` | Visual diagram of the discovery phase order of operations |
 | `development-phase-engineering-sop.md` | Development Phase SOP — execution, QA loop, delivery, and memory compression |
 | `memory-system-reference.md` | Memory system reference — entry format, write rules, artifact registry schema |
+| `jira-lean-setup.md` | Jira board configuration and lean setup guide |
+| `prd-sprint-timeline.excalidraw` | Sprint timeline visual diagram |
+| `prd-agent-workload.excalidraw` | Agent workload distribution diagram |
+
+## Subdirectories
+
+### `design-sprint/`
+
+Placeholder docs for each Design Sprint PR branch (LKID-31 through LKID-38). One file per card.
+
+### `superpowers/specs/`
+
+| File | Description |
+|------|-------------|
+| `2026-03-25-prd-structure-design.md` | PRD structure and design specification |
+| `2026-03-26-client-dashboard-design.md` | Client dashboard design specification |
