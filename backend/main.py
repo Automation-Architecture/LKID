@@ -206,10 +206,10 @@ class PredictRequest(BaseModel):
     """
 
     bun: float = Field(
-        ..., ge=5, le=100, description="Blood Urea Nitrogen mg/dL"
+        ..., ge=5, le=150, description="Blood Urea Nitrogen mg/dL"
     )
     creatinine: float = Field(
-        ..., ge=0.1, le=25.0, description="Serum Creatinine mg/dL"
+        ..., ge=0.3, le=15.0, description="Serum Creatinine mg/dL"
     )
     potassium: float = Field(
         ..., ge=2.0, le=8.0, description="Potassium mEq/L"
@@ -219,10 +219,10 @@ class PredictRequest(BaseModel):
         ..., description="Biological sex"
     )
     hemoglobin: Optional[float] = Field(
-        None, ge=3.0, le=25.0, description="Hemoglobin g/dL"
+        None, ge=4.0, le=20.0, description="Hemoglobin g/dL"
     )
     glucose: Optional[float] = Field(
-        None, ge=20, le=600, description="Fasting Glucose mg/dL"
+        None, ge=40, le=500, description="Fasting Glucose mg/dL"
     )
 
     # Lead capture fields (optional)
