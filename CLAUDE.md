@@ -73,10 +73,10 @@ agent-teams/
 │   ├── gay_mark/drafts/          # db_design.md, db_docs.md, db_schema.sql
 │   ├── harshit/drafts/           # frontend_architecture.md, lean-launch-review.md
 │   ├── husser/drafts/            # lean-launch-stories.md, design-sprint-stories.md, client-dashboard-stories.md, week-1-product-update.md
-│   ├── inga/drafts/              # 7 UX files + design-sprint-meeting-1.md, lean-launch-review.md, design-sprint-sign-off.md, client-dashboard-mockup.md
+│   ├── inga/drafts/              # 7 UX files + design-sprint-meeting-1.md, lean-launch-review.md, design-sprint-sign-off.md, client-dashboard-mockup.md, bun-floor-display-design.md, clerk-ux-review.md
 │   ├── john_donaldson/drafts/    # api_contract.json, api_docs.md, lean-launch-review.md, backend-research.md, week-1-technical-update.md
 │   ├── luca/drafts/              # architecture.md, infrastructure-setup.md, railway-deployment-checklist.md, lean-launch-review.md, sprint-progress.json, spec-tracker.json
-│   └── yuri/drafts/              # test_strategy.md, lean-launch-review.md, design-sprint-qa-report.md
+│   └── yuri/drafts/              # test_strategy.md, lean-launch-review.md, design-sprint-qa-report.md, sprint2-qa-report-1.md
 ├── docs/
 │   ├── discovery-phase-engineering-sop.md
 │   ├── discovery-phase-flow.excalidraw
@@ -95,7 +95,10 @@ agent-teams/
 ├── app/                          # Empty — Development Phase
 ├── tests/                        # Empty — Development Phase
 ├── server_side_calc_spec_v1.md
-├── Resources/agent-teams-reference.md
+├── Resources/
+│   ├── agent-teams-reference.md
+│   ├── railway-docs-summary.md   # Railway deployment reference (FastAPI, Postgres, domains, etc.)
+│   └── klaviyo-docs-summary.md   # Klaviyo Python SDK, Profiles/Events API, Flows, rate limits (LKID-47)
 ├── launch-team.sh
 └── README.md
 ```
