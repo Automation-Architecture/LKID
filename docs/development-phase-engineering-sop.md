@@ -120,6 +120,64 @@ At project completion:
 
 ---
 
+## Merge Protocol
+
+> Added March 27, 2026 following Sprint 2 merge post-mortem.
+> See `agents/luca/drafts/sprint2-merge-postmortem.md` for full context.
+
+These rules are **binding** for all merge operations. Violations are blocking findings.
+
+### Rule 1: Worktree Isolation Is Mandatory
+
+All parallel agent work on the same repo MUST use `isolation: "worktree"` on Agent dispatches. Agents must never share a working tree. This applies to any scenario where two or more agents are dispatched to the same repository concurrently.
+
+**Rationale:** On Mar 27, three agents checked out different branches in the same working tree, causing stashed changes, lost work, and cross-branch contamination.
+
+### Rule 2: Pre-Merge Rebase Check
+
+Before merging any PR, verify it is conflict-free against current main:
+
+```bash
+git merge-tree $(git merge-base HEAD origin/main) HEAD origin/main
+```
+
+If the output contains conflict markers, the PR must be rebased before merge. No exceptions.
+
+**Rationale:** PRs #17 and #19 conflicted with main after earlier PRs were merged. PR #19 had 10+ conflicts and had to be rebuilt from scratch.
+
+### Rule 3: Binding Validation Range Table
+
+One authoritative validation range table exists in `agents/luca/drafts/backend-meeting-memo.md`. All layers (frontend form validation, Pydantic models, DB CHECK constraints, test fixtures) MUST reference this table. No layer may define its own ranges independently. Any range change requires:
+
+1. Update the authoritative table first.
+2. Propagate to all layers in the same PR or coordinated PR set.
+3. QA verifies all layers match.
+
+**Rationale:** Validation ranges diverged across 4 layers without detection until Yuri's batch QA. Required an engineering meeting, a DB migration, and fixes to 3 PRs.
+
+### Rule 4: Sequential Merge Protocol
+
+When merging multiple PRs in a single session:
+
+1. Rebase ALL PRs against current main before starting merges.
+2. Verify all are conflict-free.
+3. Merge in dependency order (base layers first, then consumers).
+4. After each merge, re-verify remaining PRs if they touch overlapping files.
+
+**Rationale:** Merging PRs #14, #15, #16 in sequence without pre-rebasing caused downstream PRs to conflict with updated main.
+
+### Rule 5: Stale Branch Detection
+
+Any PR branch more than 2 days behind main must be rebased before QA review, not after. This check applies at:
+
+- PR creation
+- QA review start
+- Pre-merge verification
+
+**Rationale:** PR #15 was branched from old main and would have regressed the `PredictRequest` model if merged without rebase. Only caught by QA, not by process.
+
+---
+
 ## Development Phase Memory Checkpoints
 
 Agents MUST write memory entries after architecture decisions, QA cycles, and at final completion. See `memory-system-reference.md` for entry format, write rules, and all checkpoint definitions.
