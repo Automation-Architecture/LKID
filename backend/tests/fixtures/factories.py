@@ -7,16 +7,16 @@ and Pydantic validation ranges in main.py PredictRequest (LKID-15 enhanced).
 DB constraints (leads table):
   - age:        INTEGER, 18 <= age <= 120
   - bun:        NUMERIC, 5 <= bun <= 150
-  - creatinine: NUMERIC, 0.3 <= creatinine <= 15.0
+  - creatinine: NUMERIC, 0.3 <= creatinine <= 20.0
 
-Pydantic PredictRequest constraints (current main.py):
-  - bun:        float, ge=5, le=100
-  - creatinine: float, ge=0.1, le=25.0
+Pydantic PredictRequest constraints (binding validation table):
+  - bun:        float, ge=5, le=150
+  - creatinine: float, ge=0.3, le=20.0
   - potassium:  float, ge=2.0, le=8.0
   - age:        int, ge=18, le=120
   - sex:        Literal["male", "female", "unknown"]
-  - hemoglobin: Optional[float], ge=3.0, le=25.0
-  - glucose:    Optional[float], ge=20, le=600
+  - hemoglobin: Optional[float], ge=4.0, le=20.0
+  - glucose:    Optional[float], ge=40, le=500
   - name:       Optional[str], max_length=200
   - email:      Optional[EmailStr]
 
@@ -98,10 +98,8 @@ def make_lab_entry(**overrides: Any) -> dict[str, Any]:
 def make_lab_entry_at_min() -> dict[str, Any]:
     """Return a lab entry at minimum valid boundaries.
 
-    Uses the intersection of DB CHECK and Pydantic constraints:
-      age=18, bun=5, creatinine=0.3 (DB min), potassium=2.0
-    Note: Pydantic creatinine min is 0.1, DB min is 0.3. We use 0.3
-    (the stricter DB constraint) for lab entries.
+    Uses the binding validation table ranges:
+      age=18, bun=5, creatinine=0.3, potassium=2.0
     """
     return make_lab_entry(
         age=18,
@@ -115,14 +113,13 @@ def make_lab_entry_at_min() -> dict[str, Any]:
 def make_lab_entry_at_max() -> dict[str, Any]:
     """Return a lab entry at maximum valid boundaries.
 
-    Uses the intersection of DB CHECK and Pydantic constraints:
-      age=120, bun=100 (Pydantic max), creatinine=15.0 (DB max), potassium=8.0
-    Note: DB bun max is 150, Pydantic max is 100. We use 100 for API tests.
+    Uses the binding validation table ranges:
+      age=120, bun=150, creatinine=20.0, potassium=8.0
     """
     return make_lab_entry(
         age=120,
-        bun=100.0,
-        creatinine=15.0,
+        bun=150.0,
+        creatinine=20.0,
         potassium=8.0,
         sex="male",
     )
@@ -190,10 +187,10 @@ def make_predict_request(**overrides: Any) -> dict[str, Any]:
 
 
 def make_predict_request_at_min() -> dict[str, Any]:
-    """PredictRequest at minimum valid Pydantic boundaries."""
+    """PredictRequest at minimum valid boundaries (binding validation table)."""
     return make_predict_request(
         bun=5.0,
-        creatinine=0.1,
+        creatinine=0.3,
         potassium=2.0,
         age=18,
         sex="unknown",
@@ -201,15 +198,15 @@ def make_predict_request_at_min() -> dict[str, Any]:
 
 
 def make_predict_request_at_max() -> dict[str, Any]:
-    """PredictRequest at maximum valid Pydantic boundaries."""
+    """PredictRequest at maximum valid boundaries (binding validation table)."""
     return make_predict_request(
-        bun=100.0,
-        creatinine=25.0,
+        bun=150.0,
+        creatinine=20.0,
         potassium=8.0,
         age=120,
         sex="female",
-        hemoglobin=25.0,
-        glucose=600.0,
+        hemoglobin=20.0,
+        glucose=500.0,
     )
 
 

@@ -48,12 +48,12 @@ def validate_predict_request(data: dict, label: str) -> bool:
 
 
 def validate_lab_entry_ranges(data: dict, label: str) -> bool:
-    """Validate lab entry values against DB CHECK constraints.
+    """Validate lab entry values against binding validation table.
 
-    DB constraints (from Alembic 001):
+    Binding ranges (backend engineering meeting memo):
       - age:        18 <= age <= 120
       - bun:        5 <= bun <= 150
-      - creatinine: 0.3 <= creatinine <= 15.0
+      - creatinine: 0.3 <= creatinine <= 20.0
     """
     errors = []
 
@@ -66,8 +66,8 @@ def validate_lab_entry_ranges(data: dict, label: str) -> bool:
         errors.append(f"bun={bun} outside [5, 150]")
 
     creatinine = data.get("creatinine")
-    if creatinine is not None and not (0.3 <= creatinine <= 15.0):
-        errors.append(f"creatinine={creatinine} outside [0.3, 15.0]")
+    if creatinine is not None and not (0.3 <= creatinine <= 20.0):
+        errors.append(f"creatinine={creatinine} outside [0.3, 20.0]")
 
     if errors:
         print(f"  FAIL: {label} -- {'; '.join(errors)}")

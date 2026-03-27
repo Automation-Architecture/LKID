@@ -213,27 +213,27 @@ export function makeErrorResponse(
 // Boundary helpers
 // ---------------------------------------------------------------------------
 
-/** PredictRequest at minimum valid Pydantic boundaries. */
+/** PredictRequest at minimum valid boundaries (binding validation table). */
 export function makePredictRequestAtMin(): PredictRequest {
   return makePredictRequest({
     bun: 5,
-    creatinine: 0.1,
+    creatinine: 0.3,
     potassium: 2.0,
     age: 18,
     sex: "unknown",
   });
 }
 
-/** PredictRequest at maximum valid Pydantic boundaries. */
+/** PredictRequest at maximum valid boundaries (binding validation table). */
 export function makePredictRequestAtMax(): PredictRequest {
   return makePredictRequest({
-    bun: 100,
-    creatinine: 25.0,
+    bun: 150,
+    creatinine: 20.0,
     potassium: 8.0,
     age: 120,
     sex: "female",
-    hemoglobin: 25.0,
-    glucose: 600,
+    hemoglobin: 20.0,
+    glucose: 500,
   });
 }
 
