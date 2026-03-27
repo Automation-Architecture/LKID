@@ -3,7 +3,7 @@
 ## KidneyHood App
 
 **Goal:** Lead gen web app — patients enter kidney health lab values, view an eGFR trajectory chart, download PDF. Email captured for warm campaign.
-**Tech Stack:** Next.js 15 (Vercel) + FastAPI (Railway) + PostgreSQL (Railway) + Clerk (auth) + Playwright (PDF)
+**Tech Stack:** Next.js 16 (Vercel) + FastAPI (Railway) + PostgreSQL (Railway) + Clerk v7 (auth) + Playwright (PDF)
 **Jira:** [SPEC Board](https://automationarchitecture.atlassian.net/jira/software/c/projects/SPEC/boards/329/backlog) | [LKID Board](https://automationarchitecture.atlassian.net/jira/software/c/projects/LKID/boards/363)
 **Repo:** [github.com/Automation-Architecture/LKID](https://github.com/Automation-Architecture/LKID)
 **Specs:** `/Users/brad/IDE/kidneyhood/` (3 docx files)
@@ -45,6 +45,7 @@
 | LKID-20–29 | Polish, tests, QA gate (10 cards) | Various | See Jira |
 | LKID-14 | Rules engine (Phase 1 formula) | John Donaldson | **Blocked on Lee** |
 | LKID-47 | Klaviyo lead capture | John Donaldson | **Blocked on Lee API key** |
+| — | Clerk v7 + Next.js 16 migration (re-enable middleware, fix types, remove ts-nocheck) | Harshit | New — discovered Mar 27 |
 
 ### Post-Ship (after April 9 retro)
 
@@ -59,6 +60,7 @@ See `active/chatroom/chatroom_report.md` for the full decision rationale.
 
 - 11 PRs merged (#9–#21). Jira board swept and aligned.
 - 4 HIGH-severity post-merge bugs found and fixed (`agents/yuri/drafts/sprint2-debacle-qa-report.md`).
+- 3 Vercel build blockers fixed (Playwright tsconfig, Clerk v7 types, middleware). Clerk middleware disabled temporarily — full migration needed in Sprint 3.
 - Client dashboard live and auto-updating for Lee.
 - Remediation cards LKID-48–58: 10/11 complete. Only LKID-49 deferred with chart.
 
