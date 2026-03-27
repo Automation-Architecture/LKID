@@ -57,7 +57,7 @@ const fields: FormFieldDef[] = [
     placeholder: "",
     helper: "years",
     min: 18,
-    max: 100,
+    max: 120,
     step: 1,
   },
   {

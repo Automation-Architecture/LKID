@@ -16,7 +16,7 @@ export interface FieldRules {
  */
 export const PREDICT_FORM_RULES: FieldRules = {
   name: { required: true, message: "Name is required" },
-  age: { required: true, min: 18, max: 100, integer: true, message: "Age must be between 18 and 100" },
+  age: { required: true, min: 18, max: 120, integer: true, message: "Age must be between 18 and 120" },
   bun: { required: true, min: 5, max: 150, integer: true, message: "BUN must be between 5 and 150 mg/dL" },
   creatinine: { required: true, min: 0.1, max: 25, message: "Creatinine must be between 0.1 and 25 mg/dL" },
 };
