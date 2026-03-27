@@ -1,11 +1,13 @@
+"use client";
+
 const SPRINTS = [
-  { name: "Sprint 1 — Design", start: "2026-03-30", end: "2026-04-03" },
-  { name: "Sprint 2 — Core Flow", start: "2026-04-06", end: "2026-04-10" },
-  { name: "Sprint 3 — Polish & QA", start: "2026-04-13", end: "2026-04-17" },
+  { name: "Sprint 1 — Design", start: "2026-03-24", end: "2026-03-26" },
+  { name: "Sprint 2 — Core Flow", start: "2026-03-26", end: "2026-04-01" },
+  { name: "Sprint 3 — Polish & QA", start: "2026-04-02", end: "2026-04-08" },
 ];
 
-const PROJECT_START = new Date("2026-03-30");
-const PROJECT_END = new Date("2026-04-17");
+const PROJECT_START = new Date("2026-03-24");
+const PROJECT_END = new Date("2026-04-08");
 const TOTAL_DAYS = (PROJECT_END.getTime() - PROJECT_START.getTime()) / (1000 * 60 * 60 * 24);
 
 function getProgress(): number {
@@ -26,19 +28,27 @@ export function HeroBanner() {
   const progress = getProgress();
 
   return (
-    <section className="space-y-6">
+    <section className="space-y-6" aria-labelledby="project-timeline-heading">
       <div className="flex items-center gap-3">
-        <span className="text-2xl font-bold" style={{ color: "#004D43" }}>KidneyHood</span>
-        <span className="text-sm font-medium" style={{ color: "#636363" }}>Project Dashboard</span>
+        <h1 id="project-timeline-heading" className="text-2xl font-bold" style={{ color: "var(--brand-teal)" }}>KidneyHood</h1>
+        <span className="text-sm font-medium" style={{ color: "var(--brand-body)" }}>Project Dashboard</span>
       </div>
 
       {/* Timeline bar */}
       <div className="space-y-2">
-        <div className="flex justify-between text-sm" style={{ color: "#636363" }}>
-          <span>Mar 30</span>
-          <span>Apr 17</span>
+        <div className="flex justify-between text-sm" style={{ color: "var(--brand-body)" }}>
+          <span>Mar 24</span>
+          <span>Apr 8</span>
         </div>
-        <div className="relative h-3 w-full overflow-hidden rounded-full" style={{ backgroundColor: "#E5E7EB" }}>
+        <div
+          className="relative h-3 w-full overflow-hidden rounded-full"
+          style={{ backgroundColor: "var(--brand-track)" }}
+          role="progressbar"
+          aria-valuenow={progress}
+          aria-valuemin={0}
+          aria-valuemax={100}
+          aria-label="Project timeline progress"
+        >
           {/* Sprint segments — teal only, opacity varies by status */}
           {SPRINTS.map((sprint) => {
             const left = getSprintPosition(sprint.start);
@@ -56,29 +66,24 @@ export function HeroBanner() {
                 style={{
                   left: `${left}%`,
                   width: `${width}%`,
-                  backgroundColor: "#004D43",
+                  backgroundColor: "var(--brand-teal)",
                   opacity: isCompleted ? 1 : 0.4,
                 }}
               />
             );
           })}
-          {/* Progress fill */}
-          <div
-            className="absolute top-0 h-full rounded-full transition-all"
-            style={{ width: `${progress}%`, backgroundColor: "#004D43" }}
-          />
           {/* You are here marker */}
           <div
             className="absolute top-1/2 h-5 w-5 -translate-x-1/2 -translate-y-1/2 rounded-full border-2 border-white"
-            style={{ left: `${progress}%`, backgroundColor: "#E6FF2B" }}
+            style={{ left: `${progress}%`, backgroundColor: "var(--brand-lime)" }}
           />
         </div>
 
         {/* Sprint labels */}
         <div className="flex flex-col gap-2 pt-2 md:flex-row md:justify-between">
           {SPRINTS.map((sprint) => (
-            <div key={sprint.name} className="text-sm" style={{ color: "#636363" }}>
-              <span className="font-medium" style={{ color: "#010101" }}>{sprint.name}</span>
+            <div key={sprint.name} className="text-sm" style={{ color: "var(--brand-body)" }}>
+              <span className="font-medium" style={{ color: "var(--brand-black)" }}>{sprint.name}</span>
               <br />
               <span>{sprint.start.slice(5)} – {sprint.end.slice(5)}</span>
             </div>

@@ -1,7 +1,7 @@
 export function PrototypePreview() {
   return (
-    <section className="rounded-xl" style={{ backgroundColor: "#004D43", padding: "40px" }}>
-      <h2 className="text-2xl font-bold text-white">
+    <section className="rounded-xl" aria-labelledby="live-prototype-heading" style={{ backgroundColor: "#004D43", padding: "40px" }}>
+      <h2 id="live-prototype-heading" className="text-2xl font-bold text-white">
         Live Prototype
       </h2>
       <p className="mt-2 text-base" style={{ color: "rgba(255,255,255,0.8)" }}>

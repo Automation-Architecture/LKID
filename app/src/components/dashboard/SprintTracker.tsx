@@ -16,8 +16,8 @@ const STATUS_LABELS: Record<string, string> = {
 
 export function SprintTracker() {
   return (
-    <section className="space-y-6">
-      <h2 className="text-2xl font-bold" style={{ color: "#004D43" }}>
+    <section className="space-y-6" aria-labelledby="sprint-progress-heading">
+      <h2 id="sprint-progress-heading" className="text-2xl font-bold" style={{ color: "var(--brand-teal)" }}>
         Sprint Progress
       </h2>
 

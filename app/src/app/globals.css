@@ -52,6 +52,33 @@
 }
 
 :root {
+  /* Dashboard brand palette */
+  --brand-teal: #004D43;
+  --brand-lime: #E6FF2B;
+  --brand-cream: #F9F7F2;
+  --brand-body: #636363;
+  --brand-black: #010101;
+  --brand-gray: #898A8D;
+  --brand-divider: #D8D8D8;
+  --brand-divider-subtle: #E8E8E8;
+  --brand-track: #E5E7EB;
+
+  /* Dashboard status colors */
+  --status-done-bg: #DCFCE7;
+  --status-done-text: #166534;
+  --status-done-border: #BBF7D0;
+  --status-progress-bg: #FEF3C7;
+  --status-progress-text: #92400E;
+  --status-progress-border: #FDE68A;
+  --status-upcoming-bg: #F3F4F6;
+  --status-upcoming-text: #6B7280;
+  --status-upcoming-border: #E5E7EB;
+  --status-blocked-bg: #FEE2E2;
+  --status-blocked-text: #991B1B;
+  --status-blocked-border: #FECACA;
+  --status-unblocked-bg: #DBEAFE;
+  --status-unblocked-text: #1E40AF;
+
   /* KidneyHood design tokens — from Inga's design-tokens.md */
   --background: 0 0% 100%;
   --foreground: 0 0% 10%;

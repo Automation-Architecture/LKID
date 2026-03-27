@@ -18,9 +18,9 @@ export function SpecTracker() {
   const addressed = specData.items.filter((i) => i.status === "done" || i.status === "in_progress").length;
 
   return (
-    <section className="space-y-4">
+    <section className="space-y-4" aria-labelledby="spec-acknowledgment-heading">
       <div className="flex items-baseline justify-between">
-        <h2 className="text-2xl font-bold" style={{ color: "#004D43" }}>
+        <h2 id="spec-acknowledgment-heading" className="text-2xl font-bold" style={{ color: "var(--brand-teal)" }}>
           Spec Acknowledgment
         </h2>
         <span className="text-sm" style={{ color: "#636363" }}>
@@ -33,10 +33,10 @@ export function SpecTracker() {
         <table className="w-full text-sm">
           <thead>
             <tr style={{ backgroundColor: "#004D43" }}>
-              <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-white" style={{ width: "35%" }}>Spec Item</th>
-              <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-white" style={{ width: "15%" }}>Card</th>
-              <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-white" style={{ width: "15%" }}>Status</th>
-              <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-white" style={{ width: "35%" }}>Notes</th>
+              <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-white" scope="col" style={{ width: "35%" }}>Spec Item</th>
+              <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-white" scope="col" style={{ width: "15%" }}>Card</th>
+              <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-white" scope="col" style={{ width: "15%" }}>Status</th>
+              <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-white" scope="col" style={{ width: "35%" }}>Notes</th>
             </tr>
           </thead>
           <tbody>

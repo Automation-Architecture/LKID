@@ -1,7 +1,7 @@
 const UPCOMING = [
   {
     name: "Sprint 2 — Core Flow",
-    dates: "Apr 6 – Apr 10",
+    dates: "Mar 26 – Apr 1",
     status: "up_next" as const,
     deliverables: [
       "Clerk magic-link authentication",
@@ -14,7 +14,7 @@ const UPCOMING = [
   },
   {
     name: "Sprint 3 — Polish & QA",
-    dates: "Apr 13 – Apr 17",
+    dates: "Apr 2 – Apr 8",
     status: "planned" as const,
     deliverables: [
       "PDF export via Playwright (exact chart fidelity)",
@@ -29,8 +29,8 @@ const UPCOMING = [
 
 export function Horizon() {
   return (
-    <section className="space-y-6">
-      <h2 className="text-2xl font-bold" style={{ color: "#004D43" }}>
+    <section className="space-y-6" aria-labelledby="whats-coming-heading">
+      <h2 id="whats-coming-heading" className="text-2xl font-bold" style={{ color: "var(--brand-teal)" }}>
         What&#39;s Coming
       </h2>
 
@@ -61,7 +61,7 @@ export function Horizon() {
             <ul className="mt-4 space-y-2">
               {sprint.deliverables.map((d, i) => (
                 <li key={i} className="flex items-start gap-2 text-sm" style={{ color: "#010101" }}>
-                  <span style={{ color: "#636363" }}>&bull;</span>
+                  <span aria-hidden="true" style={{ color: "var(--brand-body)" }}>&bull;</span>
                   {d}
                 </li>
               ))}
@@ -81,7 +81,7 @@ export function Horizon() {
             Target Launch
           </p>
           <p className="mt-1 text-lg font-bold text-white">
-            April 17, 2026
+            April 8, 2026
           </p>
         </div>
       </div>

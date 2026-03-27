@@ -45,8 +45,8 @@ Key tradeoffs: Railway over AWS for simplicity (MVP doesn't need auto-scaling). 
 
 export function WeeklyUpdate() {
   return (
-    <section className="space-y-6">
-      <h2 className="text-2xl font-bold" style={{ color: "#004D43" }}>
+    <section className="space-y-6" aria-labelledby="weekly-updates-heading">
+      <h2 id="weekly-updates-heading" className="text-2xl font-bold" style={{ color: "var(--brand-teal)" }}>
         Weekly Updates
       </h2>
 

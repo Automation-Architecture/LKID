@@ -29,8 +29,8 @@ const DOCUMENTS = [
 
 export function DocumentLibrary() {
   return (
-    <section className="space-y-4">
-      <h2 className="text-2xl font-bold" style={{ color: "#004D43" }}>
+    <section className="space-y-4" aria-labelledby="documents-heading">
+      <h2 id="documents-heading" className="text-2xl font-bold" style={{ color: "var(--brand-teal)" }}>
         Documents
       </h2>
 
