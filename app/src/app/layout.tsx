@@ -21,21 +21,23 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <ClerkProvider
-      appearance={{
-        variables: {
-          colorPrimary: "#004D43",
-          borderRadius: "0.5rem",
-          fontSize: "1rem",
-        },
-      }}
-    >
-      <html lang="en" className={`${inter.variable} h-full antialiased`}>
-        <body className="min-h-full flex flex-col">
+    <html lang="en" className={`${inter.variable} h-full antialiased`}>
+      <body className="min-h-full flex flex-col">
+        <ClerkProvider
+          afterSignInUrl="/predict"
+          afterSignUpUrl="/predict"
+          appearance={{
+            variables: {
+              colorPrimary: "#004D43",
+              borderRadius: "0.5rem",
+              fontSize: "1rem",
+            },
+          }}
+        >
           <SkipNav />
           {children}
-        </body>
-      </html>
-    </ClerkProvider>
+        </ClerkProvider>
+      </body>
+    </html>
   );
 }
