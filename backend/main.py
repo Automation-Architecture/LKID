@@ -24,6 +24,8 @@ from slowapi.util import get_remote_address
 from slowapi.errors import RateLimitExceeded
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_async_engine
 
+from prediction.engine import predict as run_prediction
+
 # ---------------------------------------------------------------------------
 # Config
 # ---------------------------------------------------------------------------
@@ -124,7 +126,7 @@ app.add_middleware(
 class PredictRequest(BaseModel):
     bun: float = Field(..., ge=5, le=150, description="Blood Urea Nitrogen (mg/dL)")
     creatinine: float = Field(..., ge=0.3, le=15.0, description="Serum Creatinine (mg/dL)")
-    age: int = Field(..., ge=18, le=100, description="Patient age in years")
+    age: int = Field(..., ge=18, le=120, description="Patient age in years")
     name: Optional[str] = Field(None, max_length=200, description="Patient name for lead capture")
     email: Optional[EmailStr] = Field(None, description="Patient email for lead capture")
 
@@ -193,11 +195,12 @@ async def predict(request: Request, body: PredictRequest):
 
     TODO (Donaldson): Drop prediction engine logic here.
     """
-    # --- Placeholder: prediction engine goes here ---
-    raise HTTPException(
-        status_code=501,
-        detail="Prediction engine not yet implemented. Awaiting Donaldson's rules engine.",
+    result = run_prediction(
+        bun=body.bun,
+        creatinine=body.creatinine,
+        age=body.age,
     )
+    return result
 
 
 # ---------------------------------------------------------------------------

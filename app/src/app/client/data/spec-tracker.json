@@ -3,14 +3,14 @@
     {
       "spec_section": "Section 1 — Time Points Array",
       "jira_card": "LKID-14",
-      "status": "done",
-      "notes": "Confirmed: 15-value array [0,1,3,6,12,18,24,36,48,60,72,84,96,108,120]. Maps to prediction module constant."
+      "status": "unblocked",
+      "notes": "Confirmed: 15-value array. Implemented in prediction module constant. Awaiting engine calibration."
     },
     {
       "spec_section": "Section 2 — Dialysis Threshold",
       "jira_card": "LKID-14",
-      "status": "done",
-      "notes": "Corrected to eGFR 12 (was 15). All PRD and code references updated."
+      "status": "unblocked",
+      "notes": "Corrected to eGFR 12 (was 15). Implemented in engine. Awaiting test vector validation."
     },
     {
       "spec_section": "Section 3.1 — CKD-EPI 2021 Formula",
