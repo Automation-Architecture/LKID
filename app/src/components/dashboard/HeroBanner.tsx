@@ -28,7 +28,7 @@ export function HeroBanner() {
   const progress = getProgress();
 
   return (
-    <section className="space-y-6" aria-labelledby="project-timeline-heading">
+    <section className="space-y-6" aria-labelledby="project-timeline-heading" style={{ paddingTop: "48px", paddingBottom: "32px" }}>
       <div className="flex items-center gap-3">
         <h1 id="project-timeline-heading" className="text-2xl font-bold" style={{ color: "var(--brand-teal)" }}>KidneyHood</h1>
         <span className="text-sm font-medium" style={{ color: "var(--brand-body)" }}>Project Dashboard</span>

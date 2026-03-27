@@ -1,3 +1,4 @@
+import { CheckCircle2, ArrowRightCircle, XCircle, Circle } from "lucide-react";
 import sprintData from "@/app/client/data/sprint-progress.json";
 
 const STATUS_STYLES: Record<string, { bg: string; text: string; border: string }> = {
@@ -14,6 +15,13 @@ const STATUS_LABELS: Record<string, string> = {
   blocked: "Blocked",
 };
 
+const STATUS_ICONS: Record<string, React.ReactNode> = {
+  done: <CheckCircle2 size={14} />,
+  in_progress: <ArrowRightCircle size={14} />,
+  blocked: <XCircle size={14} />,
+  upcoming: <Circle size={14} />,
+};
+
 export function SprintTracker() {
   return (
     <section className="space-y-6" aria-labelledby="sprint-progress-heading">
@@ -26,10 +34,10 @@ export function SprintTracker() {
         return (
           <div key={sprint.name} className="space-y-3">
             <div className="flex items-baseline justify-between">
-              <h3 className="text-lg font-semibold" style={{ color: "#010101" }}>
+              <h3 className="text-lg font-semibold" style={{ color: "var(--brand-black)" }}>
                 {sprint.name}
               </h3>
-              <span className="text-sm" style={{ color: "#636363" }}>
+              <span className="text-sm" style={{ color: "var(--brand-body)" }}>
                 {doneCount} of {sprint.cards.length} complete
               </span>
             </div>
@@ -39,24 +47,25 @@ export function SprintTracker() {
                 return (
                   <div
                     key={card.id}
-                    className="border p-3 md:p-4"
+                    className="relative border p-3 md:p-4"
                     style={{
                       borderRadius: "10px",
+                      minWidth: "140px",
                       backgroundColor: style.bg,
                       borderColor: style.border,
                     }}
                   >
+                    <div className="absolute right-2 top-2" style={{ color: style.text }} aria-hidden="true">
+                      {STATUS_ICONS[card.status] ?? STATUS_ICONS.upcoming}
+                    </div>
                     <div className="text-xs font-medium" style={{ color: style.text }}>
                       {card.id}
                     </div>
                     <div
                       className="mt-1 line-clamp-2 text-sm"
-                      style={{ color: "#010101" }}
+                      style={{ color: "var(--brand-black)" }}
                     >
                       {card.title}
-                    </div>
-                    <div className="mt-2 text-xs font-medium" style={{ color: style.text }}>
-                      {STATUS_LABELS[card.status]}
                     </div>
                   </div>
                 );
