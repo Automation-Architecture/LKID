@@ -225,7 +225,7 @@ import {
 | SprintTracker | Section 4.4 | Tiles in flex-wrap grid, 4/row desktop, 3 tablet, 2 mobile. Tile padding 16px, border-radius 10px. Status colors per table in Section 4.4. Card ID 12px/600, title 14px/400 with 2-line clamp. |
 | SpecTracker | Section 4.5 | Teal `#004D43` header row with white uppercase text. Alternating row bg `#FFFFFF`/`#FAFAFA`. Badge pill shape (9999px radius). Sticky first column on mobile with right shadow. Min table width 600px. |
 | DocumentLibrary | Section 4.6 | Row cards with 10px radius, 16px 20px padding. 32px icon container with `#F3F4F6` bg. Hover: border `#898A8D`, bg `#FAFAFA`. "New" badge: lime bg, teal text, pill shape. |
-| Horizon | Section 4.7 | 2-column grid for sprint cards. Ship date callout: teal `#004D43` bg, 12px radius, lime 4px accent bar on left side. "Target launch: April 17, 2026" in 18px/700 white. |
+| Horizon | Section 4.7 | 2-column grid for sprint cards. Ship date callout: teal `#004D43` bg, 12px radius, lime 4px accent bar on left side. "Target launch: April 9, 2026" in 18px/700 white. |
 
 #### Data Contracts
 
@@ -234,24 +234,24 @@ import {
 ```typescript
 interface HeroBannerProps {
   projectName: string       // "KidneyHood"
-  startDate: string         // "2026-03-30"
-  endDate: string           // "2026-04-17"
+  startDate: string         // "2026-03-20"
+  endDate: string           // "2026-04-09"
   sprints: Array<{
     name: string            // "Sprint 1 — Design"
-    startDate: string       // "2026-03-30"
-    endDate: string         // "2026-04-03"
+    startDate: string       // "2026-03-20"
+    endDate: string         // "2026-03-26"
   }>
 }
 
 // Example usage in page.tsx:
 <HeroBanner
   projectName="KidneyHood"
-  startDate="2026-03-30"
-  endDate="2026-04-17"
+  startDate="2026-03-20"
+  endDate="2026-04-09"
   sprints={[
-    { name: "Sprint 1 — Design", startDate: "2026-03-30", endDate: "2026-04-03" },
-    { name: "Sprint 2 — Core Flow", startDate: "2026-04-06", endDate: "2026-04-10" },
-    { name: "Sprint 3 — Polish & QA", startDate: "2026-04-13", endDate: "2026-04-17" },
+    { name: "Sprint 1 — Design", startDate: "2026-03-20", endDate: "2026-03-26" },
+    { name: "Sprint 2 — Core Flow", startDate: "2026-03-26", endDate: "2026-04-02" },
+    { name: "Sprint 3 — Polish & QA", startDate: "2026-04-02", endDate: "2026-04-09" },
   ]}
 />
 ```
@@ -263,7 +263,7 @@ interface HeroBannerProps {
   "sprints": [
     {
       "name": "Sprint 1 — Design",
-      "dates": "Mar 30 - Apr 3",
+      "dates": "Mar 20 - Mar 26",
       "cards": [
         { "id": "LKID-31", "title": "Revise user flows", "status": "done" },
         { "id": "LKID-32", "title": "Revise wireframes", "status": "done" },
@@ -277,7 +277,7 @@ interface HeroBannerProps {
     },
     {
       "name": "Sprint 2 — Core Flow",
-      "dates": "Apr 6 - Apr 10",
+      "dates": "Mar 26 - Apr 2",
       "cards": [
         { "id": "LKID-1", "title": "Clerk auth integration", "status": "upcoming" },
         { "id": "LKID-2", "title": "Database setup (Railway)", "status": "upcoming" },
@@ -286,7 +286,7 @@ interface HeroBannerProps {
     },
     {
       "name": "Sprint 3 — Polish & QA",
-      "dates": "Apr 13 - Apr 17",
+      "dates": "Apr 2 - Apr 9",
       "cards": [
         { "id": "LKID-4", "title": "PDF export", "status": "upcoming" },
         { "id": "LKID-5", "title": "Disclaimers & legal", "status": "upcoming" }
@@ -396,7 +396,7 @@ interface HorizonProps {
   upcomingSprints={[
     {
       name: "Sprint 2 — Core Flow",
-      dates: "Apr 6 - Apr 10",
+      dates: "Mar 26 - Apr 2",
       status: "up_next",
       deliverables: [
         "Clerk magic-link auth integration",
@@ -408,7 +408,7 @@ interface HorizonProps {
     },
     {
       name: "Sprint 3 — Polish & QA",
-      dates: "Apr 13 - Apr 17",
+      dates: "Apr 2 - Apr 9",
       status: "planned",
       deliverables: [
         "PDF export with Playwright (SVG fidelity)",
@@ -419,7 +419,7 @@ interface HorizonProps {
       ],
     },
   ]}
-  shipDate="April 17, 2026"
+  shipDate="April 9, 2026"
 />
 ```
 
@@ -462,7 +462,7 @@ interface HorizonProps {
 - [ ] Sprint preview cards in 2-column grid with 16px gap; each card `#FFFFFF` bg, 1px `#D8D8D8` border, 12px radius, 24px padding
 - [ ] Sprint name 18px/600/`#010101`; dates 14px/400/`#636363`; status badge top-right ("Up Next" amber, "Planned" gray)
 - [ ] Deliverables as unordered list with 6px `#004D43` dot bullets, 14px/400/`#010101` text, 8px gap between items
-- [ ] Ship date callout: full-width, `#004D43` bg, 12px radius, 24px 32px padding, "Target launch: April 17, 2026" in 18px/700/`#FFFFFF`, with 4px-wide 32px-tall lime (`#E6FF2B`) accent bar on the left
+- [ ] Ship date callout: full-width, `#004D43` bg, 12px radius, 24px 32px padding, "Target launch: April 9, 2026" in 18px/700/`#FFFFFF`, with 4px-wide 32px-tall lime (`#E6FF2B`) accent bar on the left
 - [ ] On mobile: sprint cards stack to 1 column; ship date padding reduces to 20px 24px, text to 16px
 
 **All components:**

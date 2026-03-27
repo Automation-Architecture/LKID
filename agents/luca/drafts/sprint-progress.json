@@ -2,7 +2,7 @@
   "sprints": [
     {
       "name": "Sprint 1 — Design Sprint",
-      "dates": "Mar 24 - Mar 26",
+      "dates": "Mar 20 - Mar 26",
       "cards": [
         { "id": "LKID-30", "title": "Design sprint kickoff", "status": "upcoming" },
         { "id": "LKID-31", "title": "Revise user flows", "status": "done" },
@@ -25,7 +25,7 @@
     },
     {
       "name": "Sprint 2 — Core Flow",
-      "dates": "Mar 26 - Apr 1",
+      "dates": "Mar 26 - Apr 2",
       "cards": [
         { "id": "LKID-1", "title": "Clerk auth integration", "status": "upcoming" },
         { "id": "LKID-2", "title": "PostgreSQL schema + Railway", "status": "upcoming" },
@@ -48,7 +48,7 @@
     },
     {
       "name": "Sprint 3 — Polish & QA",
-      "dates": "Apr 2 - Apr 8",
+      "dates": "Apr 2 - Apr 9",
       "cards": [
         { "id": "LKID-4", "title": "Playwright PDF generation", "status": "upcoming" },
         { "id": "LKID-5", "title": "Disclaimer components", "status": "upcoming" },

@@ -1,6 +1,6 @@
 # Task: Rewrite API Contract + Start Rules Engine
 
-**Priority:** P0 — must be done before Sprint 2 (Apr 6)
+**Priority:** P0 — must be done before Sprint 2 (Mar 26)
 **Assigned to:** John Donaldson (API Designer)
 **Date:** 2026-03-26
 
@@ -47,7 +47,7 @@ This is the **critical path item** for Sprint 2. Lee's calc spec fully unblocks 
 7. Computes bun_suppression_estimate
 8. Passes all 3 test vectors within ±0.2 tolerance
 
-**Start now.** If this is done before Apr 6, Sprint 2 effectively shrinks by 3-4 days.
+**Start now.** If this is done before Mar 26, Sprint 2 effectively shrinks by 3-4 days.
 
 ## Reference
 

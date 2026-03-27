@@ -458,7 +458,7 @@ All text uses the system font stack (`font-family: system-ui, -apple-system, san
 - Background: **#004D43** (teal)
 - Border-radius: **12px**
 - Padding: **24px 32px**
-- Text: "Target launch: April 17, 2026"
+- Text: "Target launch: April 9, 2026"
 - Style: 18px/700/#FFFFFF
 - Subtext (optional): 14px/400/#FFFFFF at 80% opacity
 - A small lime accent bar: **4px wide, 32px tall**, positioned left side, background **#E6FF2B**, border-radius **2px**

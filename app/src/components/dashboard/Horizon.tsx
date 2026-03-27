@@ -1,7 +1,7 @@
 const UPCOMING = [
   {
     name: "Sprint 2 — Core Flow",
-    dates: "Mar 26 – Apr 1",
+    dates: "Mar 26 – Apr 2",
     status: "up_next" as const,
     deliverables: [
       "Clerk magic-link authentication",
@@ -14,7 +14,7 @@ const UPCOMING = [
   },
   {
     name: "Sprint 3 — Polish & QA",
-    dates: "Apr 2 – Apr 8",
+    dates: "Apr 2 – Apr 9",
     status: "planned" as const,
     deliverables: [
       "PDF export via Playwright (exact chart fidelity)",
@@ -81,7 +81,7 @@ export function Horizon() {
             Target Launch
           </p>
           <p className="mt-1 text-lg font-bold text-white">
-            April 8, 2026
+            April 9, 2026
           </p>
         </div>
       </div>

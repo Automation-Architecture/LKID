@@ -56,7 +56,7 @@
 **Owner:** Harshit
 **Labels:** agent:harshit
 **Points:** 5
-**Description:** Build the five static content sections of the client dashboard. Each is a shadcn-based component using existing design tokens. **HeroBanner:** KidneyHood logo, "Project Dashboard" title, project timeline bar (Mar 30 - Apr 17) with a "You are here" date marker and sprint labels (Sprint 1 Design, Sprint 2 Core Flow, Sprint 3 Polish & QA). **SprintTracker:** Visual card grid showing Jira cards as small tiles with status colors — done (green), in progress (amber), upcoming (gray) — grouped by sprint. Reads from `app/client/data/sprint-progress.json`. **SpecTracker:** Table mapping Lee's calc spec items to implementation status. Columns: Spec Item, Jira Card, Status, Notes. Reads from `app/client/data/spec-tracker.json`. **DocumentLibrary:** Links to key artifacts (Lean Launch PRD, calc spec receipt, design sprint outputs, QA report) with one-line descriptions. **Horizon:** Sprint 2 and Sprint 3 previews with dates and focus areas, plus the ship date callout (April 17, 2026).
+**Description:** Build the five static content sections of the client dashboard. Each is a shadcn-based component using existing design tokens. **HeroBanner:** KidneyHood logo, "Project Dashboard" title, project timeline bar (Mar 20 - Apr 9) with a "You are here" date marker and sprint labels (Sprint 1 Design, Sprint 2 Core Flow, Sprint 3 Polish & QA). **SprintTracker:** Visual card grid showing Jira cards as small tiles with status colors — done (green), in progress (amber), upcoming (gray) — grouped by sprint. Reads from `app/client/data/sprint-progress.json`. **SpecTracker:** Table mapping Lee's calc spec items to implementation status. Columns: Spec Item, Jira Card, Status, Notes. Reads from `app/client/data/spec-tracker.json`. **DocumentLibrary:** Links to key artifacts (Lean Launch PRD, calc spec receipt, design sprint outputs, QA report) with one-line descriptions. **Horizon:** Sprint 2 and Sprint 3 previews with dates and focus areas, plus the ship date callout (April 9, 2026).
 **Acceptance Criteria:**
 - [ ] HeroBanner renders with timeline bar showing correct dates and "You are here" marker
 - [ ] Sprint labels (1, 2, 3) appear under the timeline with names and date ranges
@@ -111,7 +111,7 @@
 
 5. **Scope discipline.** The Lean Launch PRD cut the original 89 tickets down to ~25, reduced API endpoints from 12 to 5, database tables from 5 to 1 (plus Clerk), and frontend components from ~40 to 21. This is a lead generation tool, not a patient portal — every decision reinforces that focus.
 
-6. **What's next.** Sprint 2 (Apr 6-10) builds the core flow: Clerk auth integration, database setup on Railway, the FastAPI prediction endpoint, the real chart with all four trajectory lines, and the form-to-chart pipeline end-to-end.
+6. **What's next.** Sprint 2 (Mar 26 – Apr 2) builds the core flow: Clerk auth integration, database setup on Railway, the FastAPI prediction endpoint, the real chart with all four trajectory lines, and the form-to-chart pipeline end-to-end.
 
 **Tone:** Narrative and accessible. Connect engineering work to patient outcomes and Lee's goals. Avoid jargon. Write as if Lee is reading this over coffee.
 

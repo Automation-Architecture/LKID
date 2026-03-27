@@ -1,6 +1,6 @@
 # Task: Fix Lean Launch Stories for Sprint 2
 
-**Priority:** P0 — must be done before Sprint 2 (Apr 6)
+**Priority:** P0 — must be done before Sprint 2 (Mar 26)
 **Assigned to:** Husser (Product Manager)
 **Date:** 2026-03-26
 

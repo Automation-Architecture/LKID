@@ -1,6 +1,6 @@
 # Task: Rewrite Database Schema for Lean Launch
 
-**Priority:** P0 — must be done before Sprint 2 (Apr 6)
+**Priority:** P0 — must be done before Sprint 2 (Mar 26)
 **Assigned to:** Gay Mark (Database Engineer)
 **Date:** 2026-03-26
 
