@@ -18,21 +18,26 @@ Jira status mapping:
   "To Do"       -> "upcoming"
 
 Configuration:
-  Set the following environment variables before running:
-    export JIRA_URL='https://automationarchitecture.atlassian.net'
-    export JIRA_EMAIL='your-email@example.com'
-    export JIRA_API_TOKEN='your-jira-api-token'
-    export VERCEL_DEPLOY_HOOK_URL='https://api.vercel.com/v1/integrations/deploy/...'
+  The script auto-loads variables from .env in the repo root. Set the following:
+    JIRA_URL='https://automationarchitecture.atlassian.net'  (optional, defaults to this)
+    JIRA_EMAIL='your-email@example.com'
+    JIRA_API_TOKEN='your-jira-api-token'
+    VERCEL_DEPLOY_HOOK_URL='https://api.vercel.com/v1/integrations/deploy/...'
 
   Generate a Jira API token at: https://id.atlassian.com/manage-profile/security/api-tokens
   Create a Vercel Deploy Hook in Project Settings > Git > Deploy Hooks.
   If VERCEL_DEPLOY_HOOK_URL is not set, the script still refreshes JSON but skips the deploy trigger.
 
+  The script automatically commits and pushes JSON changes to git before
+  triggering the deploy hook. Vercel builds from git, so this is required
+  for the dashboard to reflect updated data.
+
 Usage:
   python3 scripts/refresh-sprint-progress.py
 
 Scheduling:
-  Runs daily at 08:00 local time via cron. Installed with:
+  Runs daily at 08:00 local time via cron. The script loads .env automatically,
+  so no shell sourcing is needed:
     crontab -e
     0 8 * * * cd /Users/brad/IDE/agent-teams && python3 scripts/refresh-sprint-progress.py >> /tmp/refresh-sprint-progress.log 2>&1
 
@@ -41,6 +46,7 @@ Created: 2026-03-27
 
 import json
 import os
+import subprocess
 import sys
 import urllib.parse
 import urllib.request
@@ -53,6 +59,18 @@ from pathlib import Path
 # ---------------------------------------------------------------------------
 
 REPO_ROOT = Path(__file__).resolve().parent.parent
+
+# Load .env file if present (no external dependency needed)
+_env_file = REPO_ROOT / ".env"
+if _env_file.exists():
+    with open(_env_file) as _f:
+        for _line in _f:
+            _line = _line.strip()
+            if _line and not _line.startswith("#") and "=" in _line:
+                _key, _, _val = _line.partition("=")
+                _key, _val = _key.strip(), _val.strip().strip("'\"")
+                if _key and _val:
+                    os.environ.setdefault(_key, _val)
 LUCA_JSON = REPO_ROOT / "agents" / "luca" / "drafts" / "sprint-progress.json"
 DASHBOARD_JSON = REPO_ROOT / "app" / "src" / "app" / "client" / "data" / "sprint-progress.json"
 
@@ -62,7 +80,7 @@ JIRA_API_TOKEN = os.environ.get("JIRA_API_TOKEN", "")
 VERCEL_DEPLOY_HOOK_URL = os.environ.get("VERCEL_DEPLOY_HOOK_URL", "")
 
 JQL = "project = LKID ORDER BY key ASC"
-JIRA_SEARCH_URL = f"{JIRA_URL}/rest/api/3/search"
+JIRA_SEARCH_URL = f"{JIRA_URL}/rest/api/3/search/jql"
 
 # Map Jira status category -> dashboard status value
 STATUS_MAP = {
@@ -203,6 +221,46 @@ def trigger_vercel_deploy() -> None:
 
 
 # ---------------------------------------------------------------------------
+# Git push
+# ---------------------------------------------------------------------------
+
+
+def git_commit_and_push() -> None:
+    """Stage updated JSON files, commit, and push to trigger Vercel build.
+
+    Vercel builds from git, so local file changes alone don't update the
+    deployed dashboard. This ensures the deploy hook rebuilds with fresh data.
+    Skips if there are no changes to commit.
+    """
+    files = [str(LUCA_JSON), str(DASHBOARD_JSON)]
+    try:
+        # Check if there are actual changes to commit
+        result = subprocess.run(
+            ["git", "diff", "--quiet", "--"] + files,
+            cwd=REPO_ROOT, capture_output=True,
+        )
+        if result.returncode == 0:
+            print("  No changes to commit — JSON already up to date in git.")
+            return
+
+        subprocess.run(
+            ["git", "add"] + files,
+            cwd=REPO_ROOT, check=True, capture_output=True,
+        )
+        subprocess.run(
+            ["git", "commit", "-m", "chore: sync sprint-progress.json from Jira"],
+            cwd=REPO_ROOT, check=True, capture_output=True,
+        )
+        subprocess.run(
+            ["git", "push"],
+            cwd=REPO_ROOT, check=True, capture_output=True,
+        )
+        print("  Committed and pushed sprint-progress.json updates.")
+    except subprocess.CalledProcessError as e:
+        print(f"  WARNING: git push failed: {e.stderr.decode().strip() if e.stderr else e}")
+
+
+# ---------------------------------------------------------------------------
 # Main
 # ---------------------------------------------------------------------------
 
@@ -216,6 +274,9 @@ def main():
     lookup = build_status_lookup(issues)
     data = refresh_json(lookup)
     write_json(data)
+
+    print("\nPushing to git...")
+    git_commit_and_push()
 
     print("\nTriggering Vercel rebuild...")
     trigger_vercel_deploy()
