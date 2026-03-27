@@ -1,7 +1,8 @@
 "use client";
 
-import { useState, useCallback, useMemo, useRef } from "react";
+import { useState, useCallback, useMemo, useRef, useEffect } from "react";
 import { useRouter } from "next/navigation";
+import { useUser, useAuth } from "@clerk/nextjs";
 import { Header } from "@/components/header";
 import { DisclaimerBlock } from "@/components/disclaimer-block";
 import { Button } from "@/components/ui/button";
@@ -135,8 +136,13 @@ export default function PredictPage() {
   const router = useRouter();
   const formRef = useRef<HTMLFormElement>(null);
 
+  /* --- Clerk auth --- */
+  const { user, isSignedIn } = useUser();
+  const { getToken } = useAuth();
+
   /* --- form state --- */
   const [values, setValues] = useState<Record<string, string>>({
+    email: "",
     bun: "",
     creatinine: "",
     potassium: "",
@@ -146,6 +152,15 @@ export default function PredictPage() {
     glucose: "",
   });
   const [touched, setTouched] = useState<Record<string, boolean>>({});
+
+  /* --- LKID-17: pre-fill email from Clerk session --- */
+  const clerkEmail = user?.primaryEmailAddress?.emailAddress;
+  useEffect(() => {
+    if (isSignedIn && clerkEmail) {
+      setValues((prev) => ({ ...prev, email: clerkEmail }));
+    }
+  }, [isSignedIn, clerkEmail]);
+
   const [submitted, setSubmitted] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [apiError, setApiError] = useState<string | null>(null);
@@ -226,6 +241,7 @@ export default function PredictPage() {
 
     // Build payload matching John's PredictRequest schema
     const payload: Record<string, unknown> = {
+      email: values.email,
       bun: Number(values.bun),
       creatinine: Number(values.creatinine),
       potassium: Number(values.potassium),
@@ -241,25 +257,38 @@ export default function PredictPage() {
       payload.glucose = Number(gluc);
     }
 
+    // LKID-18: 30-second timeout via AbortController
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), 30_000);
+
     try {
+      // LKID-18: Get JWT token for authenticated requests
+      const token = await getToken();
+      const headers: Record<string, string> = {
+        "Content-Type": "application/json",
+      };
+      if (token) {
+        headers["Authorization"] = `Bearer ${token}`;
+      }
+
       const res = await fetch(`${API_BASE}/predict`, {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers,
         body: JSON.stringify(payload),
+        signal: controller.signal,
       });
+
+      clearTimeout(timeoutId);
 
       if (!res.ok) {
         const body = await res.json().catch(() => null);
-        // Map field-level errors from API (Decision #9: body.error.details[].message)
+        // Decision #9: parse body.error.details[].message for field-level errors
         if (body?.error?.details && Array.isArray(body.error.details)) {
-          const fieldErrors: Record<string, string> = {};
-          for (const err of body.error.details) {
-            if (err.field && err.message) {
-              fieldErrors[err.field] = err.message;
-            }
-          }
-          if (Object.keys(fieldErrors).length > 0) {
-            setApiError("Please correct the errors highlighted below.");
+          const messages = body.error.details
+            .map((d: { message?: string }) => d.message)
+            .filter(Boolean);
+          if (messages.length > 0) {
+            setApiError(messages.join(" "));
           } else {
             setApiError(
               body.error.message ?? "Prediction failed. Please try again."
@@ -275,10 +304,17 @@ export default function PredictPage() {
       const result = await res.json();
       sessionStorage.setItem("prediction_result", JSON.stringify(result));
       router.push("/results");
-    } catch {
-      setApiError(
-        "Unable to connect to the prediction service. Please try again later."
-      );
+    } catch (err: unknown) {
+      clearTimeout(timeoutId);
+      if (err instanceof DOMException && err.name === "AbortError") {
+        setApiError(
+          "Request timed out. Please check your connection and try again."
+        );
+      } else {
+        setApiError(
+          "Unable to connect to the prediction service. Please try again later."
+        );
+      }
       setIsSubmitting(false);
     }
   };
@@ -345,6 +381,37 @@ export default function PredictPage() {
             <div aria-live="polite" className="sr-only">
               {submitted && !requiredValid &&
                 "Please correct the errors below."}
+            </div>
+
+            {/* -------------------------------------------------------------- */}
+            {/*  Email field (LKID-17: pre-filled + read-only when signed in)  */}
+            {/* -------------------------------------------------------------- */}
+            <div className="mb-6 space-y-1.5" data-testid="field-email">
+              <Label htmlFor="email">
+                Email <span aria-hidden="true">*</span>
+              </Label>
+              <Input
+                id="email"
+                name="email"
+                type="email"
+                placeholder="your@email.com"
+                autoComplete="email"
+                inputMode="email"
+                aria-required="true"
+                value={values.email}
+                onChange={(e) => setValue("email", e.target.value)}
+                onBlur={() => setFieldTouched("email")}
+                readOnly={!!isSignedIn}
+                className={`h-12 text-base ${
+                  isSignedIn ? "bg-muted/50 text-muted-foreground cursor-not-allowed" : ""
+                }`}
+                data-testid="input-email"
+              />
+              {isSignedIn && (
+                <p className="text-sm text-muted-foreground">
+                  Pre-filled from your account.
+                </p>
+              )}
             </div>
 
             {/* -------------------------------------------------------------- */}
