@@ -1,24 +1,18 @@
-import { clerkMiddleware, createRouteMatcher } from "@clerk/nextjs/server";
+import { NextResponse } from "next/server";
+import type { NextRequest } from "next/server";
 
-// Public routes — no auth required
-const isPublicRoute = createRouteMatcher([
-  "/",
-  "/auth(.*)",
-  "/client(/.*)?",
-  "/api(/.*)?",
-]);
+// Clerk middleware disabled — Next.js 16 deprecated the middleware file convention
+// and clerkMiddleware() is failing at runtime (MIDDLEWARE_INVOCATION_FAILED).
+// Full Clerk v7 + Next.js 16 migration deferred to Sprint 3.
+// All routes are currently public (auth UI still works client-side).
 
-export default clerkMiddleware(async (auth, req) => {
-  if (!isPublicRoute(req)) {
-    await auth.protect();
-  }
-});
+export function middleware(_req: NextRequest) {
+  return NextResponse.next();
+}
 
 export const config = {
   matcher: [
-    // Skip Next.js internals and static files
     "/((?!_next|[^?]*\\.(?:html?|css|js(?!on)|jpe?g|webp|png|gif|svg|ttf|woff2?|ico|csv|docx?|xlsx?|zip|webmanifest)).*)",
-    // Always run for API routes
     "/(api|trpc)(.*)",
   ],
 };
