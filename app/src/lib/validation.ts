@@ -16,10 +16,11 @@ export interface FieldRules {
  * Optional Tier 2: Hemoglobin, Glucose (both required together for tier upgrade)
  *
  * Age max fixed to 120 (was 100) to match backend/DB — per LKID-16 dispatch.
+ * BUN max 100 is a frontend soft cap (UX); API/Pydantic accepts up to 150.
  */
 export const PREDICT_FORM_RULES: FieldRules = {
   bun: { required: true, min: 5, max: 100, integer: true, message: "BUN must be between 5 and 100 mg/dL" },
-  creatinine: { required: true, min: 0.1, max: 25, message: "Creatinine must be between 0.1 and 25.0 mg/dL" },
+  creatinine: { required: true, min: 0.3, max: 20.0, message: "Creatinine must be between 0.3 and 20.0 mg/dL" },
   potassium: { required: true, min: 2.0, max: 8.0, message: "Potassium must be between 2.0 and 8.0 mEq/L" },
   age: { required: true, min: 18, max: 120, integer: true, message: "Age must be between 18 and 120" },
   sex: { required: true, message: "Sex is required" },
@@ -27,8 +28,8 @@ export const PREDICT_FORM_RULES: FieldRules = {
 
 /** Optional Tier 2 fields — both must be provided together for prediction upgrade */
 export const TIER2_FORM_RULES: FieldRules = {
-  hemoglobin: { min: 3.0, max: 25.0, message: "Hemoglobin must be between 3.0 and 25.0 g/dL" },
-  glucose: { min: 20, max: 600, message: "Glucose must be between 20 and 600 mg/dL" },
+  hemoglobin: { min: 4.0, max: 20.0, message: "Hemoglobin must be between 4.0 and 20.0 g/dL" },
+  glucose: { min: 40, max: 500, message: "Glucose must be between 40 and 500 mg/dL" },
 };
 
 export function validateField(value: string, rules: ValidationRule): string | null {

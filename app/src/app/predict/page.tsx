@@ -250,19 +250,19 @@ export default function PredictPage() {
 
       if (!res.ok) {
         const body = await res.json().catch(() => null);
-        // Map field-level errors from API (Decision #9: details[].field)
-        if (body?.detail && Array.isArray(body.detail)) {
+        // Map field-level errors from API (Decision #9: body.error.details[].message)
+        if (body?.error?.details && Array.isArray(body.error.details)) {
           const fieldErrors: Record<string, string> = {};
-          for (const err of body.detail) {
-            if (err.field && err.msg) {
-              fieldErrors[err.field] = err.msg;
+          for (const err of body.error.details) {
+            if (err.field && err.message) {
+              fieldErrors[err.field] = err.message;
             }
           }
           if (Object.keys(fieldErrors).length > 0) {
             setApiError("Please correct the errors highlighted below.");
           } else {
             setApiError(
-              body.message ?? body.detail ?? "Prediction failed. Please try again."
+              body.error.message ?? "Prediction failed. Please try again."
             );
           }
         } else {
