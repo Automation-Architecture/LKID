@@ -8,10 +8,14 @@ Minimal working app with:
 - POST /predict with CKD-EPI 2021 eGFR + placeholder trajectories (LKID-15)
 - slowapi rate limiting on /predict and /webhooks/clerk
 - Approved error envelope (Decision #9)
+- Fire-and-forget lead capture on POST /predict (LKID-11)
 
 Donaldson drops the prediction engine into predict() and predict_pdf().
 """
 
+import asyncio
+import base64
+import json
 import logging
 import os
 from contextlib import asynccontextmanager
@@ -25,6 +29,7 @@ from pydantic import BaseModel, EmailStr, Field
 from slowapi import Limiter
 from slowapi.util import get_remote_address
 from slowapi.errors import RateLimitExceeded
+from sqlalchemy import text
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_async_engine
 from svix.webhooks import Webhook, WebhookVerificationError
 
@@ -67,6 +72,93 @@ async def get_db() -> AsyncSession:
         raise HTTPException(status_code=503, detail="Database not configured")
     async with async_session() as session:
         yield session
+
+
+# ---------------------------------------------------------------------------
+# Lead Capture — LKID-11
+# ---------------------------------------------------------------------------
+
+
+def _extract_email_from_jwt(authorization: Optional[str]) -> Optional[str]:
+    """Extract email from a Clerk JWT Bearer token (unverified decode).
+
+    Clerk JWTs contain user metadata in the payload. We decode without
+    signature verification here — full Clerk JWKS verification is a
+    separate card (LKID-1). This is safe because we only use the email
+    for lead capture (non-security-critical), and the prediction response
+    is returned regardless.
+
+    Returns the email string if found, None otherwise.
+    """
+    if not authorization or not authorization.startswith("Bearer "):
+        return None
+    try:
+        token = authorization[len("Bearer "):]
+        # JWT must have exactly 3 segments
+        parts = token.split(".")
+        if len(parts) != 3:
+            return None
+        # JWT is three base64url-encoded segments separated by dots
+        payload_b64 = parts[1]
+        # Add padding if needed
+        padding = 4 - len(payload_b64) % 4
+        if padding != 4:
+            payload_b64 += "=" * padding
+        payload = json.loads(base64.urlsafe_b64decode(payload_b64))
+        # Clerk stores email in various claim locations
+        email = (
+            payload.get("email")
+            or payload.get("email_address")
+            or payload.get("primary_email_address")
+        )
+        # Also check Clerk's unsafe_metadata or public_metadata
+        if not email:
+            metadata = payload.get("unsafe_metadata") or payload.get("public_metadata") or {}
+            email = metadata.get("email")
+        return email if email else None
+    except Exception:
+        logger.debug("Could not extract email from JWT", exc_info=True)
+        return None
+
+
+async def _write_lead(
+    email: str,
+    name: str,
+    age: int,
+    bun: float,
+    creatinine: float,
+    egfr_baseline: Optional[float],
+) -> None:
+    """Insert a lead row into the leads table. Fire-and-forget.
+
+    If the database is not configured or the insert fails, the error is
+    logged but never propagated — the prediction response must always
+    reach the user (LKID-11 requirement).
+    """
+    if async_session is None:
+        logger.warning("Lead capture skipped: database not configured")
+        return
+
+    try:
+        async with async_session() as session:
+            await session.execute(
+                text(
+                    "INSERT INTO leads (email, name, age, bun, creatinine, egfr_baseline) "
+                    "VALUES (:email, :name, :age, :bun, :creatinine, :egfr_baseline)"
+                ),
+                {
+                    "email": email,
+                    "name": name,
+                    "age": age,
+                    "bun": bun,
+                    "creatinine": creatinine,
+                    "egfr_baseline": egfr_baseline,
+                },
+            )
+            await session.commit()
+        logger.info("Lead captured for %s", email)
+    except Exception:
+        logger.exception("Failed to write lead for %s — prediction still returned", email)
 
 
 # ---------------------------------------------------------------------------
@@ -300,8 +392,15 @@ async def predict(request: Request, body: PredictRequest):
     Hemoglobin + glucose together unlock Tier 2 confidence.
 
     Engine coefficients are server-side only — never exposed in responses.
+
+    Lead capture (LKID-11): After a successful prediction, a lead row is
+    written to the leads table as fire-and-forget. Email is resolved from:
+      1. The request body (guest flow — user enters email on the form)
+      2. The Clerk JWT Authorization header (authenticated flow)
+    If neither provides an email, lead capture is silently skipped.
+    Name defaults to "Anonymous" if not provided.
     """
-    return predict_for_endpoint(
+    result = predict_for_endpoint(
         bun=body.bun,
         creatinine=body.creatinine,
         potassium=body.potassium,
@@ -310,6 +409,29 @@ async def predict(request: Request, body: PredictRequest):
         hemoglobin=body.hemoglobin,
         glucose=body.glucose,
     )
+
+    # --- LKID-11: Fire-and-forget lead capture ---
+    # Resolve email: prefer body.email, fall back to JWT claim
+    lead_email = body.email
+    if not lead_email:
+        auth_header = request.headers.get("authorization")
+        lead_email = _extract_email_from_jwt(auth_header)
+
+    if lead_email:
+        lead_name = body.name or "Anonymous"
+        egfr_baseline = result.get("egfr_baseline")
+        asyncio.create_task(
+            _write_lead(
+                email=lead_email,
+                name=lead_name,
+                age=body.age,
+                bun=body.bun,
+                creatinine=body.creatinine,
+                egfr_baseline=egfr_baseline,
+            )
+        )
+
+    return result
 
 
 # ---------------------------------------------------------------------------
