@@ -15,6 +15,8 @@ depends_on = None
 
 
 def upgrade() -> None:
+    # gen_random_uuid() is built into Postgres 13+, but pgcrypto needed for older versions
+    op.execute("CREATE EXTENSION IF NOT EXISTS pgcrypto")
     op.create_table(
         "leads",
         sa.Column("id", UUID(as_uuid=True), primary_key=True, server_default=sa.text("gen_random_uuid()")),

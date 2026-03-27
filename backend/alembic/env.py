@@ -12,7 +12,7 @@ if config.config_file_name is not None:
 # Override sqlalchemy.url from DATABASE_URL env var (Railway sets this)
 database_url = os.environ.get("DATABASE_URL")
 if database_url:
-    # Railway provides postgresql://, SQLAlchemy needs postgresql+psycopg2://
+    # Heroku/Railway may use deprecated postgres:// scheme — normalize to postgresql://
     if database_url.startswith("postgres://"):
         database_url = database_url.replace("postgres://", "postgresql://", 1)
     config.set_main_option("sqlalchemy.url", database_url)
