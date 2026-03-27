@@ -27,7 +27,6 @@ from slowapi.util import get_remote_address
 from slowapi.errors import RateLimitExceeded
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_async_engine
 
-from prediction.engine import predict as run_prediction
 from prediction.engine import predict_for_endpoint
 
 logger = logging.getLogger(__name__)
@@ -118,7 +117,7 @@ class ErrorDetail(BaseModel):
 class ErrorBody(BaseModel):
     code: str
     message: str
-    details: list[ErrorDetail] = []
+    details: list[ErrorDetail] = Field(default_factory=list)
 
 
 class ErrorResponse(BaseModel):
@@ -235,11 +234,6 @@ class PredictRequest(BaseModel):
     )
 
 
-class TrajectoryPoint(BaseModel):
-    month: int
-    egfr: float
-
-
 class Trajectories(BaseModel):
     no_treatment: list[float]
     bun_18_24: list[float]
@@ -305,30 +299,15 @@ async def predict(request: Request, body: PredictRequest):
 
     Engine coefficients are server-side only — never exposed in responses.
     """
-    try:
-        result = predict_for_endpoint(
-            bun=body.bun,
-            creatinine=body.creatinine,
-            potassium=body.potassium,
-            age=body.age,
-            sex=body.sex,
-            hemoglobin=body.hemoglobin,
-            glucose=body.glucose,
-        )
-        return result
-    except Exception:
-        # Log but never expose engine internals
-        logger.exception("Prediction engine error")
-        return JSONResponse(
-            status_code=500,
-            content={
-                "error": {
-                    "code": "INTERNAL_ERROR",
-                    "message": "Prediction engine encountered an error.",
-                    "details": [],
-                }
-            },
-        )
+    return predict_for_endpoint(
+        bun=body.bun,
+        creatinine=body.creatinine,
+        potassium=body.potassium,
+        age=body.age,
+        sex=body.sex,
+        hemoglobin=body.hemoglobin,
+        glucose=body.glucose,
+    )
 
 
 # ---------------------------------------------------------------------------
