@@ -303,7 +303,7 @@ class PredictRequest(BaseModel):
         ..., ge=5, le=150, description="Blood Urea Nitrogen mg/dL"
     )
     creatinine: float = Field(
-        ..., ge=0.3, le=15.0, description="Serum Creatinine mg/dL"
+        ..., ge=0.3, le=20.0, description="Serum Creatinine mg/dL"
     )
     potassium: float = Field(
         ..., ge=2.0, le=8.0, description="Potassium mEq/L"
@@ -533,7 +533,6 @@ async def clerk_webhook(request: Request):
         from db.leads import insert_lead_from_webhook  # noqa: E402
 
         await insert_lead_from_webhook(
-            session_factory=async_session,
             email=email,
             name=name or "Unknown",
             clerk_user_id=clerk_user_id,

@@ -236,6 +236,80 @@ def create_lab_entry_series(
 # ---------------------------------------------------------------------------
 
 
+# ---------------------------------------------------------------------------
+# Aliases and boundary/tier helpers (match conftest.py and validate_fixtures.py)
+# ---------------------------------------------------------------------------
+
+
+def make_predict_request(**overrides: Any) -> dict:
+    """Alias for create_predict_request — matches conftest.py naming."""
+    return create_predict_request(**overrides)
+
+
+def make_predict_request_at_min() -> dict:
+    """PredictRequest at minimum valid boundaries (binding validation table)."""
+    return create_predict_request(
+        bun=5, creatinine=0.3, potassium=2.0, age=18, sex="unknown",
+    )
+
+
+def make_predict_request_at_max() -> dict:
+    """PredictRequest at maximum valid boundaries (binding validation table)."""
+    return create_predict_request(
+        bun=150, creatinine=20.0, potassium=8.0, age=120, sex="female",
+        hemoglobin=20.0, glucose=500,
+    )
+
+
+def make_lab_entry(**overrides: Any) -> dict:
+    """Alias for create_lab_entry — matches conftest.py naming."""
+    return create_lab_entry(**overrides)
+
+
+def make_lab_entry_at_min() -> dict:
+    """Lab entry at minimum valid boundaries."""
+    return create_lab_entry(
+        bun=5, creatinine=0.3, age=18, potassium=2.0,
+    )
+
+
+def make_lab_entry_at_max() -> dict:
+    """Lab entry at maximum valid boundaries."""
+    return create_lab_entry(
+        bun=150, creatinine=20.0, age=120, potassium=8.0,
+        hemoglobin=20.0, glucose=500,
+    )
+
+
+def make_lab_entry_invalid(field: str, value: Any) -> dict:
+    """Lab entry with one intentionally invalid field for negative testing."""
+    return create_lab_entry(**{field: value})
+
+
+def make_tier1_entry(**overrides: Any) -> dict:
+    """Tier 1 entry — required fields only (no hemoglobin/glucose)."""
+    defaults = create_predict_request(**overrides)
+    defaults.pop("hemoglobin", None)
+    defaults.pop("glucose", None)
+    defaults.pop("name", None)
+    defaults.pop("email", None)
+    return defaults
+
+
+def make_tier2_entry(**overrides: Any) -> dict:
+    """Tier 2 entry — Tier 1 + hemoglobin AND glucose (both present)."""
+    return create_predict_request(
+        hemoglobin=round(random.uniform(8.0, 17.0), 1),
+        glucose=round(random.uniform(70, 200), 0),
+        **overrides,
+    )
+
+
+def make_lead(**overrides: Any) -> dict:
+    """Alias for create_lead — matches conftest.py naming."""
+    return create_lead(**overrides)
+
+
 def create_lead(**overrides: Any) -> dict:
     """Create a valid lead record matching the leads table schema.
 
@@ -247,7 +321,7 @@ def create_lead(**overrides: Any) -> dict:
         "name": _random_name(),
         "age": random.randint(18, 100),
         "bun": round(random.uniform(5, 100), 1),
-        "creatinine": round(random.uniform(0.3, 15.0), 2),
+        "creatinine": round(random.uniform(0.3, 20.0), 2),
         "egfr_baseline": round(random.uniform(5, 90), 1),
         "created_at": datetime.now(timezone.utc).isoformat(),
     }
