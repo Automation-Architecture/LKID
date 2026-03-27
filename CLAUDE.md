@@ -13,11 +13,11 @@
 
 | Sprint | Dates | Cards | Focus |
 |--------|-------|-------|-------|
-| Sprint 1 — Design Sprint | Mar 30 – Apr 3 | 9 (LKID-30–38) | Hi-fi mockup + prototype, Inga sign-off gates Sprint 2 |
-| Sprint 2 — Core Flow | Apr 6 – Apr 10 | 17 (LKID-1–3, 6–19) | Auth, DB, API, form, chart — e2e prediction |
-| Sprint 3 — PDF, Polish & QA | Apr 13 – Apr 17 | 12 (LKID-4–5, 20–29) | Interactivity, PDF, disclaimers, tests, QA gate |
+| Sprint 1 — Design Sprint | Mar 24 – Mar 26 (DONE) | 9 (LKID-30–38) | Hi-fi mockup + prototype, Inga sign-off gates Sprint 2 |
+| Sprint 2 — Core Flow | Mar 26 – Apr 1 | 17 (LKID-1–3, 6–19) | Auth, DB, API, form, chart — e2e prediction |
+| Sprint 3 — PDF, Polish & QA | Apr 2 – Apr 8 | 12 (LKID-4–5, 20–29) | Interactivity, PDF, disclaimers, tests, QA gate |
 
-**Ship date:** April 17, 2026
+**Ship date:** April 8, 2026
 **Blocker:** LKID-14 (rules engine) — UNBLOCKED (Lee's calc spec received)
 
 ## Development Workflow

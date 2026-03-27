@@ -30,7 +30,7 @@ This is internal tooling that serves an external audience. It lives alongside th
 ### 1. Hero Banner
 
 - KidneyHood logo + "Project Dashboard"
-- Project timeline bar: `Mar 30 - Apr 17` with a "You are here" marker at current date
+- Project timeline bar: `Mar 24 - Apr 8` with a "You are here" marker at current date
 - Sprint labels underneath: Sprint 1 (Design), Sprint 2 (Core Flow), Sprint 3 (Polish & QA)
 
 ### 2. Weekly Update — Two Perspectives
@@ -88,9 +88,9 @@ Links to key artifacts Lee can review, each with a one-line description:
 
 ### 7. Horizon — What's Coming
 
-- Sprint 2 preview: "Core Flow (Apr 6-10)" — auth, DB, API, prediction engine, chart
-- Sprint 3 preview: "Polish & QA (Apr 13-17)" — PDF export, disclaimers, accessibility, final QA
-- Ship date callout: "Target launch: April 17, 2026"
+- Sprint 2 preview: "Core Flow (Mar 26 – Apr 1)" — auth, DB, API, prediction engine, chart
+- Sprint 3 preview: "Polish & QA (Apr 2-8)" — PDF export, disclaimers, accessibility, final QA
+- Ship date callout: "Target launch: April 8, 2026"
 
 ---
 
@@ -138,7 +138,7 @@ Maps each Jira card to a status. Updated by the team as cards move. Schema:
   "sprints": [
     {
       "name": "Sprint 1 — Design",
-      "dates": "Mar 30 - Apr 3",
+      "dates": "Mar 24 - Mar 26",
       "cards": [
         { "id": "LKID-31", "title": "Revise user flows", "status": "done" },
         { "id": "LKID-36", "title": "Form validation + MSW", "status": "in_progress" }

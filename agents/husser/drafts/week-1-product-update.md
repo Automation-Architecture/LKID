@@ -52,7 +52,7 @@ The magic link auth is a good example of this thinking. It is not a login system
 
 ### What Comes Next
 
-Sprint 2 runs April 6 through 10, and it builds the core flow — the pipeline from form submission to prediction chart. Here is what that includes:
+Sprint 2 runs March 26 through April 1, and it builds the core flow — the pipeline from form submission to prediction chart. Here is what that includes:
 
 **Clerk auth integration.** The magic link flow goes from prototype stub to real authentication. The webhook fires on sign-up, piping the email into our leads table automatically.
 
@@ -64,7 +64,7 @@ Sprint 2 runs April 6 through 10, and it builds the core flow — the pipeline f
 
 **End-to-end pipeline.** Form submits to the API. API returns trajectories. Chart renders them. The full loop, working.
 
-Sprint 3 (April 13-17) adds the PDF export, polish, disclaimers, and the final QA gate. Ship date remains April 17.
+Sprint 3 (April 2-8) adds the PDF export, polish, disclaimers, and the final QA gate. Ship date is April 8.
 
 We are on track. The prototype is live, the specs are solid, and your calc spec gives us exactly what we need to build the engine. If you have a few minutes this week to click through the prototype and react, that feedback will shape Sprint 2 priorities.
 
