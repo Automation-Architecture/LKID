@@ -26,6 +26,7 @@ from slowapi import Limiter
 from slowapi.util import get_remote_address
 from slowapi.errors import RateLimitExceeded
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_async_engine
+from svix.webhooks import Webhook, WebhookVerificationError
 
 from prediction.engine import predict_for_endpoint
 
@@ -46,6 +47,7 @@ CORS_ORIGINS = [
 ]
 
 ADMIN_API_KEY = os.environ.get("ADMIN_API_KEY", "")
+CLERK_WEBHOOK_SECRET = os.environ.get("CLERK_WEBHOOK_SECRET", "")
 
 # ---------------------------------------------------------------------------
 # Database
@@ -339,19 +341,93 @@ async def predict_pdf(request: Request, body: PredictRequest):
 
 
 @app.post("/webhooks/clerk", tags=["Webhooks"])
+@limiter.limit("60/minute")
 async def clerk_webhook(request: Request):
     """
-    Receives `user.created` events from Clerk. Extracts email and pipes
-    to the leads table. Verified via Clerk webhook signing secret (svix).
+    Receives `user.created` events from Clerk. Verifies the webhook
+    signature via Svix, extracts user data, and inserts a lead row.
 
-    TODO: Implement svix signature verification.
-    TODO: Extract email from payload and insert into leads table.
+    Clerk sends Svix headers: svix-id, svix-timestamp, svix-signature.
+    Verification uses the CLERK_WEBHOOK_SECRET env var.
     """
-    # --- Placeholder: webhook verification + lead capture ---
-    raise HTTPException(
-        status_code=501,
-        detail="Clerk webhook handler not yet implemented.",
-    )
+    # ------------------------------------------------------------------
+    # 1. Verify webhook signature (Clerk uses Svix under the hood)
+    # ------------------------------------------------------------------
+    if not CLERK_WEBHOOK_SECRET:
+        logger.error("CLERK_WEBHOOK_SECRET not configured")
+        raise HTTPException(status_code=500, detail="Webhook secret not configured")
+
+    body = await request.body()
+
+    svix_id = request.headers.get("svix-id")
+    svix_timestamp = request.headers.get("svix-timestamp")
+    svix_signature = request.headers.get("svix-signature")
+
+    if not all([svix_id, svix_timestamp, svix_signature]):
+        raise HTTPException(status_code=400, detail="Missing Svix headers")
+
+    try:
+        wh = Webhook(CLERK_WEBHOOK_SECRET)
+        payload = wh.verify(body, {
+            "svix-id": svix_id,
+            "svix-timestamp": svix_timestamp,
+            "svix-signature": svix_signature,
+        })
+    except WebhookVerificationError:
+        logger.warning("Clerk webhook signature verification failed")
+        raise HTTPException(status_code=401, detail="Invalid webhook signature")
+
+    # ------------------------------------------------------------------
+    # 2. Only handle user.created events
+    # ------------------------------------------------------------------
+    event_type = payload.get("type")
+    if event_type != "user.created":
+        # Acknowledge but ignore other event types
+        return {"status": "ignored", "event_type": event_type}
+
+    # ------------------------------------------------------------------
+    # 3. Extract user data from Clerk payload
+    # ------------------------------------------------------------------
+    data = payload.get("data", {})
+    clerk_user_id = data.get("id")
+
+    email_addresses = data.get("email_addresses", [])
+    email = email_addresses[0].get("email_address") if email_addresses else None
+
+    first_name = data.get("first_name") or ""
+    last_name = data.get("last_name") or ""
+    name = f"{first_name} {last_name}".strip()
+
+    if not email:
+        logger.warning("Clerk user.created event missing email: %s", clerk_user_id)
+        raise HTTPException(status_code=422, detail="No email in webhook payload")
+
+    # ------------------------------------------------------------------
+    # 4. Insert lead into database
+    # ------------------------------------------------------------------
+    # Gay Mark will implement insert_lead_from_webhook() in a DB module.
+    # For now, import and call the placeholder.
+    try:
+        from db.leads import insert_lead_from_webhook  # noqa: E402
+
+        await insert_lead_from_webhook(
+            session_factory=async_session,
+            email=email,
+            name=name or "Unknown",
+            clerk_user_id=clerk_user_id,
+        )
+    except ImportError:
+        # DB module not yet implemented — log and continue so the webhook
+        # still returns 200 (prevents Clerk from retrying endlessly).
+        logger.warning(
+            "db.leads module not available; skipping DB insert for %s", email
+        )
+    except Exception:
+        logger.exception("Failed to insert lead from webhook for %s", email)
+        raise HTTPException(status_code=500, detail="Failed to store lead")
+
+    logger.info("Clerk user.created processed: %s (%s)", email, clerk_user_id)
+    return {"status": "ok", "event_type": "user.created"}
 
 
 # ---------------------------------------------------------------------------
