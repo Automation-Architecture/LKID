@@ -35,7 +35,7 @@ function EmailEntryView({
 }: {
   onSent: (email: string) => void;
 }) {
-  const { signIn, isLoaded } = useSignIn();
+  const { signIn } = useSignIn();
   const [email, setEmail] = useState("");
   const [touched, setTouched] = useState(false);
   const [submitted, setSubmitted] = useState(false);
@@ -50,7 +50,7 @@ function EmailEntryView({
     setClerkError(null);
 
     const fieldError = validateEmail(email);
-    if (fieldError || !isLoaded || !signIn) return;
+    if (fieldError || !signIn) return;
 
     setSending(true);
 
@@ -147,7 +147,7 @@ function EmailEntryView({
 
       <Button
         type="submit"
-        disabled={sending || !isLoaded}
+        disabled={sending || !signIn}
         className="h-12 w-full rounded-lg text-base font-semibold"
         data-testid="send-magic-link"
       >
