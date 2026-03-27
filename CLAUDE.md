@@ -75,7 +75,7 @@ agent-teams/
 │   ├── husser/drafts/            # lean-launch-stories.md, design-sprint-stories.md, client-dashboard-stories.md, week-1-product-update.md
 │   ├── inga/drafts/              # 7 UX files + design-sprint-meeting-1.md, lean-launch-review.md, design-sprint-sign-off.md, client-dashboard-mockup.md
 │   ├── john_donaldson/drafts/    # api_contract.json, api_docs.md, lean-launch-review.md, backend-research.md, week-1-technical-update.md
-│   ├── luca/drafts/              # architecture.md, lean-launch-review.md, sprint-progress.json, spec-tracker.json
+│   ├── luca/drafts/              # architecture.md, infrastructure-setup.md, railway-deployment-checklist.md, lean-launch-review.md, sprint-progress.json, spec-tracker.json
 │   └── yuri/drafts/              # test_strategy.md, lean-launch-review.md, design-sprint-qa-report.md
 ├── docs/
 │   ├── discovery-phase-engineering-sop.md
