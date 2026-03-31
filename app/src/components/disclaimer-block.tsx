@@ -14,7 +14,7 @@ import { useState, useId, useEffect, useRef } from "react";
 const DISCLAIMER_FULL =
   "This tool is for informational purposes only and does not constitute medical advice. Consult your healthcare provider before making any decisions about your kidney health.";
 
-const DISCLAIMER_SUMMARY = "This tool is for informational purposes only.";
+const DISCLAIMER_SUMMARY = "For informational purposes only — not medical advice";
 
 export function DisclaimerBlock() {
   const [expanded, setExpanded] = useState(false);
