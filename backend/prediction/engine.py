@@ -39,7 +39,10 @@ DIALYSIS_THRESHOLD = 12.0
 # Tier configuration: (target_bun, post_decline_rate)
 # Phase 1 and Phase 2 totals are now computed dynamically (v2.0)
 _TIER_CONFIG = {
-    "bun_12":    {"target_bun": 10, "post_decline": 0.5},
+    # Path 4 (BUN ≤12): post_decline updated to -0.33 per Lee's pilot data
+    # (n=28, R²=0.40). Negative sign: patients sustaining BUN ≤12 continue
+    # a slight eGFR gain post-Phase 2 rather than declining.
+    "bun_12":    {"target_bun": 10, "post_decline": -0.33},
     "bun_13_17": {"target_bun": 15, "post_decline": 1.0},
     "bun_18_24": {"target_bun": 21, "post_decline": 1.5},
 }
@@ -99,6 +102,9 @@ def _get_base_decline_rate(egfr: float) -> float:
 
     Used in place of the 5-pillar model rate_P1 from v2.0 Section 8.
     Acceptable simplification for Lean Launch (Q2).
+
+    # NOTE: Marketing app uses CKD-stage base rates as substitute for rate_P1.
+    # Clinical app must swap in the full 5-pillar decline model (v2.0 Section 8).
     """
     for low, high, rate in _NO_TX_DECLINE_RATES:
         if low <= egfr < high:
