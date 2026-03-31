@@ -23,6 +23,7 @@ import { useTooltip, TooltipWithBounds } from "@visx/tooltip";
 import { localPoint } from "@visx/event";
 
 import type { ChartData, DataPoint, TooltipData, TrajectoryData } from "./types";
+import { mergedTimePoints } from "./transform";
 
 /* -------------------------------------------------------------------------- */
 /*  Constants                                                                 */
@@ -368,8 +369,8 @@ function InnerChart({ width, data, selectedTrajectoryId }: InnerChartProps) {
           {/* ---------------------------------------------------------------- */}
           <Group aria-hidden="true">
             <Line
-              from={{ x: 0, y: yScale(15) }}
-              to={{ x: innerWidth, y: yScale(15) }}
+              from={{ x: 0, y: yScale(data.dialysisThreshold) }}
+              to={{ x: innerWidth, y: yScale(data.dialysisThreshold) }}
               stroke="#D32F2F"
               strokeWidth={2}
               strokeDasharray="6,3"
@@ -377,7 +378,7 @@ function InnerChart({ width, data, selectedTrajectoryId }: InnerChartProps) {
             />
             <Text
               x={innerWidth - 4}
-              y={yScale(15) - 4}
+              y={yScale(data.dialysisThreshold) - 4}
               textAnchor="end"
               verticalAnchor="end"
               fontSize={11}
@@ -640,14 +641,13 @@ function InnerChart({ width, data, selectedTrajectoryId }: InnerChartProps) {
           </tr>
         </thead>
         <tbody>
-          {data.trajectories[0]?.points.map((_, idx) => (
-            <tr key={idx}>
-              <td>
-                {data.trajectories[0].points[idx].monthsFromBaseline} months
-              </td>
-              {data.trajectories.map((t) => (
-                <td key={t.id}>{t.points[idx]?.egfr ?? ""}</td>
-              ))}
+          {mergedTimePoints(data.trajectories).map((month) => (
+            <tr key={month}>
+              <td>{month} months</td>
+              {data.trajectories.map((t) => {
+                const pt = t.points.find((p) => p.monthsFromBaseline === month);
+                return <td key={t.id}>{pt ? Math.round(pt.egfr) : ""}</td>;
+              })}
             </tr>
           ))}
         </tbody>
@@ -676,7 +676,7 @@ function StatCards({ trajectories, selectedId, onSelect }: StatCardsProps) {
       {trajectories.map((traj) => {
         const isSelected = selectedId === traj.id;
         const pointAt5yr = traj.points.find((p) => p.monthsFromBaseline === 60);
-        const pointAt10yr = traj.points[traj.points.length - 1];
+        const pointAt10yr = traj.points.find((p) => p.monthsFromBaseline === 120);
 
         return (
           <button
@@ -727,7 +727,7 @@ function StatCards({ trajectories, selectedId, onSelect }: StatCardsProps) {
                 <span className="text-xs text-muted-foreground">
                   Dialysis:{" "}
                   {traj.dialysisAge !== null
-                    ? `~${Math.round(traj.dialysisAge)} mo`
+                    ? `~age ${Math.round(traj.dialysisAge)} yr`
                     : "Not projected"}
                 </span>
               </div>

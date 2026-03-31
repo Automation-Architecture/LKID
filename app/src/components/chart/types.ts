@@ -16,7 +16,8 @@ export interface TrajectoryData {
   strokeWidth: number;
   points: DataPoint[];
   finalEgfr: number;
-  dialysisAge: number | null; // months to dialysis, null if never
+  /** Estimated patient age (in years) when eGFR drops below dialysis threshold. null if never within 10 years. */
+  dialysisAge: number | null;
 }
 
 export interface PhaseDefinition {
@@ -30,33 +31,42 @@ export interface PhaseDefinition {
 export interface ChartData {
   trajectories: TrajectoryData[];
   phases: PhaseDefinition[];
-  dialysisThreshold: number; // 15
+  dialysisThreshold: number; // from backend (currently 12.0)
   confidenceTier: 1 | 2;
   baselineEgfr: number;
 }
 
-// Raw API response shape from POST /predict
+/**
+ * Raw API response shape from POST /predict (v2.0 backend keys).
+ * All keys are snake_case as returned by the FastAPI backend.
+ */
 export interface PredictResponse {
-  egfr_calculated: number;
-  confidence_tier: 1 | 2;
-  unlock_prompt: string;
+  /** Starting eGFR computed via CKD-EPI 2021 */
+  egfr_baseline: number;
+  /** Confidence tier: 1 = required fields only, 2 = with hemoglobin+glucose. Optional per backend contract. */
+  confidence_tier?: 1 | 2;
+  /** Fixed 15-value array: [0, 1, 3, 6, 12, 18, 24, 36, 48, 60, 72, 84, 96, 108, 120] */
+  time_points_months: number[];
   trajectories: {
     no_treatment: number[];
     bun_18_24: number[];
     bun_13_17: number[];
     bun_12: number[];
   };
-  time_points_months: number[];
+  /**
+   * Estimated patient age (years) when eGFR drops below dialysis_threshold per trajectory.
+   * null if threshold not crossed within 120 months.
+   */
   dial_ages: {
     no_treatment: number | null;
     bun_18_24: number | null;
     bun_13_17: number | null;
     bun_12: number | null;
   };
-  slope: number;
-  slope_description: string;
-  visit_count: number;
-  created_at: string;
+  /** eGFR threshold that triggers dialysis assessment (currently 12.0) */
+  dialysis_threshold: number;
+  /** eGFR points currently suppressed by elevated BUN */
+  bun_suppression_estimate: number;
 }
 
 // Tooltip state
