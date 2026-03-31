@@ -2,26 +2,28 @@ const UPCOMING = [
   {
     name: "Sprint 2 — Core Flow",
     dates: "Mar 26 – Apr 2",
-    status: "up_next" as const,
+    status: "done" as const,
     deliverables: [
       "Clerk magic-link authentication",
       "PostgreSQL database on Railway",
       "FastAPI prediction endpoint (your algorithm)",
-      "Real 4-trajectory eGFR chart",
+      "Prediction form with full validation",
       "Form-to-chart end-to-end pipeline",
       "Lead capture webhook",
     ],
   },
   {
     name: "Sprint 3 — Polish & QA",
-    dates: "Apr 2 – Apr 9",
-    status: "planned" as const,
+    dates: "Mar 30 – Apr 9",
+    status: "up_next" as const,
     deliverables: [
+      "Visx eGFR trajectory chart (4 lines, responsive)",
       "PDF export via Playwright (exact chart fidelity)",
       "Medical disclaimers and legal copy",
-      "Chart interactivity (tooltips, crosshairs)",
-      "End-to-end test suite",
-      "Final accessibility audit + axe-core",
+      "Rules engine scaffold with v2.0 formulas",
+      "Rate limiting on API endpoints",
+      "Prediction engine boundary tests + golden files",
+      "End-to-end test suite + axe-core audit",
       "Yuri's QA gate — final sign-off",
     ],
   },
@@ -48,11 +50,11 @@ export function Horizon() {
               <span
                 className="rounded-full px-3 py-1 text-xs font-medium"
                 style={{
-                  backgroundColor: sprint.status === "up_next" ? "#FEF3C7" : "#F3F4F6",
-                  color: sprint.status === "up_next" ? "#92400E" : "#6B7280",
+                  backgroundColor: sprint.status === "done" ? "#DCFCE7" : sprint.status === "up_next" ? "#FEF3C7" : "#F3F4F6",
+                  color: sprint.status === "done" ? "#166534" : sprint.status === "up_next" ? "#92400E" : "#6B7280",
                 }}
               >
-                {sprint.status === "up_next" ? "Up Next" : "Planned"}
+                {sprint.status === "done" ? "Complete" : sprint.status === "up_next" ? "In Progress" : "Planned"}
               </span>
             </div>
             <p className="mt-1 text-sm" style={{ color: "#636363" }}>

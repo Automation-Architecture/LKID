@@ -16,7 +16,7 @@
 |--------|-------|-------|-------|
 | Sprint 1 — Design Sprint | Mar 20 – Mar 26 (DONE) | 9 (LKID-30–38) | Hi-fi mockup + prototype, Inga sign-off |
 | Sprint 2 — Core Flow | Mar 26 – Apr 2 (DONE) | 17 (LKID-1–3, 6–19) | Auth, DB, API, form, chart — e2e prediction |
-| Sprint 3 — PDF, Polish & QA | Apr 2 – Apr 9 | 12 (LKID-4–5, 20–29) | Interactivity, PDF, disclaimers, tests, QA gate |
+| Sprint 3 — PDF, Polish & QA | Mar 30 – Apr 9 | 12 (LKID-4–5, 20–29) | Interactivity, PDF, disclaimers, tests, QA gate |
 
 **Ship date:** April 9, 2026
 **Blockers:** LKID-14 (rules engine) awaiting Lee's response on Phase 1 formula (5 questions + Q6 creatinine max=20.0). LKID-47 (Klaviyo) needs API key from Lee. LKID-19 (Visx chart) deferred to Sprint 3.
@@ -25,25 +25,26 @@
 
 ## What's Next
 
-### Sprint 3 Kickoff (Apr 2)
+### Sprint 3 Kickoff (Mar 30)
 
 | # | Task | Owner | Status |
 |---|------|-------|--------|
-| 1 | Re-label LKID-20–29 from `sprint:2` → `sprint:3` in Jira | Husser | Pending (Apr 2) |
-| 2 | Close Sprint 2 (ID 128) in Jira | Husser | Pending (Apr 2) |
-| 3 | Update epics LKID-2 and LKID-3 to Done (child stories complete) | Husser | Pending (Apr 2) |
+| 1 | Re-label LKID-20–29 from `sprint:2` → `sprint:3` in Jira | Husser | Done |
+| 2 | Close Sprint 2 (ID 128) in Jira | Husser | Done |
+| 3 | Update epics LKID-2 and LKID-3 to Done (child stories complete) | Husser | Done |
 | 4 | Lee escalation: follow-up email Mar 28, Luca escalates Mar 30, fallback decision Mar 30 | Luca | In progress |
 
-### Sprint 3 Cards (Apr 2 – Apr 9)
+### Sprint 3 Cards (Mar 30 – Apr 9)
 
 | Card | Title | Owner | Dependency |
 |------|-------|-------|------------|
 | LKID-19 | Visx eGFR trajectory chart | Harshit | None |
 | LKID-49 | Visx QA pairing (deferred from Sprint 2) | Yuri | LKID-19 |
 | LKID-4 | PDF export (Playwright rendering) | Harshit + John | LKID-19 (chart in PDF) |
-| LKID-5 | Medical disclaimers (verbatim, all viewports) | Harshit + Inga | None |
+| LKID-5 | Medical disclaimers (verbatim, all viewports) | Harshit + Inga | **In progress — deploying Mar 30** |
 | LKID-20–29 | Polish, tests, QA gate (10 cards) | Various | See Jira |
-| LKID-14 | Rules engine (Phase 1 formula) | John Donaldson | **Blocked on Lee** |
+| LKID-14 | Rules engine (Phase 1 formula) — scaffold with CKD-EPI placeholder | John Donaldson | **Blocked on Lee (scaffolding in parallel)** |
+| LKID-25 | Rate limiting (API endpoints) | John Donaldson | None |
 | LKID-47 | Klaviyo lead capture | John Donaldson | **Blocked on Lee API key** |
 | — | Clerk v7 + Next.js 16 migration (re-enable middleware, fix types, remove ts-nocheck) | Harshit | New — discovered Mar 27 |
 
@@ -66,7 +67,7 @@ See `active/chatroom/chatroom_report.md` for the full decision rationale.
 
 ## Automated Processes
 
-- **Sprint progress sync:** `scripts/refresh-sprint-progress.py` runs daily at 8am ET via cron. Auto-loads `.env`, pulls Jira statuses, updates JSON, commits+pushes to git, triggers Vercel rebuild. Requires `.env` with `JIRA_EMAIL`, `JIRA_API_TOKEN`, `VERCEL_DEPLOY_HOOK_URL`.
+- **Sprint progress sync:** Scheduled remote agent runs every 6 hours (trigger ID: `trig_017nHqTJu4Y3tTstg3UtTwb1`). Uses Atlassian MCP to pull Jira statuses, updates `sprint-progress.json` in both locations, commits+pushes to trigger Vercel rebuild. Manage at https://claude.ai/code/scheduled/trig_017nHqTJu4Y3tTstg3UtTwb1. Fallback script: `scripts/refresh-sprint-progress.py` (requires `.env` with `JIRA_EMAIL`, `JIRA_API_TOKEN`, `VERCEL_DEPLOY_HOOK_URL`).
 - **Husser board sweep:** Scheduled remote agent runs daily at 8am ET (trigger ID: `trig_01VZxLyxxsNXe8AqswJkev2M`). Checks card-to-PR alignment, stale PRs, blocker detection, QA pipeline readiness. Manage at https://claude.ai/code/scheduled.
 
 ## Development Workflow
@@ -118,6 +119,10 @@ CTO (Luca) opens one PR per Jira card. Each card gets a feature branch (`feat/LK
 | Frontend Developer | Harshit | `agent:harshit` |
 | QA / Test Writer | Yuri | `agent:yuri` |
 
+## Known Issues
+
+- **Worktree subagent permissions:** Background subagents cannot get interactive permission approvals. Worktrees created via `git worktree add` don't help — the Bash/Write tools are still denied. Foreground deployment (sequential) works. Only one background agent (Harshit, Sprint 3) got through permissions; root cause unclear.
+
 ## Critical Rules
 
 - Agents write ONLY in their own `/agents/{name}/` folder
@@ -155,7 +160,7 @@ agent-teams/
 │   ├── inga/outputs/             # Finalized deliverables (currently empty)
 │   ├── john_donaldson/drafts/    # api_contract.json, api_contract_summary.md, api_docs.md, backend-research.md, debug_calc.py, finalized-formulas.md, lean-launch-review.md, prediction_engine.py, test_debug.py, test_prediction_engine.py, week-1-technical-update.md, TASK-iterate-rules-engine-v3.md
 │   ├── john_donaldson/outputs/   # Finalized deliverables (currently empty)
-│   ├── luca/drafts/              # architecture.md, infrastructure-setup.md, railway-deployment-checklist.md, medical-expert-review.md, backend-meeting-memo.md, lean-launch-review.md, merge-execution-plan.md, sprint2-merge-postmortem.md, qa-remediation-brainstorm.md, qa-skills-recommendations.md, yuri-weakness-remediation-plan.md, sprint-progress.json, spec-tracker.json, main.py
+│   ├── luca/drafts/              # architecture.md, infrastructure-setup.md, railway-deployment-checklist.md, medical-expert-review.md, backend-meeting-memo.md, lean-launch-review.md, merge-execution-plan.md, sprint2-merge-postmortem.md, sprint3-commit-strategy.md, qa-remediation-brainstorm.md, qa-skills-recommendations.md, yuri-weakness-remediation-plan.md, sprint-progress.json, spec-tracker.json, main.py
 │   ├── luca/outputs/             # Finalized deliverables (currently empty)
 │   ├── yuri/drafts/              # test_strategy.md, design-sprint-qa-report.md, test_golden_file.py, sprint2-qa-report-1.md, sprint2-qa-report-2.md, lean-launch-review.md, qa-report-pr12-clerk-auth.md, qa-re-review-pr12.md, qa-report-pr13-post-predict.md, qa-re-review-pr13.md, qa-batch-prs-14-17.md, test-scaffold-form-chart.md, hipaa-verification-notes.md, sop-review-and-self-assessment.md, qa-client-dashboard-sprint2.md, sprint2-debacle-qa-report.md
 │   └── yuri/outputs/             # Finalized deliverables (currently empty)
@@ -229,6 +234,7 @@ agent-teams/
 | Component Specs | `agents/inga/drafts/component-specs.md` | Inga | Draft | UI component specifications |
 | Design Tokens | `agents/inga/drafts/design-tokens.md` | Inga | Draft | Color, spacing, typography tokens |
 | **Reports** | | | | |
+| Sprint 3 Commit Strategy | `agents/luca/drafts/sprint3-commit-strategy.md` | Luca | Draft | 4-branch merge plan, conflict risk matrix, execution checklist |
 | Sprint 2 Merge Postmortem | `agents/luca/drafts/sprint2-merge-postmortem.md` | Luca | Final | Corrective actions CA-1 through CA-5 |
 | Sprint 2 Board Sweep | `agents/husser/drafts/sprint2-close-board-sweep.md` | Husser | Final | Jira alignment + Sprint 3 follow-ups |
 | Sprint 2 Debacle QA Report | `agents/yuri/drafts/sprint2-debacle-qa-report.md` | Yuri | Final | Post-merge QA: 4 HIGH bugs found and fixed |
