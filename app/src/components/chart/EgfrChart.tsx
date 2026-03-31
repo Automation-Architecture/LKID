@@ -101,6 +101,12 @@ function resolveEndLabelPositions(
     }
   }
 
+  // Clamp all positions to [0, innerHeight] to prevent labels escaping the chart
+  const innerHeight = yScale(0);
+  for (const id of Object.keys(positions)) {
+    positions[id] = Math.max(0, Math.min(innerHeight, positions[id]));
+  }
+
   return positions;
 }
 
@@ -490,7 +496,7 @@ function InnerChart({ width, data, selectedTrajectoryId }: InnerChartProps) {
               fill: "#666666",
               textAnchor: "middle",
             }}
-            label="Months"
+            label="Years"
             labelProps={{
               fontSize: 12,
               fontWeight: 500,
@@ -603,7 +609,7 @@ function InnerChart({ width, data, selectedTrajectoryId }: InnerChartProps) {
             </span>
           </div>
           <div style={{ fontSize: 14, fontWeight: 400 }}>
-            eGFR: {Math.round(tooltipData.egfr)} mL/min
+            eGFR: {Math.round(tooltipData.egfr)} mL/min/1.73m²
           </div>
           <div style={{ fontSize: 12, fontWeight: 400, color: "#666666" }}>
             at {tooltipData.months} months
@@ -675,8 +681,6 @@ function StatCards({ trajectories, selectedId, onSelect }: StatCardsProps) {
         return (
           <button
             key={traj.id}
-            tabIndex={0}
-            role="button"
             aria-pressed={isSelected}
             aria-label={`${traj.label} scenario${isSelected ? ", selected" : ""}`}
             onClick={() => onSelect(isSelected ? null : traj.id)}

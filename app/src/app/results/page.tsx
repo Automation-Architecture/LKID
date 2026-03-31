@@ -6,7 +6,7 @@ import { Header } from "@/components/header";
 import { DisclaimerBlock } from "@/components/disclaimer-block";
 import { Button } from "@/components/ui/button";
 import { FileDown } from "lucide-react";
-import { EgfrChart, transformPredictResponse, MOCK_PREDICT_RESPONSE } from "@/components/chart";
+import { EgfrChart, transformPredictResponse } from "@/components/chart";
 import type { ChartData, PredictResponse } from "@/components/chart";
 
 function LoadingSkeleton() {
@@ -120,6 +120,7 @@ function ResultsContent({ chartData }: ResultsContentProps) {
 export default function ResultsPage() {
   const [loading, setLoading] = useState(true);
   const [hasData, setHasData] = useState(true);
+  const [parseError, setParseError] = useState(false);
   const [chartData, setChartData] = useState<ChartData | null>(null);
 
   useEffect(() => {
@@ -136,8 +137,7 @@ export default function ResultsPage() {
       const parsed = JSON.parse(raw) as PredictResponse;
       setChartData(transformPredictResponse(parsed));
     } catch {
-      // Fallback to mock data if parse fails
-      setChartData(transformPredictResponse(MOCK_PREDICT_RESPONSE));
+      setParseError(true);
     }
 
     const timer = setTimeout(() => setLoading(false), 400);
@@ -145,6 +145,37 @@ export default function ResultsPage() {
   }, []);
 
   if (!hasData) return null;
+
+  if (parseError) {
+    return (
+      <>
+        <Header />
+        <main
+          id="main-content"
+          className="flex flex-1 flex-col items-center px-4 pb-16 md:px-6 lg:px-8"
+        >
+          <div className="mt-6 w-full max-w-[960px] md:mt-8">
+            <div role="alert" className="space-y-4">
+              <h1 className="text-xl font-semibold text-foreground">
+                Something went wrong
+              </h1>
+              <p className="text-base text-muted-foreground">
+                We were unable to load your prediction results. Please return to
+                the form and try again.
+              </p>
+              <Link
+                href="/predict"
+                className="text-sm text-secondary underline hover:text-secondary/80"
+              >
+                &larr; Back to form
+              </Link>
+            </div>
+          </div>
+        </main>
+        <DisclaimerBlock />
+      </>
+    );
+  }
 
   return (
     <>

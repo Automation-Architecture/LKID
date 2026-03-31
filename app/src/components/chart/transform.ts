@@ -6,10 +6,11 @@ import type {
   PhaseDefinition,
   PredictResponse,
   TrajectoryData,
+  TrajectoryId,
 } from "./types";
 
 export const TRAJECTORY_CONFIG: Record<
-  string,
+  TrajectoryId,
   {
     id: TrajectoryData["id"];
     label: string;
@@ -79,10 +80,12 @@ export const PHASE_DEFINITIONS: PhaseDefinition[] = [
 ];
 
 function zipPoints(values: number[], timePoints: number[]): DataPoint[] {
-  return timePoints.map((month, i) => ({
-    monthsFromBaseline: month,
-    egfr: values[i] ?? 0,
-  }));
+  const len = Math.min(values.length, timePoints.length);
+  const result: DataPoint[] = [];
+  for (let i = 0; i < len; i++) {
+    result.push({ monthsFromBaseline: timePoints[i], egfr: values[i] });
+  }
+  return result;
 }
 
 export function transformPredictResponse(response: PredictResponse): ChartData {
