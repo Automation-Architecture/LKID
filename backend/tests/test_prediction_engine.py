@@ -12,18 +12,18 @@ Test structure:
 
 Key findings documented here:
   Q1 DISCREPANCY: Treatment path golden vectors diverge from engine by 1-5 eGFR
-  pts beyond ±0.2 tolerance. Engine uses Phase 1 completing at month 3 with
-  TIER_CONFIG phase1_cap; spec vectors appear to use a different formula.
-  Golden tests for treatment paths are marked xfail pending Lee's Q1 answer.
-  See: finalized-formulas.md Section 8 Q1.
+  pts beyond ±0.2 tolerance. v2.0 engine uses Phase 1 completing at month 6 with
+  dynamic two-component formula; spec vectors were generated with the simplified
+  0.31-coeff model. Golden tests for treatment paths are marked xfail pending
+  Lee's Q1 answer. See: finalized-formulas.md Section 8 Q1.
 
   Q1 NO-TX DISCREPANCY: no_treatment at t=120 — spec=11.2, engine=8.7 (delta=-2.5).
   Engine's BUN modifier adds (35-20)/10*0.15 = 0.225 mL/min/yr to decline,
   compounding over 10 years. Spec vectors may not apply BUN modifier.
 
-  GAP: Optional modifiers (hemoglobin, glucose) do NOT affect trajectory rates
-  in current engine. compute_confidence_tier() returns tier but engine uses no
-  Tier 2 decline modifier. This is a spec gap — flagged in test comments.
+  GAP: Optional modifiers (hemoglobin, co2, albumin) DO affect trajectory rates
+  in v2.0 engine via _compute_optional_modifier(). glucose is accepted by
+  predict_for_endpoint() for backward-compat but does not affect trajectories.
 
 Coverage target: 85% for backend/prediction/engine.py
 Run:
@@ -42,12 +42,10 @@ import pytest
 
 from prediction.engine import (
     DIALYSIS_THRESHOLD,
-    OPTIMAL_BUN,
-    PHASE1_COEFF,
-    TIER_CONFIG,
+    _TIER_CONFIG,
     TIME_POINTS_MONTHS,
-    NO_TX_DECLINE_RATES,
-    _compute_annual_decline,
+    _NO_TX_DECLINE_RATES,
+    _get_decline_rate,
     _get_base_decline_rate,
     _phase1_fraction,
     _phase2_fraction,
@@ -147,7 +145,7 @@ class TestGoldenFileVectors:
     @pytest.mark.xfail(
         reason=(
             "Q1 discrepancy: treatment path formula mismatch. Engine Phase 1 "
-            "completes at month 3 with phase1_cap from TIER_CONFIG; spec vectors "
+            "completes at month 3 with phase1_cap from _TIER_CONFIG; spec vectors "
             "appear to use a different Phase 1/2 boundary. Deltas of 1-5 eGFR pts. "
             "Ref finalized-formulas.md Section 8 Q1."
         ),
@@ -355,8 +353,9 @@ class TestBoundaryValuesBUN:
         """BUN=21 is the bun_18_24 target — phase1 gain for that tier should be ~0."""
         result = _run_predict(bun=21, creatinine=2.0, age=50, egfr_entered=35.0)
         _assert_valid_result(result, "BUN=21 (tier boundary)")
-        # Phase 1 for bun_18_24: min(6, (21-21)*0.31) = 0
-        # So bun_18_24 at t=3 should equal baseline (+ any rounding from phase fraction)
+        # v2.0: Phase 1 gain has two components: BUN suppression removal (~8% of eGFR)
+        # + rate differential. Even when BUN=21 (bun_18_24 target), the suppression
+        # removal component still applies. bun_18_24 at t=3 should be >= baseline.
         bun_18_24_t3 = _get_traj_at(result, "bun_18_24", 3)
         assert bun_18_24_t3 >= 35.0, (
             f"BUN=21 (target for 18-24 tier): bun_18_24 at t=3 should be >= baseline=35.0, got {bun_18_24_t3}"
@@ -657,10 +656,10 @@ class TestEdgeCases:
         from prediction.engine import predict_for_endpoint, compute_confidence_tier
         result = predict_for_endpoint(
             bun=35, creatinine=2.1, potassium=4.0, age=58,
-            sex="unknown", hemoglobin=9.5, glucose=140,
+            sex="unknown", hemoglobin=9.5, co2=20.0, albumin=3.2,
         )
         assert result["confidence_tier"] == 2, (
-            "Hgb + glucose present should yield confidence_tier=2"
+            "hemoglobin + co2 + albumin present should yield confidence_tier=2"
         )
         _assert_valid_result(result, "tier2_with_optionals")
 
@@ -733,24 +732,29 @@ class TestEdgeCases:
                 assert v <= ceiling, f"{path} produced eGFR={v} > ceiling={ceiling}"
 
     def test_confidence_tier_1_without_optionals(self):
-        """No hemoglobin/glucose -> confidence_tier=1."""
-        tier = compute_confidence_tier(hemoglobin=None, glucose=None)
+        """No optional fields -> confidence_tier=1."""
+        tier = compute_confidence_tier(hemoglobin=None, co2=None, albumin=None)
         assert tier == 1
 
-    def test_confidence_tier_2_with_both_optionals(self):
-        """Both hemoglobin and glucose present -> confidence_tier=2."""
-        tier = compute_confidence_tier(hemoglobin=9.5, glucose=140)
+    def test_confidence_tier_2_with_hemoglobin(self):
+        """hemoglobin present -> confidence_tier=2 (any optional field triggers Tier 2)."""
+        tier = compute_confidence_tier(hemoglobin=9.5, co2=None, albumin=None)
         assert tier == 2
 
-    def test_confidence_tier_1_with_only_hemoglobin(self):
-        """Only hemoglobin (no glucose) -> tier=1 (both required for Tier 2)."""
-        tier = compute_confidence_tier(hemoglobin=9.5, glucose=None)
-        assert tier == 1
+    def test_confidence_tier_2_with_co2(self):
+        """co2 present -> confidence_tier=2."""
+        tier = compute_confidence_tier(hemoglobin=None, co2=20.0, albumin=None)
+        assert tier == 2
 
-    def test_confidence_tier_1_with_only_glucose(self):
-        """Only glucose (no hemoglobin) -> tier=1."""
-        tier = compute_confidence_tier(hemoglobin=None, glucose=140)
-        assert tier == 1
+    def test_confidence_tier_2_with_albumin(self):
+        """albumin present -> confidence_tier=2."""
+        tier = compute_confidence_tier(hemoglobin=None, co2=None, albumin=3.2)
+        assert tier == 2
+
+    def test_confidence_tier_2_with_all_optionals(self):
+        """All optional fields present -> confidence_tier=2."""
+        tier = compute_confidence_tier(hemoglobin=9.5, co2=20.0, albumin=3.2)
+        assert tier == 2
 
 
 # ---------------------------------------------------------------------------
@@ -883,7 +887,7 @@ class TestNoTreatmentDeclineRates:
 
     def test_bun_modifier_adds_to_decline_when_bun_above_20(self):
         """BUN=30 (above 20): modifier = (30-20)/10 * 0.15 = 0.15 mL/min/yr extra."""
-        annual_decline = _compute_annual_decline(50.0, 30.0)
+        annual_decline = _get_decline_rate(50.0, 30.0)
         base_rate = _get_base_decline_rate(50.0)  # -1.8
         expected_modifier = (30 - 20) / 10 * 0.15  # 0.15
         expected_total = base_rate - expected_modifier  # -1.95
@@ -893,7 +897,7 @@ class TestNoTreatmentDeclineRates:
 
     def test_bun_modifier_is_zero_when_bun_at_20(self):
         """BUN=20: modifier = 0 (boundary: exactly at threshold)."""
-        annual_decline = _compute_annual_decline(50.0, 20.0)
+        annual_decline = _get_decline_rate(50.0, 20.0)
         base_rate = _get_base_decline_rate(50.0)  # -1.8
         assert annual_decline == base_rate, (
             f"BUN=20 should give no modifier. Expected {base_rate}, got {annual_decline}"
@@ -901,7 +905,7 @@ class TestNoTreatmentDeclineRates:
 
     def test_bun_modifier_is_zero_when_bun_below_20(self):
         """BUN=15 (below 20): modifier = 0."""
-        annual_decline = _compute_annual_decline(50.0, 15.0)
+        annual_decline = _get_decline_rate(50.0, 15.0)
         base_rate = _get_base_decline_rate(50.0)
         assert annual_decline == base_rate, (
             f"BUN<20 should give no modifier. Expected {base_rate}, got {annual_decline}"
@@ -909,7 +913,7 @@ class TestNoTreatmentDeclineRates:
 
     def test_bun_modifier_at_bun_150(self):
         """BUN=150: modifier = (150-20)/10 * 0.15 = 1.95 mL/min/yr extra."""
-        annual_decline = _compute_annual_decline(50.0, 150.0)
+        annual_decline = _get_decline_rate(50.0, 150.0)
         base_rate = _get_base_decline_rate(50.0)  # -1.8
         expected_modifier = (150 - 20) / 10 * 0.15  # 1.95
         expected_total = base_rate - expected_modifier  # -3.75
@@ -919,7 +923,7 @@ class TestNoTreatmentDeclineRates:
         """Verify no_treatment trajectory shape: linear with BUN-adjusted rate."""
         egfr0 = 33.0
         bun = 35.0
-        annual_rate = _compute_annual_decline(egfr0, bun)
+        annual_rate = _get_decline_rate(egfr0, bun)
         no_tx = compute_no_treatment(egfr0, bun)
 
         for i, t in enumerate(TIME_POINTS_MONTHS):
@@ -929,26 +933,26 @@ class TestNoTreatmentDeclineRates:
                 f"t={t}: expected {expected:.2f}, got {actual}"
             )
 
-    def test_phase1_fraction_at_month_3_is_1(self):
-        """Phase 1 must be fully saturated at month 3."""
-        assert _phase1_fraction(3) == 1.0
+    def test_phase1_fraction_at_month_6_is_1(self):
+        """Phase 1 must be fully saturated at month 6 (v2.0 — was month 3 in v1.0)."""
+        assert _phase1_fraction(6) == 1.0
 
     def test_phase1_fraction_at_month_0_is_0(self):
         """Phase 1 starts at 0."""
         assert _phase1_fraction(0) == 0.0
 
-    def test_phase2_fraction_at_month_3_is_0(self):
-        """Phase 2 starts at month 3 (engine uses t<=3 returns 0)."""
-        assert _phase2_fraction(3) == 0.0
+    def test_phase2_fraction_at_month_6_is_0(self):
+        """Phase 2 starts at month 6 (v2.0 — engine uses t<=6 returns 0)."""
+        assert _phase2_fraction(6) == 0.0
 
     def test_phase2_fraction_at_month_24_is_1(self):
         """Phase 2 must be complete by month 24."""
         assert _phase2_fraction(24) == 1.0
 
     def test_no_tx_decline_rates_constants_match_spec(self):
-        """NO_TX_DECLINE_RATES must match binding values from backend-meeting-memo.md."""
+        """_NO_TX_DECLINE_RATES must match binding values from backend-meeting-memo.md."""
         # (low, high, rate) triples
-        rate_map = {(low, high): rate for low, high, rate in NO_TX_DECLINE_RATES}
+        rate_map = {(low, high): rate for low, high, rate in _NO_TX_DECLINE_RATES}
         assert rate_map.get((45, 60)) == -1.8, "Stage 3a rate mismatch"
         assert rate_map.get((30, 45)) == -2.2, "Stage 3b rate mismatch"
         assert rate_map.get((15, 30)) == -3.0, "Stage 4 rate mismatch"
@@ -962,12 +966,23 @@ class TestNoTreatmentDeclineRates:
         )
 
     def test_phase1_coeff_matches_spec(self):
-        """PHASE1_COEFF = 0.31 — calc spec v1.0 coefficient."""
-        assert PHASE1_COEFF == 0.31
+        """BUN suppression formula uses 0.31 coefficient (calc spec v1.0).
+
+        v2.0 engine removed PHASE1_COEFF as a module-level constant (it is used
+        only inside compute_bun_suppression_estimate). Verify the coefficient is
+        still applied correctly via the public function.
+        """
+        # (35 - 10) * 0.31 = 7.75, rounded to 7.8
+        assert abs(compute_bun_suppression_estimate(35) - 7.8) <= 0.05
 
     def test_optimal_bun_constant(self):
-        """OPTIMAL_BUN = 10 — midpoint of <=12 tier target."""
-        assert OPTIMAL_BUN == 10
+        """OPTIMAL_BUN threshold = 10 — verify via suppression function.
+
+        v2.0 engine inlines the constant inside compute_bun_suppression_estimate.
+        BUN <= 10 must yield suppression = 0.
+        """
+        assert compute_bun_suppression_estimate(10) == 0.0
+        assert compute_bun_suppression_estimate(9) == 0.0
 
 
 # ---------------------------------------------------------------------------
@@ -1033,65 +1048,67 @@ class TestCKDEPIFormula:
 
 
 # ---------------------------------------------------------------------------
-# Section 7: TIER_CONFIG coverage
+# Section 7: _TIER_CONFIG coverage
 # ---------------------------------------------------------------------------
 
 
 class TestTierConfig:
-    """Verify TIER_CONFIG constants match spec."""
+    """Verify _TIER_CONFIG constants match v2.0 spec.
 
-    def test_bun_12_phase1_cap(self):
-        assert TIER_CONFIG["bun_12"]["phase1_cap"] == 12
+    v2.0 _TIER_CONFIG has two keys per tier: target_bun and post_decline.
+    phase1_cap and phase2_total are no longer fixed constants — they are computed
+    dynamically by _compute_phase1() and _compute_phase2_gain() respectively.
+    """
 
-    def test_bun_13_17_phase1_cap(self):
-        assert TIER_CONFIG["bun_13_17"]["phase1_cap"] == 9
+    def test_bun_12_target_bun(self):
+        """bun_12 tier target BUN = 10 mg/dL."""
+        assert _TIER_CONFIG["bun_12"]["target_bun"] == 10
 
-    def test_bun_18_24_phase1_cap(self):
-        assert TIER_CONFIG["bun_18_24"]["phase1_cap"] == 6
+    def test_bun_13_17_target_bun(self):
+        """bun_13_17 tier target BUN = 15 mg/dL."""
+        assert _TIER_CONFIG["bun_13_17"]["target_bun"] == 15
 
-    def test_bun_12_phase2_total(self):
-        assert TIER_CONFIG["bun_12"]["phase2_total"] == 8.0
-
-    def test_bun_13_17_phase2_total(self):
-        assert TIER_CONFIG["bun_13_17"]["phase2_total"] == 6.0
-
-    def test_bun_18_24_phase2_total(self):
-        assert TIER_CONFIG["bun_18_24"]["phase2_total"] == 4.0
+    def test_bun_18_24_target_bun(self):
+        """bun_18_24 tier target BUN = 21 mg/dL."""
+        assert _TIER_CONFIG["bun_18_24"]["target_bun"] == 21
 
     def test_bun_12_post_decline(self):
-        """bun_12 post-Phase 2 decline = -0.5 mL/min/yr (near-normal protection)."""
-        assert TIER_CONFIG["bun_12"]["post_decline"] == 0.5
+        """bun_12 post-Phase 2 decline = 0.5 mL/min/yr (near-normal protection)."""
+        assert _TIER_CONFIG["bun_12"]["post_decline"] == 0.5
 
     def test_bun_13_17_post_decline(self):
-        """bun_13_17 post-Phase 2 decline = -1.0 mL/min/yr."""
-        assert TIER_CONFIG["bun_13_17"]["post_decline"] == 1.0
+        """bun_13_17 post-Phase 2 decline = 1.0 mL/min/yr."""
+        assert _TIER_CONFIG["bun_13_17"]["post_decline"] == 1.0
 
     def test_bun_18_24_post_decline(self):
-        """bun_18_24 post-Phase 2 decline = -1.5 mL/min/yr."""
-        assert TIER_CONFIG["bun_18_24"]["post_decline"] == 1.5
+        """bun_18_24 post-Phase 2 decline = 1.5 mL/min/yr."""
+        assert _TIER_CONFIG["bun_18_24"]["post_decline"] == 1.5
 
-    def test_treatment_trajectory_phase2_gain_at_t24(self):
-        """At t=24 (end of Phase 2), trajectory should equal peak: baseline + phase1 + phase2."""
+    def test_treatment_trajectory_at_t24_above_baseline(self):
+        """At t=24 (end of Phase 2), all treatment trajectories must exceed baseline.
+
+        v2.0 uses dynamic Phase 1/2 gains — we cannot predict exact peak from config
+        constants alone. This test verifies the structural property: treatment benefit
+        accumulates through Phase 2 and the trajectory at t=24 is above baseline.
+        """
         egfr0 = 33.0
         bun = 35.0
+        age = 58
         for tier in ("bun_12", "bun_13_17", "bun_18_24"):
-            cfg = TIER_CONFIG[tier]
-            phase1_total = min(cfg["phase1_cap"], (bun - cfg["target_bun"]) * PHASE1_COEFF)
-            phase1_total = max(0, phase1_total)
-            expected_peak = egfr0 + phase1_total + cfg["phase2_total"]
-            traj = compute_treatment_trajectory(egfr0, bun, tier)
+            traj = compute_treatment_trajectory(egfr0, bun, age, tier)
             idx_24 = TIME_POINTS_MONTHS.index(24)
-            assert abs(traj[idx_24] - expected_peak) <= 0.2, (
-                f"{tier} at t=24: expected peak {expected_peak:.1f}, got {traj[idx_24]}"
+            assert traj[idx_24] > egfr0, (
+                f"{tier} at t=24: expected trajectory > baseline {egfr0}, got {traj[idx_24]}"
             )
 
     def test_treatment_trajectory_post_phase2_decline_rate(self):
         """After t=24, trajectory declines at tier-specific post_decline rate."""
         egfr0 = 33.0
         bun = 35.0
+        age = 58
         for tier in ("bun_12", "bun_13_17", "bun_18_24"):
-            cfg = TIER_CONFIG[tier]
-            traj = compute_treatment_trajectory(egfr0, bun, tier)
+            cfg = _TIER_CONFIG[tier]
+            traj = compute_treatment_trajectory(egfr0, bun, age, tier)
             idx_24 = TIME_POINTS_MONTHS.index(24)
             idx_36 = TIME_POINTS_MONTHS.index(36)
             # From t=24 to t=36 is 12 months = 1 year
