@@ -360,7 +360,6 @@ class StructuralFloor(BaseModel):
 
     structural_floor_egfr: float
     suppression_points: float
-    bun_ratio: float
 
 
 class PredictResponse(BaseModel):

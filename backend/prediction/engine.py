@@ -376,7 +376,7 @@ def _get_bun_ratio(bun: float) -> float:
     """Return BUN ratio from the Amendment 3 lookup table."""
     if bun < 15.0:
         return 0.00
-    for low, high, ratio in _BUN_RATIO_TABLE:
+    for _, high, ratio in _BUN_RATIO_TABLE:
         if bun <= high:
             return ratio
     return 0.25  # fallback (should never be reached given inf sentinel)
@@ -399,7 +399,6 @@ def compute_structural_floor(
     Returns a dict with:
         structural_floor_egfr: float
         suppression_points: float  (the additive delta)
-        bun_ratio: float           (ratio used in calculation)
     """
     if bun <= 17.0:
         return None
@@ -421,12 +420,13 @@ def compute_structural_floor(
     conservative_ratio = min(bun_ratio, egfr_implied_ratio)
 
     suppression_points = round((bun - 15.0) * conservative_ratio, 1)
+    if round(suppression_points) == 0:
+        return None
     structural_floor_egfr = round(egfr + suppression_points, 1)
 
     return {
         "structural_floor_egfr": structural_floor_egfr,
         "suppression_points": suppression_points,
-        "bun_ratio": conservative_ratio,
     }
 
 

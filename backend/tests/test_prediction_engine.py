@@ -47,6 +47,7 @@ from prediction.engine import (
     _NO_TX_DECLINE_RATES,
     _get_decline_rate,
     _get_base_decline_rate,
+    _get_bun_ratio,
     _phase1_fraction,
     _phase2_fraction,
     compute_bun_suppression_estimate,
@@ -54,6 +55,7 @@ from prediction.engine import (
     compute_dial_age,
     compute_egfr_ckd_epi_2021,
     compute_no_treatment,
+    compute_structural_floor,
     compute_treatment_trajectory,
     predict,
 )
@@ -1122,4 +1124,159 @@ class TestTierConfig:
                 f"{tier} post-phase2: expected decline {expected_decline:.1f}/yr, "
                 f"got {actual_decline:.1f}"
             )
+
+
+# ---------------------------------------------------------------------------
+# Section 8: Structural Floor (Amendment 3)
+# ---------------------------------------------------------------------------
+
+
+class TestStructuralFloor:
+    """Tests for compute_structural_floor() — Amendment 3 display-only callout.
+
+    Covers:
+      - BUN <= 17 returns None (no meaningful suppression)
+      - Each BUN bracket selects the correct ratio via _get_bun_ratio()
+      - Conservative ratio logic (min of BUN-bracket and eGFR-bracket)
+      - Suppression ~0 (conservative ratio = 0.0) returns None
+      - Return dict contains only structural_floor_egfr and suppression_points
+        (bun_ratio must NOT be present — internal coefficient, not exposed)
+    """
+
+    def test_bun_at_17_returns_none(self):
+        """BUN exactly 17 is the boundary — function returns None."""
+        result = compute_structural_floor(egfr=35.0, bun=17.0)
+        assert result is None, f"Expected None for BUN=17, got {result}"
+
+    def test_bun_below_17_returns_none(self):
+        """BUN=10: well below threshold, must return None."""
+        result = compute_structural_floor(egfr=35.0, bun=10.0)
+        assert result is None
+
+    def test_bun_just_above_17_returns_payload(self):
+        """BUN=17.1 (just above threshold): must return a non-None dict."""
+        result = compute_structural_floor(egfr=35.0, bun=17.1)
+        assert result is not None, "BUN=17.1 should return a structural floor payload"
+
+    # --- BUN bracket ratio selection via _get_bun_ratio() -------------------
+
+    def test_get_bun_ratio_below_15_returns_zero(self):
+        """BUN < 15: ratio = 0.00 (no suppression signal)."""
+        assert _get_bun_ratio(14.9) == 0.00
+        assert _get_bun_ratio(5.0) == 0.00
+
+    def test_get_bun_ratio_bracket_15_to_20(self):
+        """BUN in (15, 20]: ratio = 0.67."""
+        assert _get_bun_ratio(18.0) == 0.67
+        assert _get_bun_ratio(20.0) == 0.67
+
+    def test_get_bun_ratio_bracket_20_to_30(self):
+        """BUN in (20, 30]: ratio = 0.47."""
+        assert _get_bun_ratio(25.0) == 0.47
+        assert _get_bun_ratio(30.0) == 0.47
+
+    def test_get_bun_ratio_bracket_30_to_50(self):
+        """BUN in (30, 50]: ratio = 0.32."""
+        assert _get_bun_ratio(40.0) == 0.32
+        assert _get_bun_ratio(50.0) == 0.32
+
+    def test_get_bun_ratio_above_50(self):
+        """BUN > 50: ratio = 0.25."""
+        assert _get_bun_ratio(60.0) == 0.25
+        assert _get_bun_ratio(150.0) == 0.25
+
+    # --- Conservative ratio (min of BUN-bracket vs eGFR-bracket) ------------
+
+    def test_conservative_ratio_takes_egfr_implied_when_lower(self):
+        """eGFR >= 60 implies ratio 0.00 — should yield None (suppression rounds to 0).
+
+        BUN=25 gives bun_ratio=0.47, but eGFR=65 implies ratio=0.00.
+        conservative_ratio = min(0.47, 0.00) = 0.00 -> suppression rounds to 0 -> None.
+        """
+        result = compute_structural_floor(egfr=65.0, bun=25.0)
+        assert result is None, (
+            f"eGFR>=60 (implied ratio=0.00) should yield None, got {result}"
+        )
+
+    def test_conservative_ratio_takes_egfr_implied_when_lower_stage4(self):
+        """When eGFR-bracket ratio < BUN-bracket ratio, eGFR bracket wins.
+
+        BUN=25 (ratio=0.47), eGFR=20 (Stage 4/5 boundary, 15<=eGFR<30 -> implied ratio=0.32).
+        conservative_ratio = min(0.47, 0.32) = 0.32.
+        suppression = round((25-15)*0.32, 1) = round(3.2, 1) = 3.2 -> rounds to 3 (non-zero).
+        """
+        result = compute_structural_floor(egfr=20.0, bun=25.0)
+        assert result is not None
+        # suppression_points = (25-15) * 0.32 = 3.2
+        assert abs(result["suppression_points"] - 3.2) <= 0.15, (
+            f"Expected suppression_points ~3.2, got {result['suppression_points']}"
+        )
+
+    # --- Suppression ~0 returns None ----------------------------------------
+
+    def test_suppression_rounds_to_zero_returns_none(self):
+        """When conservative_ratio=0.0, suppression_points=0.0 -> returns None.
+
+        This prevents a confusing '0 points' callout on the frontend.
+        eGFR >= 60 always implies ratio 0.00, so BUN=18 with eGFR=70 returns None.
+        """
+        result = compute_structural_floor(egfr=70.0, bun=18.0)
+        assert result is None, (
+            f"Zero suppression (conservative_ratio=0.0) must return None, got {result}"
+        )
+
+    def test_suppression_below_half_point_returns_none(self):
+        """Conservative ratio that yields < 0.5 rounded suppression returns None.
+
+        BUN=15.5 in bracket (15, 20] -> bun_ratio=0.67.
+        eGFR=35 (Stage 3b, 30-44) -> egfr_implied_ratio=0.47.
+        conservative_ratio=0.47. suppression=(15.5-15)*0.47=0.235 -> rounds to 0 -> None.
+        """
+        result = compute_structural_floor(egfr=35.0, bun=15.5)
+        assert result is None, (
+            f"suppression_points ~0.2 (rounds to 0) must return None, got {result}"
+        )
+
+    # --- Return shape — bun_ratio must NOT be present -----------------------
+
+    def test_return_dict_does_not_contain_bun_ratio(self):
+        """bun_ratio is an internal coefficient and must not appear in the API response."""
+        result = compute_structural_floor(egfr=25.0, bun=35.0)
+        assert result is not None, "Expected a payload for BUN=35, eGFR=25"
+        assert "bun_ratio" not in result, (
+            "bun_ratio must not be exposed in the structural floor response. "
+            f"Keys present: {list(result.keys())}"
+        )
+
+    def test_return_dict_has_expected_keys(self):
+        """Return dict must have exactly structural_floor_egfr and suppression_points."""
+        result = compute_structural_floor(egfr=25.0, bun=35.0)
+        assert result is not None
+        assert set(result.keys()) == {"structural_floor_egfr", "suppression_points"}, (
+            f"Unexpected keys: {set(result.keys())}"
+        )
+
+    # --- Arithmetic correctness ---------------------------------------------
+
+    def test_structural_floor_egfr_equals_egfr_plus_suppression(self):
+        """structural_floor_egfr = egfr + suppression_points (within rounding)."""
+        egfr = 25.0
+        bun = 40.0
+        result = compute_structural_floor(egfr=egfr, bun=bun)
+        assert result is not None
+        expected_floor = round(egfr + result["suppression_points"], 1)
+        assert abs(result["structural_floor_egfr"] - expected_floor) <= 0.05, (
+            f"structural_floor_egfr {result['structural_floor_egfr']} != "
+            f"egfr + suppression_points ({expected_floor})"
+        )
+
+    def test_high_bun_stage4_produces_valid_payload(self):
+        """BUN=60, eGFR=22 (Stage 4): should produce a non-None payload with positive suppression."""
+        result = compute_structural_floor(egfr=22.0, bun=60.0)
+        # eGFR 15-29 -> egfr_implied_ratio=0.32; BUN>50 -> bun_ratio=0.25
+        # conservative = min(0.25, 0.32) = 0.25
+        # suppression = round((60-15)*0.25, 1) = round(11.25, 1) = 11.2
+        assert result is not None
+        assert result["suppression_points"] > 0
+        assert result["structural_floor_egfr"] > 22.0
 

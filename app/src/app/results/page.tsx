@@ -107,8 +107,10 @@ function ResultsContent({ chartData, rawResponse, inputBun }: ResultsContentProp
         <EgfrChart data={chartData} />
       </section>
 
-      {/* Amendment 3: BUN Structural Floor callout — only when BUN > 17 */}
-      {rawResponse.structural_floor && inputBun !== null && (
+      {/* Amendment 3: BUN Structural Floor callout — only when BUN > 17 and suppression >= 0.5 */}
+      {rawResponse.structural_floor &&
+        rawResponse.structural_floor.suppression_points >= 0.5 &&
+        inputBun !== null && (
         <StructuralFloorCallout
           egfrBaseline={rawResponse.egfr_baseline}
           bun={inputBun}

@@ -45,8 +45,6 @@ export interface StructuralFloor {
   structural_floor_egfr: number;
   /** eGFR points attributable to BUN workload suppression */
   suppression_points: number;
-  /** BUN ratio used in the calculation (conservative of BUN-bracket and eGFR-bracket) */
-  bun_ratio: number;
 }
 
 /**
