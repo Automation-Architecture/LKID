@@ -1073,8 +1073,12 @@ class TestTierConfig:
         assert _TIER_CONFIG["bun_18_24"]["target_bun"] == 21
 
     def test_bun_12_post_decline(self):
-        """bun_12 post-Phase 2 decline = 0.5 mL/min/yr (near-normal protection)."""
-        assert _TIER_CONFIG["bun_12"]["post_decline"] == 0.5
+        """bun_12 post-Phase 2 post_decline = -0.33 mL/min/yr per Lee's pilot data (n=28).
+
+        Negative value: patients sustaining BUN ≤12 continue a slight eGFR gain
+        post-Phase 2 rather than declining.
+        """
+        assert _TIER_CONFIG["bun_12"]["post_decline"] == -0.33
 
     def test_bun_13_17_post_decline(self):
         """bun_13_17 post-Phase 2 decline = 1.0 mL/min/yr."""
