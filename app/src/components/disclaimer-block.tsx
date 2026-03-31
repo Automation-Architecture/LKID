@@ -62,44 +62,48 @@ export function DisclaimerBlock() {
         className="fixed inset-x-0 bottom-0 z-50 md:hidden"
         data-testid="disclaimer-container"
       >
-        {/* Expanded panel — appears above footer bar */}
-        {expanded && (
-          <div
-            id={contentId}
-            ref={panelRef}
-            role="region"
-            aria-label="Medical disclaimer"
-            className="border-t border-border bg-white px-4 py-3 shadow-[0_-4px_16px_rgba(0,0,0,0.12)]"
-            data-testid="disclaimer-full-panel"
-          >
-            <div className="flex items-start justify-between gap-3">
-              <p className="text-sm text-foreground">{DISCLAIMER_FULL}</p>
-              <button
-                onClick={() => setExpanded(false)}
-                aria-label="Close medical disclaimer"
-                className="mt-0.5 shrink-0 rounded p-1 text-muted-foreground hover:bg-muted/50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+        {/* Expanded panel — appears above footer bar; always in DOM for valid aria-controls */}
+        <div
+          id={contentId}
+          ref={panelRef}
+          role="region"
+          aria-label="Medical disclaimer"
+          hidden={!expanded}
+          className="border-t border-border bg-white px-4 py-3 shadow-[0_-4px_16px_rgba(0,0,0,0.12)]"
+          data-testid="disclaimer-full-panel-mobile"
+        >
+          <div className="flex items-start justify-between gap-3">
+            <p className="text-sm text-foreground">{DISCLAIMER_FULL}</p>
+            <button
+              type="button"
+              onClick={() => {
+                setExpanded(false);
+                toggleRef.current?.focus();
+              }}
+              aria-label="Close medical disclaimer"
+              className="mt-0.5 shrink-0 rounded p-1 text-muted-foreground hover:bg-muted/50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+            >
+              <svg
+                className="size-4"
+                fill="none"
+                viewBox="0 0 24 24"
+                stroke="currentColor"
+                strokeWidth={2}
+                aria-hidden="true"
               >
-                <svg
-                  className="size-4"
-                  fill="none"
-                  viewBox="0 0 24 24"
-                  stroke="currentColor"
-                  strokeWidth={2}
-                  aria-hidden="true"
-                >
-                  <path
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                    d="M6 18L18 6M6 6l12 12"
-                  />
-                </svg>
-              </button>
-            </div>
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  d="M6 18L18 6M6 6l12 12"
+                />
+              </svg>
+            </button>
           </div>
-        )}
+        </div>
 
         {/* Collapsed footer bar — always visible */}
         <button
+          type="button"
           ref={toggleRef}
           onClick={() => setExpanded((prev) => !prev)}
           aria-expanded={expanded}
@@ -144,33 +148,11 @@ export function DisclaimerBlock() {
         <div className="mx-auto max-w-[960px] px-4 py-3 md:px-6 lg:px-8">
           <p
             className="text-[14px] font-normal text-muted-foreground"
-            data-testid="disclaimer-full-panel"
+            data-testid="disclaimer-full-panel-desktop"
           >
             {DISCLAIMER_FULL}
           </p>
         </div>
-        <footer className="border-t border-border px-4 py-4 md:px-6 lg:px-8">
-          <div className="flex gap-4 text-sm">
-            <button
-              onClick={(e) => e.preventDefault()}
-              className="text-muted-foreground underline hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
-            >
-              About
-            </button>
-            <button
-              onClick={(e) => e.preventDefault()}
-              className="text-muted-foreground underline hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
-            >
-              Privacy
-            </button>
-            <button
-              onClick={(e) => e.preventDefault()}
-              className="text-muted-foreground underline hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
-            >
-              Terms
-            </button>
-          </div>
-        </footer>
       </div>
     </>
   );
