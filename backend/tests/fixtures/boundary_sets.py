@@ -103,10 +103,10 @@ AGE_ATTENUATION_BOUNDARIES = [
 # using CKD-EPI 2021 for unknown sex, age 60.
 # Computed empirically from engine.compute_egfr_ckd_epi_2021().
 #
-# Stage 3a/3b boundary: eGFR ~45  -> creatinine ~1.82 (male/unknown/age 60)
-# Stage 3b/4 boundary:  eGFR ~30  -> creatinine ~2.60
-# Stage 4/5 boundary:   eGFR ~15  -> creatinine ~4.70
-# Dialysis threshold:   eGFR ~12  -> creatinine ~5.70
+# Stage 3a/3b boundary: eGFR ~45.6 -> creatinine ~1.52 (unknown sex, age 60)
+# Stage 3b/4 boundary:  eGFR ~30.1 -> creatinine ~2.15
+# Stage 4/5 boundary:   eGFR ~14.7 -> creatinine ~3.90
+# Dialysis threshold:   eGFR ~12.1 -> creatinine ~4.60
 #
 # Note: These are approximate. Tests that need an exact eGFR must use
 # egfr_entered/egfr_override rather than deriving eGFR from creatinine.

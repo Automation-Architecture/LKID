@@ -179,7 +179,10 @@ class TestGoldenFileVectors:
     # --- Vector 2 -----------------------------------------------------------
 
     @pytest.mark.xfail(
-        reason="Q1 discrepancy — same formula mismatch as Vector 1. Strict=True.",
+        reason=(
+            "Q1 discrepancy — same formula mismatch as Vector 1. strict=False: "
+            "unexpected passes are allowed until Q1 is resolved."
+        ),
         strict=False,
     )
     @pytest.mark.parametrize(
@@ -208,7 +211,10 @@ class TestGoldenFileVectors:
     # --- Vector 3 -----------------------------------------------------------
 
     @pytest.mark.xfail(
-        reason="Q1 discrepancy — same formula mismatch as Vector 1. Strict=True.",
+        reason=(
+            "Q1 discrepancy — same formula mismatch as Vector 1. strict=False: "
+            "unexpected passes are allowed until Q1 is resolved."
+        ),
         strict=False,
     )
     @pytest.mark.parametrize(
@@ -286,8 +292,9 @@ def _assert_valid_result(result: dict, label: str = ""):
 
     Ceiling note: CKD-EPI 2021 can produce values > 100 for very low creatinine
     (e.g., creatinine=0.3, age=20 can yield eGFR ~140+). We check that treatment
-    trajectories don't exceed baseline + plausible Phase 1+2 gain (~30 pts max).
-    The hard ceiling of 200 catches any arithmetic runaway.
+    trajectories don't exceed baseline + 35 pts — generous headroom above the
+    ~20 pt maximum from Phase 1 (cap=12) + Phase 2 (max=8). This catches any
+    arithmetic runaway while allowing normal Phase 1+2 gains.
     """
     prefix = f"[{label}] " if label else ""
     assert "trajectories" in result, f"{prefix}missing 'trajectories'"
@@ -460,24 +467,54 @@ class TestBoundaryValuesAge:
 
 
 class TestBoundaryValuesOptionalModifiers:
-    """BVA for hemoglobin [4.0, 20.0] and glucose [40, 500] (Tier 2 modifiers)."""
+    """BVA for hemoglobin [4.0, 20.0] and glucose [40, 500] (Tier 2 modifiers).
 
-    def test_hemoglobin_at_minimum_no_error(self):
-        """Hemoglobin=4.0 must not cause errors (engine ignores it for trajectory)."""
-        result = _run_predict(bun=30, creatinine=2.0, age=55, egfr_entered=35.0)
-        _assert_valid_result(result, "hemoglobin=4.0 context")
+    NOTE: The current engine does not accept hemoglobin or glucose as parameters
+    to predict() — these fields are consumed by predict_for_endpoint() and used
+    only to compute confidence_tier. The trajectory itself is not modified by
+    hemoglobin/glucose in the current implementation (gap tracked under LKID-14).
 
-    def test_hemoglobin_at_maximum_no_error(self):
-        result = _run_predict(bun=30, creatinine=2.0, age=55, egfr_entered=35.0)
-        _assert_valid_result(result, "hemoglobin=20.0 context")
+    These tests verify that Tier 1 predict() calls (without optional modifiers)
+    produce valid output across a representative midrange input. BVA for the
+    optional modifier values themselves requires predict_for_endpoint() once
+    LKID-14 implements the Tier 2 decline modifier.
+    """
 
-    def test_glucose_at_minimum_no_error(self):
-        result = _run_predict(bun=30, creatinine=2.0, age=55, egfr_entered=35.0)
-        _assert_valid_result(result, "glucose=40 context")
+    def test_tier1_predict_at_hemoglobin_min_context_no_error(self):
+        """Tier 1 predict() (no optionals) runs cleanly — baseline for hemoglobin=4.0 context.
 
-    def test_glucose_at_maximum_no_error(self):
+        GAP: predict() does not accept hemoglobin. Engine ignores it entirely for
+        trajectory purposes. Full BVA for hemoglobin=4.0 requires LKID-14 implementation.
+        """
         result = _run_predict(bun=30, creatinine=2.0, age=55, egfr_entered=35.0)
-        _assert_valid_result(result, "glucose=500 context")
+        _assert_valid_result(result, "tier1_baseline (hemoglobin=4.0 context)")
+
+    def test_tier1_predict_at_hemoglobin_max_context_no_error(self):
+        """Tier 1 predict() (no optionals) runs cleanly — baseline for hemoglobin=20.0 context.
+
+        GAP: predict() does not accept hemoglobin. Full BVA for hemoglobin=20.0
+        requires LKID-14 implementation.
+        """
+        result = _run_predict(bun=30, creatinine=2.0, age=55, egfr_entered=35.0)
+        _assert_valid_result(result, "tier1_baseline (hemoglobin=20.0 context)")
+
+    def test_tier1_predict_at_glucose_min_context_no_error(self):
+        """Tier 1 predict() (no optionals) runs cleanly — baseline for glucose=40 context.
+
+        GAP: predict() does not accept glucose. Full BVA for glucose=40 requires
+        LKID-14 implementation.
+        """
+        result = _run_predict(bun=30, creatinine=2.0, age=55, egfr_entered=35.0)
+        _assert_valid_result(result, "tier1_baseline (glucose=40 context)")
+
+    def test_tier1_predict_at_glucose_max_context_no_error(self):
+        """Tier 1 predict() (no optionals) runs cleanly — baseline for glucose=500 context.
+
+        GAP: predict() does not accept glucose. Full BVA for glucose=500 requires
+        LKID-14 implementation.
+        """
+        result = _run_predict(bun=30, creatinine=2.0, age=55, egfr_entered=35.0)
+        _assert_valid_result(result, "tier1_baseline (glucose=500 context)")
 
     def test_hemoglobin_concerning_threshold(self):
         """Hemoglobin<11 should add +0.2/yr decline per spec. GAP: not implemented."""

@@ -232,18 +232,8 @@ def create_lab_entry_series(
 
 
 # ---------------------------------------------------------------------------
-# Factory: Lead record (matches Alembic leads table)
+# Boundary/tier helpers (match conftest.py and validate_fixtures.py)
 # ---------------------------------------------------------------------------
-
-
-# ---------------------------------------------------------------------------
-# Aliases and boundary/tier helpers (match conftest.py and validate_fixtures.py)
-# ---------------------------------------------------------------------------
-
-
-def make_predict_request(**overrides: Any) -> dict:
-    """Alias for create_predict_request — matches conftest.py naming."""
-    return create_predict_request(**overrides)
 
 
 def make_predict_request_at_min() -> dict:
@@ -259,11 +249,6 @@ def make_predict_request_at_max() -> dict:
         bun=150, creatinine=20.0, potassium=8.0, age=120, sex="female",
         hemoglobin=20.0, glucose=500,
     )
-
-
-def make_lab_entry(**overrides: Any) -> dict:
-    """Alias for create_lab_entry — matches conftest.py naming."""
-    return create_lab_entry(**overrides)
 
 
 def make_lab_entry_at_min() -> dict:
@@ -303,11 +288,6 @@ def make_tier2_entry(**overrides: Any) -> dict:
         glucose=round(random.uniform(70, 200), 0),
         **overrides,
     )
-
-
-def make_lead(**overrides: Any) -> dict:
-    """Alias for create_lead — matches conftest.py naming."""
-    return create_lead(**overrides)
 
 
 def create_lead(**overrides: Any) -> dict:
