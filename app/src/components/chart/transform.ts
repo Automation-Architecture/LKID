@@ -183,6 +183,5 @@ export const MOCK_PREDICT_RESPONSE: PredictResponse = {
   structural_floor: {
     structural_floor_egfr: 42.7,
     suppression_points: 4.7,
-    bun_ratio: 0.47,
   },
 };
