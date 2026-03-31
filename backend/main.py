@@ -222,10 +222,11 @@ class ErrorResponse(BaseModel):
 async def rate_limit_handler(request: Request, exc: RateLimitExceeded):
     return JSONResponse(
         status_code=429,
+        headers={"Retry-After": str(getattr(exc, "retry_after", 60))},
         content={
             "error": {
-                "code": "RATE_LIMIT_EXCEEDED",
-                "message": "Too many requests. Please try again later.",
+                "code": "RATE_LIMIT",
+                "message": "Too many requests. Please wait before trying again.",
                 "details": [],
             }
         },
@@ -293,10 +294,11 @@ app.add_middleware(
 
 
 class PredictRequest(BaseModel):
-    """Prediction request body — guest inline mode (LKID-15).
+    """Prediction request body — LKID-14/15 v2.0 engine inputs.
 
     Required fields: bun, creatinine, potassium, age, sex.
-    Optional fields unlock Tier 2 confidence: hemoglobin AND glucose.
+    Optional Confidence Tier 2 modifiers: hemoglobin, co2, albumin.
+    Glucose and potassium accepted for storage/legacy but unused by engine.
     """
 
     bun: float = Field(
@@ -312,9 +314,17 @@ class PredictRequest(BaseModel):
     sex: Literal["male", "female", "unknown"] = Field(
         ..., description="Biological sex"
     )
+    # Confidence Tier 2 modifiers (LKID-14): affect post-Phase 2 decline
     hemoglobin: Optional[float] = Field(
         None, ge=4.0, le=20.0, description="Hemoglobin g/dL"
     )
+    co2: Optional[float] = Field(
+        None, ge=5.0, le=40.0, description="Serum CO2 mEq/L"
+    )
+    albumin: Optional[float] = Field(
+        None, ge=1.0, le=6.0, description="Albumin g/dL"
+    )
+    # Legacy optional field — accepted but unused by v2.0 engine
     glucose: Optional[float] = Field(
         None, ge=40, le=500, description="Fasting Glucose mg/dL"
     )
@@ -343,15 +353,19 @@ class DialAges(BaseModel):
 
 
 class PredictResponse(BaseModel):
-    """POST /predict response — LKID-15 enhanced shape."""
+    """POST /predict response — LKID-14/15 v2.0 shape."""
 
     egfr_baseline: float
-    confidence_tier: int  # 1, 2, or 3
+    confidence_tier: int  # 1 or 2
     trajectories: Trajectories
     time_points_months: list[int]
     dial_ages: DialAges
     dialysis_threshold: float  # always 12.0
     stat_cards: dict[str, float]
+    # Optional so that frontend clients that do not yet have this field in
+    # their TypeScript types will not throw on deserialization.  The engine
+    # always populates it; Optional here is a forward-compat safety net only.
+    bun_suppression_estimate: Optional[float] = None
 
 
 # ---------------------------------------------------------------------------
@@ -380,7 +394,7 @@ async def health():
     },
     tags=["Prediction"],
 )
-@limiter.limit("30/minute")
+@limiter.limit("10/minute")
 async def predict(request: Request, body: PredictRequest):
     """
     Run the CKD-EPI 2021 eGFR calculation and 4-trajectory prediction engine.
@@ -403,10 +417,12 @@ async def predict(request: Request, body: PredictRequest):
     result = predict_for_endpoint(
         bun=body.bun,
         creatinine=body.creatinine,
-        potassium=body.potassium,
         age=body.age,
         sex=body.sex,
+        potassium=body.potassium,
         hemoglobin=body.hemoglobin,
+        co2=body.co2,
+        albumin=body.albumin,
         glucose=body.glucose,
     )
 
@@ -440,7 +456,7 @@ async def predict(request: Request, body: PredictRequest):
 
 
 @app.post("/predict/pdf", tags=["Prediction"])
-@limiter.limit("10/minute")
+@limiter.limit("5/minute")
 async def predict_pdf(request: Request, body: PredictRequest):
     """
     Re-run the prediction engine with the same inputs, render the chart
