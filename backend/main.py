@@ -362,7 +362,10 @@ class PredictResponse(BaseModel):
     dial_ages: DialAges
     dialysis_threshold: float  # always 12.0
     stat_cards: dict[str, float]
-    bun_suppression_estimate: float
+    # Optional so that frontend clients that do not yet have this field in
+    # their TypeScript types will not throw on deserialization.  The engine
+    # always populates it; Optional here is a forward-compat safety net only.
+    bun_suppression_estimate: Optional[float] = None
 
 
 # ---------------------------------------------------------------------------

@@ -16,11 +16,18 @@ These tests assert structural correctness:
 
 NOTE: These tests use v2.0 formula outputs. Test vectors from finalized-formulas.md
 Section 7 were generated with the calc spec 0.31-coefficient model and will NOT
-match v2.0 outputs (Q1). Exact numeric assertions are intentionally not included
-in this scaffold — Yuri and Gay Mark will add golden-file tests after Lee confirms
-the formula (LKID-27).
+match v2.0 outputs (Q1). Exact numeric assertions against *engine* coefficients
+(e.g. Phase 1/2 gain multipliers, BUN reduction factor) are intentionally not
+included — Yuri and Gay Mark will add golden-file tests after Lee confirms the
+formula (LKID-27).
 
-PROPRIETARY: Do not log or assert on specific coefficient values.
+The bun_suppression_estimate stat card uses the *calc spec* formula
+((BUN - 10) * 0.31, cap 12.0) — that is a separate, published formula, not a
+proprietary engine coefficient.  Asserting its specific numeric output is
+therefore acceptable and intentional (see TestBunSuppressionEstimate).
+
+PROPRIETARY: Do not log or assert on specific engine coefficient values
+(Phase 1/2 gain multipliers, BUN reduction factors, decline rate constants).
 """
 
 import math

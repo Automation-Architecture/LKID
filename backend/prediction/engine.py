@@ -132,8 +132,11 @@ def _compute_phase1(
     bun_baseline: float,
     age: int,
     tier_target_bun: float,
-) -> float:
+) -> tuple[float, float]:
     """v2.0 Phase 1 total gain: BUN suppression removal + rate differential.
+
+    Returns a (phase1_total, achieved_bun) tuple so callers can pass the
+    true achieved BUN to _compute_phase2_gain() rather than the tier target.
 
     NOTE: 0.31-coefficient model (calc spec) is intentionally not used here (Q1).
     """
@@ -161,7 +164,7 @@ def _compute_phase1(
     # Rate differential over 6 months (0.5 years)
     phase1_real = (abs(old_rate) - abs(new_rate)) * 0.5
 
-    return phase1_suppression + phase1_real
+    return phase1_suppression + phase1_real, achieved_bun_for_tier
 
 
 # ---------------------------------------------------------------------------
@@ -240,7 +243,16 @@ def compute_no_treatment(
     bun_baseline: float,
     optional_modifier: float = 0.0,
 ) -> list[float]:
-    """Compute no-treatment trajectory (linear BUN-adjusted decline)."""
+    """Compute no-treatment trajectory (linear BUN-adjusted decline).
+
+    The optional_modifier (hemoglobin/CO2/albumin penalty) is intentionally
+    applied here.  Although the spec calls it a "post-Phase 2" modifier, it
+    represents systemic physiological stress that accelerates CKD decline
+    regardless of treatment.  Applying it to the no-treatment path keeps all
+    four trajectories on a consistent risk-adjusted baseline, and the tests
+    for optional modifiers (TestOptionalModifiers) assert this behaviour
+    explicitly.
+    """
     annual_decline = _get_decline_rate(egfr_baseline, bun_baseline) - optional_modifier
     results = []
     for t in TIME_POINTS_MONTHS:
@@ -273,8 +285,11 @@ def compute_treatment_trajectory(
     tier_target_bun = cfg["target_bun"]
     post_decline_rate = cfg["post_decline"] + optional_modifier
 
-    phase1_total = max(0.0, _compute_phase1(egfr_baseline, bun_baseline, age, tier_target_bun))
-    phase2_total = _compute_phase2_gain(tier_target_bun, age)
+    phase1_total, achieved_bun = _compute_phase1(egfr_baseline, bun_baseline, age, tier_target_bun)
+    phase1_total = max(0.0, phase1_total)
+    # Phase 2 gain is a continuous function of the *actual* achieved BUN, not
+    # the tier label.  Using tier_target_bun here was the bug reported in PR #25.
+    phase2_total = _compute_phase2_gain(achieved_bun, age)
 
     egfr_at_phase1_complete = egfr_baseline + phase1_total  # month 6
     peak_egfr = egfr_at_phase1_complete + phase2_total      # month 24
