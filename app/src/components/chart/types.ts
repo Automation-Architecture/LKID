@@ -41,17 +41,17 @@ export interface PredictResponse {
   confidence_tier: 1 | 2;
   unlock_prompt: string;
   trajectories: {
-    none: number[];
-    bun24: number[];
-    bun17: number[];
-    bun12: number[];
+    no_treatment: number[];
+    bun_18_24: number[];
+    bun_13_17: number[];
+    bun_12: number[];
   };
   time_points_months: number[];
   dial_ages: {
-    none: number | null;
-    bun24: number | null;
-    bun17: number | null;
-    bun12: number | null;
+    no_treatment: number | null;
+    bun_18_24: number | null;
+    bun_13_17: number | null;
+    bun_12: number | null;
   };
   slope: number;
   slope_description: string;
