@@ -327,3 +327,256 @@ def create_lead(**overrides: Any) -> dict:
     }
     defaults.update(overrides)
     return defaults
+
+
+# ---------------------------------------------------------------------------
+# LKID-27: Boundary factories — one per input field at min/max
+# Midrange defaults: bun=50, creatinine=3.0, age=55, sex="unknown"
+# ---------------------------------------------------------------------------
+
+_MIDRANGE_DEFAULTS: dict[str, Any] = {
+    "bun": 50,
+    "creatinine": 3.0,
+    "potassium": 4.0,
+    "age": 55,
+    "sex": "unknown",
+}
+
+
+def make_boundary_bun_min(**overrides: Any) -> dict:
+    """BUN=5 (minimum). All others at midrange."""
+    return {**_MIDRANGE_DEFAULTS, "bun": 5, **overrides}
+
+
+def make_boundary_bun_max(**overrides: Any) -> dict:
+    """BUN=150 (maximum). All others at midrange."""
+    return {**_MIDRANGE_DEFAULTS, "bun": 150, **overrides}
+
+
+def make_boundary_creatinine_min(**overrides: Any) -> dict:
+    """Creatinine=0.3 (minimum). All others at midrange."""
+    return {**_MIDRANGE_DEFAULTS, "creatinine": 0.3, **overrides}
+
+
+def make_boundary_creatinine_max(**overrides: Any) -> dict:
+    """Creatinine=20.0 (maximum — pending Lee Q6 confirmation). All others at midrange."""
+    return {**_MIDRANGE_DEFAULTS, "creatinine": 20.0, **overrides}
+
+
+def make_boundary_age_min(**overrides: Any) -> dict:
+    """Age=18 (minimum). All others at midrange."""
+    return {**_MIDRANGE_DEFAULTS, "age": 18, **overrides}
+
+
+def make_boundary_age_max(**overrides: Any) -> dict:
+    """Age=120 (maximum). All others at midrange."""
+    return {**_MIDRANGE_DEFAULTS, "age": 120, **overrides}
+
+
+def make_boundary_hemoglobin_min(**overrides: Any) -> dict:
+    """Hemoglobin=4.0 (minimum). Tier 2 entry with midrange base values."""
+    return {**_MIDRANGE_DEFAULTS, "hemoglobin": 4.0, "glucose": 120, **overrides}
+
+
+def make_boundary_hemoglobin_max(**overrides: Any) -> dict:
+    """Hemoglobin=20.0 (maximum). Tier 2 entry with midrange base values."""
+    return {**_MIDRANGE_DEFAULTS, "hemoglobin": 20.0, "glucose": 120, **overrides}
+
+
+def make_boundary_glucose_min(**overrides: Any) -> dict:
+    """Glucose=40 (minimum). Tier 2 entry with midrange base values."""
+    return {**_MIDRANGE_DEFAULTS, "hemoglobin": 12.0, "glucose": 40, **overrides}
+
+
+def make_boundary_glucose_max(**overrides: Any) -> dict:
+    """Glucose=500 (maximum). Tier 2 entry with midrange base values."""
+    return {**_MIDRANGE_DEFAULTS, "hemoglobin": 12.0, "glucose": 500, **overrides}
+
+
+# ---------------------------------------------------------------------------
+# Age attenuation boundaries — Phase 2 thresholds per v2.0 spec
+# ---------------------------------------------------------------------------
+
+
+def make_age_just_below_70(**overrides: Any) -> dict:
+    """Age=69 — just below Phase 2 attenuation threshold."""
+    return {**_MIDRANGE_DEFAULTS, "age": 69, **overrides}
+
+
+def make_age_70_boundary(**overrides: Any) -> dict:
+    """Age=70 — at Phase 2 attenuation threshold (0.80 factor)."""
+    return {**_MIDRANGE_DEFAULTS, "age": 70, **overrides}
+
+
+def make_age_just_above_70(**overrides: Any) -> dict:
+    """Age=71 — just above Phase 2 attenuation threshold."""
+    return {**_MIDRANGE_DEFAULTS, "age": 71, **overrides}
+
+
+def make_age_just_below_80(**overrides: Any) -> dict:
+    """Age=79 — just below stacked attenuation threshold."""
+    return {**_MIDRANGE_DEFAULTS, "age": 79, **overrides}
+
+
+def make_age_80_boundary(**overrides: Any) -> dict:
+    """Age=80 — at stacked Phase 2 attenuation threshold (0.65 factor)."""
+    return {**_MIDRANGE_DEFAULTS, "age": 80, **overrides}
+
+
+def make_age_just_above_80(**overrides: Any) -> dict:
+    """Age=81 — just above stacked attenuation threshold."""
+    return {**_MIDRANGE_DEFAULTS, "age": 81, **overrides}
+
+
+# ---------------------------------------------------------------------------
+# eGFR stage-transition boundary fixtures
+# ---------------------------------------------------------------------------
+
+
+def make_stage_3a_lower_boundary(**overrides: Any) -> dict:
+    """Creatinine=1.52 producing eGFR ~45.6 (Stage 3a/3b boundary, age 60, unknown sex)."""
+    return {**_MIDRANGE_DEFAULTS, "age": 60, "creatinine": 1.52, **overrides}
+
+
+def make_stage_3b_upper_boundary(**overrides: Any) -> dict:
+    """Creatinine=1.55 producing eGFR ~44.5 (just below Stage 3a lower boundary)."""
+    return {**_MIDRANGE_DEFAULTS, "age": 60, "creatinine": 1.55, **overrides}
+
+
+def make_stage_4_upper_boundary(**overrides: Any) -> dict:
+    """Creatinine=2.15 producing eGFR ~30.1 (Stage 3b/4 boundary)."""
+    return {**_MIDRANGE_DEFAULTS, "age": 60, "creatinine": 2.15, **overrides}
+
+
+def make_dialysis_threshold_boundary(**overrides: Any) -> dict:
+    """Creatinine=4.6 producing eGFR ~12.1 (dialysis threshold, age 60, unknown sex)."""
+    return {**_MIDRANGE_DEFAULTS, "age": 60, "creatinine": 4.6, **overrides}
+
+
+# ---------------------------------------------------------------------------
+# Core named factories — deterministic (no random), for unit tests
+# ---------------------------------------------------------------------------
+
+
+def make_predict_request(**overrides: Any) -> dict:
+    """Deterministic valid PredictRequest dict. Midrange values, no randomness."""
+    base: dict[str, Any] = {
+        "bun": 35,
+        "creatinine": 2.1,
+        "potassium": 4.0,
+        "age": 58,
+        "sex": "unknown",
+    }
+    base.update(overrides)
+    return base
+
+
+def make_predict_request_at_min(**overrides: Any) -> dict:
+    """PredictRequest at minimum valid Pydantic boundaries."""
+    base: dict[str, Any] = {
+        "bun": 5,
+        "creatinine": 0.3,
+        "potassium": 2.0,
+        "age": 18,
+        "sex": "unknown",
+    }
+    base.update(overrides)
+    return base
+
+
+def make_predict_request_at_max(**overrides: Any) -> dict:
+    """PredictRequest at maximum valid Pydantic boundaries."""
+    base: dict[str, Any] = {
+        "bun": 150,
+        "creatinine": 20.0,
+        "potassium": 8.0,
+        "age": 120,
+        "sex": "unknown",
+    }
+    base.update(overrides)
+    return base
+
+
+def make_lab_entry(**overrides: Any) -> dict:
+    """Deterministic valid lab entry dict. Midrange values, no randomness."""
+    base: dict[str, Any] = {
+        "bun": 35,
+        "creatinine": 2.1,
+        "potassium": 4.0,
+        "age": 58,
+        "sex": "unknown",
+    }
+    base.update(overrides)
+    return base
+
+
+def make_lab_entry_at_min(**overrides: Any) -> dict:
+    """Lab entry at minimum valid DB CHECK constraint boundaries."""
+    base: dict[str, Any] = {
+        "bun": 5,
+        "creatinine": 0.3,
+        "potassium": 2.0,
+        "age": 18,
+        "sex": "unknown",
+    }
+    base.update(overrides)
+    return base
+
+
+def make_lab_entry_at_max(**overrides: Any) -> dict:
+    """Lab entry at maximum valid DB CHECK constraint boundaries."""
+    base: dict[str, Any] = {
+        "bun": 150,
+        "creatinine": 20.0,
+        "potassium": 8.0,
+        "age": 120,
+        "sex": "unknown",
+    }
+    base.update(overrides)
+    return base
+
+
+def make_lab_entry_invalid(field: str, value: Any, **overrides: Any) -> dict:
+    """Lab entry with one field set to an invalid value (for negative testing)."""
+    base = make_lab_entry()
+    base[field] = value
+    base.update(overrides)
+    return base
+
+
+def make_tier1_entry(**overrides: Any) -> dict:
+    """Tier 1 lab entry — required fields only (bun, creatinine, potassium, age, sex)."""
+    base: dict[str, Any] = {
+        "bun": 35,
+        "creatinine": 2.1,
+        "potassium": 4.0,
+        "age": 58,
+        "sex": "unknown",
+    }
+    base.update(overrides)
+    return base
+
+
+def make_tier2_entry(**overrides: Any) -> dict:
+    """Tier 2 lab entry — Tier 1 + BOTH hemoglobin AND glucose."""
+    base = make_tier1_entry()
+    base["hemoglobin"] = 9.5
+    base["glucose"] = 140
+    base.update(overrides)
+    return base
+
+
+def make_lead(**overrides: Any) -> dict:
+    """Deterministic lead record dict. Fixed values, no randomness."""
+    base: dict[str, Any] = {
+        "id": "00000000-0000-0000-0000-000000000001",
+        "email": "test.patient@example.com",
+        "name": "Test Patient",
+        "age": 58,
+        "bun": 35,
+        "creatinine": 2.1,
+        "egfr_baseline": 33.0,
+        "created_at": "2026-03-30T00:00:00+00:00",
+    }
+    base.update(overrides)
+    return base
