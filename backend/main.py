@@ -352,6 +352,17 @@ class DialAges(BaseModel):
     bun_12: Optional[float] = None
 
 
+class StructuralFloor(BaseModel):
+    """Amendment 3 BUN structural floor — display-only, NOT part of trajectory engine.
+
+    Only present in the response when BUN > 17.
+    """
+
+    structural_floor_egfr: float
+    suppression_points: float
+    bun_ratio: float
+
+
 class PredictResponse(BaseModel):
     """POST /predict response — LKID-14/15 v2.0 shape."""
 
@@ -366,6 +377,8 @@ class PredictResponse(BaseModel):
     # their TypeScript types will not throw on deserialization.  The engine
     # always populates it; Optional here is a forward-compat safety net only.
     bun_suppression_estimate: Optional[float] = None
+    # Amendment 3: BUN structural floor display callout.  Only present when BUN > 17.
+    structural_floor: Optional[StructuralFloor] = None
 
 
 # ---------------------------------------------------------------------------

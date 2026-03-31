@@ -360,6 +360,77 @@ def compute_bun_suppression_estimate(bun_baseline: float) -> float:
 
 
 # ---------------------------------------------------------------------------
+# Structural floor (Amendment 3 — display-only, NOT part of trajectory engine)
+# ---------------------------------------------------------------------------
+
+_BUN_RATIO_TABLE: list[tuple[float, float, float]] = [
+    # (bun_low_exclusive, bun_high_inclusive, ratio)
+    (15.0, 20.0, 0.67),
+    (20.0, 30.0, 0.47),
+    (30.0, 50.0, 0.32),
+    (50.0, float("inf"), 0.25),
+]
+
+
+def _get_bun_ratio(bun: float) -> float:
+    """Return BUN ratio from the Amendment 3 lookup table."""
+    if bun < 15.0:
+        return 0.00
+    for low, high, ratio in _BUN_RATIO_TABLE:
+        if bun <= high:
+            return ratio
+    return 0.25  # fallback (should never be reached given inf sentinel)
+
+
+def compute_structural_floor(
+    egfr: float,
+    bun: float,
+) -> Optional[dict]:
+    """Compute Amendment 3 BUN structural floor (display-only).
+
+    Only meaningful when BUN > 17 (below that, suppression is negligible).
+    Returns None when BUN <= 17.
+
+    Formula: structural_floor_egfr = reported_egfr + (current_bun - 15) * bun_ratio
+
+    When BUN and eGFR brackets suggest different ratios, uses the more
+    conservative (lower) ratio.
+
+    Returns a dict with:
+        structural_floor_egfr: float
+        suppression_points: float  (the additive delta)
+        bun_ratio: float           (ratio used in calculation)
+    """
+    if bun <= 17.0:
+        return None
+
+    bun_ratio = _get_bun_ratio(bun)
+
+    # Map eGFR to its CKD-stage implied BUN ratio so we can pick the more
+    # conservative of the two.  Higher eGFR stages have lower ratios; this
+    # prevents over-estimating structural capacity in milder disease.
+    if egfr >= 60:
+        egfr_implied_ratio = 0.00
+    elif egfr >= 30:
+        egfr_implied_ratio = 0.47
+    elif egfr >= 15:
+        egfr_implied_ratio = 0.32
+    else:
+        egfr_implied_ratio = 0.25
+
+    conservative_ratio = min(bun_ratio, egfr_implied_ratio)
+
+    suppression_points = round((bun - 15.0) * conservative_ratio, 1)
+    structural_floor_egfr = round(egfr + suppression_points, 1)
+
+    return {
+        "structural_floor_egfr": structural_floor_egfr,
+        "suppression_points": suppression_points,
+        "bun_ratio": conservative_ratio,
+    }
+
+
+# ---------------------------------------------------------------------------
 # Confidence tier
 # ---------------------------------------------------------------------------
 
@@ -506,8 +577,9 @@ def predict_for_endpoint(
     }
 
     stat_cards = compute_stat_cards(egfr_baseline, bun, trajectories)
+    structural_floor = compute_structural_floor(egfr_baseline, bun)
 
-    return {
+    response: dict = {
         "egfr_baseline": egfr_baseline,
         "confidence_tier": confidence_tier,
         "trajectories": trajectories,
@@ -517,3 +589,6 @@ def predict_for_endpoint(
         "stat_cards": stat_cards,
         "bun_suppression_estimate": compute_bun_suppression_estimate(bun),
     }
+    if structural_floor is not None:
+        response["structural_floor"] = structural_floor
+    return response
