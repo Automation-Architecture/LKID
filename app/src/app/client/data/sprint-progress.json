@@ -103,12 +103,12 @@
         {
           "id": "LKID-2",
           "title": "PostgreSQL schema + Railway",
-          "status": "upcoming"
+          "status": "done"
         },
         {
           "id": "LKID-3",
           "title": "FastAPI scaffold + health endpoint",
-          "status": "upcoming"
+          "status": "done"
         },
         {
           "id": "LKID-6",
