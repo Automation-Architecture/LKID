@@ -37,6 +37,17 @@ export interface ChartData {
 }
 
 /**
+ * Amendment 3: BUN Structural Floor — display-only callout.
+ * Only present in the API response when BUN > 17.
+ */
+export interface StructuralFloor {
+  /** Estimated eGFR reflecting kidney structural capacity (reported_egfr + suppression_points) */
+  structural_floor_egfr: number;
+  /** eGFR points attributable to BUN workload suppression */
+  suppression_points: number;
+}
+
+/**
  * Raw API response shape from POST /predict (v2.0 backend keys).
  * All keys are snake_case as returned by the FastAPI backend.
  */
@@ -67,6 +78,11 @@ export interface PredictResponse {
   dialysis_threshold: number;
   /** eGFR points currently suppressed by elevated BUN */
   bun_suppression_estimate: number;
+  /**
+   * Amendment 3 BUN structural floor — only present when BUN > 17.
+   * Display-only; not part of the trajectory engine.
+   */
+  structural_floor?: StructuralFloor;
 }
 
 // Tooltip state

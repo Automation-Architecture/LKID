@@ -179,4 +179,9 @@ export const MOCK_PREDICT_RESPONSE: PredictResponse = {
   },
   time_points_months: [0, 1, 3, 6, 12, 18, 24, 36, 48, 60, 72, 84, 96, 108, 120],
   dial_ages: { no_treatment: 68.2, bun_18_24: null, bun_13_17: null, bun_12: null },
+  // BUN = 25 (> 17) → structural floor present in mock
+  structural_floor: {
+    structural_floor_egfr: 42.7,
+    suppression_points: 4.7,
+  },
 };

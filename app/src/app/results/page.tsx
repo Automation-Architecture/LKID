@@ -7,7 +7,7 @@ import { DisclaimerBlock } from "@/components/disclaimer-block";
 import { Button } from "@/components/ui/button";
 import { FileDown } from "lucide-react";
 import { EgfrChart, transformPredictResponse } from "@/components/chart";
-import type { ChartData, PredictResponse } from "@/components/chart";
+import type { ChartData, PredictResponse, StructuralFloor } from "@/components/chart";
 
 function LoadingSkeleton() {
   return (
@@ -30,11 +30,54 @@ function LoadingSkeleton() {
   );
 }
 
-interface ResultsContentProps {
-  chartData: ChartData;
+/* -------------------------------------------------------------------------- */
+/*  StructuralFloorCallout                                                    */
+/* -------------------------------------------------------------------------- */
+
+interface StructuralFloorCalloutProps {
+  egfrBaseline: number;
+  bun: number;
+  floor: StructuralFloor;
 }
 
-function ResultsContent({ chartData }: ResultsContentProps) {
+function StructuralFloorCallout({ egfrBaseline, bun, floor }: StructuralFloorCalloutProps) {
+  const reportedEgfr = Math.round(egfrBaseline);
+  const suppressionPoints = Math.round(floor.suppression_points);
+  const structuralEgfr = Math.round(floor.structural_floor_egfr);
+  const bunValue = Math.round(bun);
+
+  return (
+    <aside
+      aria-label="BUN structural floor estimate"
+      className="rounded-lg border border-[#004D43]/20 bg-[#004D43]/5 px-4 py-3"
+      data-testid="structural-floor-callout"
+    >
+      <p className="text-sm leading-relaxed text-foreground">
+        Your reported eGFR is{" "}
+        <strong className="font-semibold">{reportedEgfr}</strong>. At your
+        current BUN of{" "}
+        <strong className="font-semibold">{bunValue}</strong>, approximately{" "}
+        <strong className="font-semibold">{suppressionPoints}</strong>{" "}
+        {suppressionPoints === 1 ? "point" : "points"} of that reading reflect
+        BUN workload suppression, not permanent damage. Your estimated
+        structural capacity is eGFR{" "}
+        <strong className="font-semibold">{structuralEgfr}</strong>.
+      </p>
+    </aside>
+  );
+}
+
+/* -------------------------------------------------------------------------- */
+/*  ResultsContent                                                            */
+/* -------------------------------------------------------------------------- */
+
+interface ResultsContentProps {
+  chartData: ChartData;
+  rawResponse: PredictResponse;
+  inputBun: number | null;
+}
+
+function ResultsContent({ chartData, rawResponse, inputBun }: ResultsContentProps) {
   const [pdfState, setPdfState] = useState<"idle" | "loading" | "done">("idle");
 
   const handlePdfClick = () => {
@@ -63,6 +106,17 @@ function ResultsContent({ chartData }: ResultsContentProps) {
       <section aria-label="Your kidney health prediction">
         <EgfrChart data={chartData} />
       </section>
+
+      {/* Amendment 3: BUN Structural Floor callout — only when BUN > 17 and suppression >= 0.5 */}
+      {rawResponse.structural_floor &&
+        rawResponse.structural_floor.suppression_points >= 0.5 &&
+        inputBun !== null && (
+        <StructuralFloorCallout
+          egfrBaseline={rawResponse.egfr_baseline}
+          bun={inputBun}
+          floor={rawResponse.structural_floor}
+        />
+      )}
 
       {/* PDF Download button */}
       <Button
@@ -122,6 +176,8 @@ export default function ResultsPage() {
   const [hasData, setHasData] = useState(true);
   const [parseError, setParseError] = useState(false);
   const [chartData, setChartData] = useState<ChartData | null>(null);
+  const [rawResponse, setRawResponse] = useState<PredictResponse | null>(null);
+  const [inputBun, setInputBun] = useState<number | null>(null);
 
   useEffect(() => {
     if (typeof window === "undefined") return;
@@ -135,9 +191,23 @@ export default function ResultsPage() {
 
     try {
       const parsed = JSON.parse(raw) as PredictResponse;
+      setRawResponse(parsed);
       setChartData(transformPredictResponse(parsed));
     } catch {
       setParseError(true);
+    }
+
+    // Read BUN input stored by the predict form for the structural floor callout.
+    try {
+      const inputsRaw = sessionStorage.getItem("prediction_inputs");
+      if (inputsRaw) {
+        const inputs = JSON.parse(inputsRaw) as { bun?: number };
+        if (typeof inputs.bun === "number") {
+          setInputBun(inputs.bun);
+        }
+      }
+    } catch {
+      // Non-critical — structural floor callout simply won't render without BUN.
     }
 
     const timer = setTimeout(() => setLoading(false), 400);
@@ -185,10 +255,14 @@ export default function ResultsPage() {
         className="flex flex-1 flex-col items-center px-4 pb-16 md:px-6 lg:px-8"
       >
         <div className="mt-6 w-full max-w-[960px] md:mt-8">
-          {loading || !chartData ? (
+          {loading || !chartData || !rawResponse ? (
             <LoadingSkeleton />
           ) : (
-            <ResultsContent chartData={chartData} />
+            <ResultsContent
+              chartData={chartData}
+              rawResponse={rawResponse}
+              inputBun={inputBun}
+            />
           )}
         </div>
       </main>

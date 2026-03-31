@@ -304,6 +304,11 @@ export default function PredictPage() {
 
       const result = await res.json();
       sessionStorage.setItem("prediction_result", JSON.stringify(result));
+      // Store inputs needed for display-only callouts on the results page.
+      sessionStorage.setItem(
+        "prediction_inputs",
+        JSON.stringify({ bun: Number(values.bun) })
+      );
       router.push("/results");
     } catch (err: unknown) {
       clearTimeout(timeoutId);
