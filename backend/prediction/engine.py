@@ -1,14 +1,24 @@
 """
-KidneyHood Prediction Engine — LKID-14 / LKID-15
+KidneyHood Prediction Engine — LKID-14 v2.0 Rules Engine
 
-Implements the Server-Side Calculation Specification v1.0 (March 2026).
-Computes 4 trajectory paths (no_treatment, bun_18_24, bun_13_17, bun_12),
-dial_ages, and bun_suppression_estimate.
+Implements the v2.0 two-component Phase 1 formula from patient_app_spec_v2_updated.pdf
+Section 9.5 and finalized-formulas.md. Replaces the Sprint 2 simplified 0.31-coefficient
+model.
 
-LKID-15 additions:
-- Sex-aware CKD-EPI 2021 formula (kappa/alpha per sex, female multiplier)
-- Confidence tier logic (Decision #12)
-- predict_for_endpoint() wrapper for POST /predict response shape
+LKID-14 changes from Sprint 2:
+- Phase 1: BUN suppression removal (eGFR * 0.08) + rate differential (NOT 0.31 coeff)
+- Phase 2: Continuous function of achieved BUN (NOT fixed tier totals)
+- Phase 1/2 transition: month 6 completion (NOT month 3)
+- Optional field modifiers: hemoglobin, CO2, albumin increase post-Phase 2 decline
+- Backward-compatible predict_for_endpoint() call signature (potassium accepted, unused)
+
+NOTE — Open questions (pending Lee's response, per finalized-formulas.md Section 8):
+  Q1: Test vectors in calc spec were generated with the simplified 0.31-coeff model.
+      v2.0 will produce different values. This is expected and accepted.
+  Q2: rate_P1 in v2.0 refers to 5-pillar model rate. We substitute CKD-stage base
+      decline rate + BUN modifier. Acceptable simplification for Lean Launch.
+  Q4: Dialysis threshold confirmed as eGFR 12 per calc spec Section 2 correction.
+      If Lee corrects to 15, change DIALYSIS_THRESHOLD below (one line).
 
 PROPRIETARY & CONFIDENTIAL — Kidneyhood.org
 Coefficients must never be exposed to front-end code, logs, or client endpoints.
@@ -17,11 +27,22 @@ Coefficients must never be exposed to front-end code, logs, or client endpoints.
 import math
 from typing import Literal, Optional
 
-# --- Constants ---
+# ---------------------------------------------------------------------------
+# Constants
+# ---------------------------------------------------------------------------
 
 TIME_POINTS_MONTHS = [0, 1, 3, 6, 12, 18, 24, 36, 48, 60, 72, 84, 96, 108, 120]
 
-DIALYSIS_THRESHOLD = 12.0  # eGFR threshold for dialysis (NOT 15)
+# eGFR 12 confirmed per calc spec Section 2 correction (see Q4 above).
+DIALYSIS_THRESHOLD = 12.0
+
+# Tier configuration: (target_bun, post_decline_rate)
+# Phase 1 and Phase 2 totals are now computed dynamically (v2.0)
+_TIER_CONFIG = {
+    "bun_12":    {"target_bun": 10, "post_decline": 0.5},
+    "bun_13_17": {"target_bun": 15, "post_decline": 1.0},
+    "bun_18_24": {"target_bun": 21, "post_decline": 1.5},
+}
 
 # CKD-EPI 2021 sex-specific coefficients
 _CKD_EPI_COEFFICIENTS = {
@@ -29,47 +50,26 @@ _CKD_EPI_COEFFICIENTS = {
     "male":   {"kappa": 0.9, "alpha": -0.302, "sex_multiplier": 1.0},
 }
 
-# Phase 1
-PHASE1_COEFF = 0.31  # eGFR points per mg/dL BUN reduction
-
-# Tier configuration: (target_bun, phase1_cap, phase2_total, post_decline_rate)
-TIER_CONFIG = {
-    "bun_12":    {"target_bun": 10, "phase1_cap": 12, "phase2_total": 8.0, "post_decline": 0.5},
-    "bun_13_17": {"target_bun": 15, "phase1_cap": 9,  "phase2_total": 6.0, "post_decline": 1.0},
-    "bun_18_24": {"target_bun": 21, "phase1_cap": 6,  "phase2_total": 4.0, "post_decline": 1.5},
-}
-
-# No-treatment base decline rates by CKD stage
-NO_TX_DECLINE_RATES = [
+# No-treatment base decline rates by CKD stage (eGFR range)
+# Source: Coresh 2014, CKD Prognosis Consortium, MDRD/CRIC cohort
+_NO_TX_DECLINE_RATES = [
     (45, 60, -1.8),   # Stage 3a: eGFR 45-59
     (30, 45, -2.2),   # Stage 3b: eGFR 30-44
     (15, 30, -3.0),   # Stage 4:  eGFR 15-29
     (0,  15, -4.0),   # Stage 5:  eGFR <15
 ]
 
-# BUN suppression
-OPTIMAL_BUN = 10  # midpoint of <=12 tier
-
 
 # ---------------------------------------------------------------------------
-# CKD-EPI 2021 — sex-aware
+# CKD-EPI 2021 -- sex-aware
 # ---------------------------------------------------------------------------
 
 
-def _compute_egfr_for_sex(
-    creatinine: float, age: int, sex: str,
-) -> float:
-    """CKD-EPI 2021 race-free eGFR for a single sex value ('male' or 'female').
-
-    Formula:
-        eGFR = 142 * min(Scr/kappa, 1)^alpha * max(Scr/kappa, 1)^(-1.200)
-               * 0.9938^age * sex_multiplier
-    """
+def _compute_egfr_for_sex(creatinine: float, age: int, sex: str) -> float:
     coeff = _CKD_EPI_COEFFICIENTS[sex]
     kappa = coeff["kappa"]
     alpha = coeff["alpha"]
     sex_mult = coeff["sex_multiplier"]
-
     cr_over_kappa = creatinine / kappa
     term1 = min(cr_over_kappa, 1.0) ** alpha
     term2 = max(cr_over_kappa, 1.0) ** (-1.200)
@@ -81,10 +81,7 @@ def compute_egfr_ckd_epi_2021(
     age: int,
     sex: Literal["male", "female", "unknown"] = "unknown",
 ) -> float:
-    """CKD-EPI 2021 race-free eGFR with sex-specific coefficients.
-
-    For sex='unknown', returns the average of male and female results.
-    """
+    """CKD-EPI 2021 race-free eGFR. For sex=unknown, averages male+female."""
     if sex == "unknown":
         male_egfr = _compute_egfr_for_sex(creatinine, age, "male")
         female_egfr = _compute_egfr_for_sex(creatinine, age, "female")
@@ -93,144 +90,265 @@ def compute_egfr_ckd_epi_2021(
 
 
 # ---------------------------------------------------------------------------
-# Decline rates & trajectory helpers
+# Decline rates
 # ---------------------------------------------------------------------------
 
 
-def _get_base_decline_rate(egfr_baseline: float) -> float:
-    """Get base annual decline rate based on CKD stage."""
-    for low, high, rate in NO_TX_DECLINE_RATES:
-        if low <= egfr_baseline < high:
-            return rate
-    # eGFR >= 60 — use Stage 3a rate as conservative fallback
-    return -1.8
+def _get_base_decline_rate(egfr: float) -> float:
+    """Annual decline rate based on CKD stage.
 
-
-def _compute_annual_decline(egfr_baseline: float, bun_baseline: float) -> float:
-    """No-treatment annual decline rate with BUN modifier.
-
-    bun_modifier adds to the magnitude of decline (makes it more negative).
-    Spec: annual_decline = base_rate + bun_modifier where base_rate is negative
-    and bun_modifier is treated as additive to the decline magnitude.
+    Used in place of the 5-pillar model rate_P1 from v2.0 Section 8.
+    Acceptable simplification for Lean Launch (Q2).
     """
-    base_rate = _get_base_decline_rate(egfr_baseline)
-    bun_modifier = max(0, (bun_baseline - 20) / 10) * 0.15
-    # bun_modifier increases the decline magnitude: -(|base| + modifier)
+    for low, high, rate in _NO_TX_DECLINE_RATES:
+        if low <= egfr < high:
+            return rate
+    return -1.8  # eGFR >= 60: Stage 3a rate as conservative fallback
+
+
+def _get_decline_rate(egfr: float, bun: float) -> float:
+    """Annual decline rate with BUN modifier."""
+    base_rate = _get_base_decline_rate(egfr)
+    bun_modifier = max(0.0, (bun - 20.0) / 10.0) * 0.15
     return base_rate - bun_modifier
 
 
+# ---------------------------------------------------------------------------
+# Phase 1 -- v2.0 two-component formula (LKID-14)
+# ---------------------------------------------------------------------------
+
+
 def _phase1_fraction(t_months: float) -> float:
-    """Exponential saturation: fraction of Phase 1 gain at time t."""
-    if t_months >= 3:
+    """Exponential saturation: reaches ~92% by month 3, 100% by month 6."""
+    if t_months >= 6:
         return 1.0
     if t_months <= 0:
         return 0.0
-    return 1 - math.exp(-2.5 * t_months / 3)
+    return 1.0 - math.exp(-2.5 * t_months / 3.0)
+
+
+def _compute_phase1(
+    egfr_baseline: float,
+    bun_baseline: float,
+    age: int,
+    tier_target_bun: float,
+) -> float:
+    """v2.0 Phase 1 total gain: BUN suppression removal + rate differential.
+
+    NOTE: 0.31-coefficient model (calc spec) is intentionally not used here (Q1).
+    """
+    # Component 1: BUN suppression removal (~8% of current eGFR)
+    phase1_suppression = egfr_baseline * 0.08
+
+    # Component 2: Rate differential via BUN reduction factor
+    reduction = 0.46
+    if age > 75:
+        reduction -= 0.05
+    if age > 85:
+        reduction -= 0.05  # stacks with >75 reduction
+    if egfr_baseline < 15:
+        reduction -= 0.08
+    elif egfr_baseline < 30:
+        reduction -= 0.03
+
+    achieved_bun = max(bun_baseline * (1.0 - reduction), 9.0)
+    # Clamp to tier target: tier label represents the BUN outcome
+    achieved_bun_for_tier = max(achieved_bun, tier_target_bun)
+
+    old_rate = _get_decline_rate(egfr_baseline, bun_baseline)
+    new_rate = _get_decline_rate(egfr_baseline, achieved_bun_for_tier)
+
+    # Rate differential over 6 months (0.5 years)
+    phase1_real = (abs(old_rate) - abs(new_rate)) * 0.5
+
+    return phase1_suppression + phase1_real
+
+
+# ---------------------------------------------------------------------------
+# Phase 2 -- v2.0 continuous function (LKID-14)
+# ---------------------------------------------------------------------------
 
 
 def _phase2_fraction(t_months: float) -> float:
-    """Logarithmic accumulation: fraction of Phase 2 gain at time t."""
-    if t_months <= 3:
+    """Logarithmic accumulation over months 6-24."""
+    if t_months <= 6:
         return 0.0
     if t_months >= 24:
         return 1.0
-    return math.log(1 + (t_months - 3)) / math.log(1 + 21)
+    return math.log(1.0 + (t_months - 6.0)) / math.log(1.0 + 18.0)
+
+
+def _compute_phase2_gain(achieved_bun: float, age: int) -> float:
+    """v2.0 continuous Phase 2 gain function based on achieved BUN with age attenuation."""
+    if achieved_bun <= 12:
+        phase2 = 8.0
+    elif achieved_bun <= 17:
+        phase2 = 8.0 - (achieved_bun - 12.0) / 5.0 * 3.0
+    elif achieved_bun <= 24:
+        phase2 = 5.0 - (achieved_bun - 17.0) / 7.0 * 2.0
+    elif achieved_bun <= 35:
+        phase2 = 3.0 - (achieved_bun - 24.0) / 11.0 * 2.0
+    else:
+        phase2 = 0.0
+
+    # Age-based attenuation of tubular repair capacity
+    if age > 80:
+        phase2 *= 0.80 * 0.65  # both factors stack per v2.0
+    elif age > 70:
+        phase2 *= 0.80
+
+    return max(0.0, phase2)
 
 
 # ---------------------------------------------------------------------------
-# Trajectory computation
+# Optional field modifiers -- Confidence Tier 2 (LKID-14)
 # ---------------------------------------------------------------------------
 
 
-def compute_no_treatment(egfr_baseline: float, bun_baseline: float) -> list[float]:
+def _compute_optional_modifier(
+    hemoglobin: Optional[float],
+    co2: Optional[float],
+    albumin: Optional[float],
+) -> float:
+    """Additional post-Phase 2 annual decline due to concerning optional fields.
+
+    Applied equally to all four trajectories.
+    """
+    modifier = 0.0
+
+    if hemoglobin is not None and hemoglobin < 11.0:
+        modifier += 0.2
+
+    if co2 is not None and co2 < 22.0:
+        deficit = 22.0 - co2
+        modifier += (deficit / 2.0) * 0.3
+
+    if albumin is not None and albumin < 3.5:
+        deficit = 3.5 - albumin
+        modifier += (deficit / 0.5) * 0.3
+
+    return modifier
+
+
+# ---------------------------------------------------------------------------
+# No-treatment trajectory
+# ---------------------------------------------------------------------------
+
+
+def compute_no_treatment(
+    egfr_baseline: float,
+    bun_baseline: float,
+    optional_modifier: float = 0.0,
+) -> list[float]:
     """Compute no-treatment trajectory (linear BUN-adjusted decline)."""
-    annual_decline = _compute_annual_decline(egfr_baseline, bun_baseline)
+    annual_decline = _get_decline_rate(egfr_baseline, bun_baseline) - optional_modifier
     results = []
     for t in TIME_POINTS_MONTHS:
-        egfr = max(0, egfr_baseline + annual_decline * (t / 12))
+        egfr = max(0.0, egfr_baseline + annual_decline * (t / 12.0))
         results.append(round(egfr, 1))
     return results
+
+
+# ---------------------------------------------------------------------------
+# Treatment trajectory (v2.0 Phase 1 / Phase 2 / Post-Phase 2)
+# ---------------------------------------------------------------------------
 
 
 def compute_treatment_trajectory(
     egfr_baseline: float,
     bun_baseline: float,
+    age: int,
     tier: str,
+    optional_modifier: float = 0.0,
 ) -> list[float]:
-    """Compute a treatment trajectory for a given BUN tier."""
-    cfg = TIER_CONFIG[tier]
-    phase1_total = min(
-        cfg["phase1_cap"],
-        (bun_baseline - cfg["target_bun"]) * PHASE1_COEFF,
-    )
-    phase1_total = max(0, phase1_total)  # no negative gains
-    phase2_total = cfg["phase2_total"]
-    post_decline = cfg["post_decline"]
+    """Compute a treatment trajectory for a given BUN tier using v2.0 formulas.
 
-    phase1_plateau = egfr_baseline + phase1_total
-    peak = phase1_plateau + phase2_total
+    Structure:
+      t=0:     egfr_baseline
+      t=0..6:  Phase 1 -- exponential approach to phase1_total gain
+      t=6..24: Phase 2 -- Phase 1 locked in, logarithmic Phase 2 accumulation
+      t>24:    Post-Phase 2 -- linear decline from peak at tier-specific rate
+    """
+    cfg = _TIER_CONFIG[tier]
+    tier_target_bun = cfg["target_bun"]
+    post_decline_rate = cfg["post_decline"] + optional_modifier
+
+    phase1_total = max(0.0, _compute_phase1(egfr_baseline, bun_baseline, age, tier_target_bun))
+    phase2_total = _compute_phase2_gain(tier_target_bun, age)
+
+    egfr_at_phase1_complete = egfr_baseline + phase1_total  # month 6
+    peak_egfr = egfr_at_phase1_complete + phase2_total      # month 24
 
     results = []
     for t in TIME_POINTS_MONTHS:
         if t == 0:
             egfr = egfr_baseline
-        elif t <= 3:
+        elif t <= 6:
             egfr = egfr_baseline + phase1_total * _phase1_fraction(t)
         elif t <= 24:
-            egfr = phase1_plateau + phase2_total * _phase2_fraction(t)
+            egfr = egfr_at_phase1_complete + phase2_total * _phase2_fraction(t)
         else:
-            years_after_24 = (t - 24) / 12
-            egfr = max(0, peak - post_decline * years_after_24)
-        results.append(round(egfr, 1))
+            years_after_24 = (t - 24) / 12.0
+            egfr = max(0.0, peak_egfr - post_decline_rate * years_after_24)
+
+        results.append(round(max(0.0, egfr), 1))
+
     return results
 
 
 # ---------------------------------------------------------------------------
-# Dialysis age & BUN suppression
+# Dialysis age interpolation
 # ---------------------------------------------------------------------------
 
 
 def compute_dial_age(
     trajectory: list[float],
-    current_age: float,
+    current_age: int,
 ) -> Optional[float]:
-    """Find age at which trajectory crosses below eGFR 12 (linear interpolation)."""
+    """Find patient age at which trajectory crosses below DIALYSIS_THRESHOLD.
+
+    Returns None if trajectory stays above threshold for the full 120-month window.
+    Threshold: eGFR 12 (Q4 -- one-line change if Lee corrects to 15).
+    """
     for i in range(1, len(trajectory)):
         if trajectory[i] < DIALYSIS_THRESHOLD and trajectory[i - 1] >= DIALYSIS_THRESHOLD:
-            frac = (
-                (trajectory[i - 1] - DIALYSIS_THRESHOLD)
-                / (trajectory[i - 1] - trajectory[i])
+            frac = (trajectory[i - 1] - DIALYSIS_THRESHOLD) / (
+                trajectory[i - 1] - trajectory[i]
             )
-            months = (
-                TIME_POINTS_MONTHS[i - 1]
-                + frac * (TIME_POINTS_MONTHS[i] - TIME_POINTS_MONTHS[i - 1])
+            months = TIME_POINTS_MONTHS[i - 1] + frac * (
+                TIME_POINTS_MONTHS[i] - TIME_POINTS_MONTHS[i - 1]
             )
-            return round(current_age + months / 12, 1)
+            return round(current_age + months / 12.0, 1)
     return None
 
 
+# ---------------------------------------------------------------------------
+# BUN suppression estimate (stat card display)
+# ---------------------------------------------------------------------------
+
+
 def compute_bun_suppression_estimate(bun_baseline: float) -> float:
-    """Current eGFR points suppressed by elevated BUN vs optimal."""
-    suppression = max(0, (bun_baseline - OPTIMAL_BUN) * PHASE1_COEFF)
-    return round(suppression, 1)
+    """eGFR points suppressed by elevated BUN (stat card display only).
+
+    Calc spec formula: (BUN - 10) * 0.31, capped at 12.0.
+    Distinct from Amendment 3 BUN Structural Floor Display (different baseline/ratio).
+    """
+    suppression = max(0.0, (bun_baseline - 10.0) * 0.31)
+    return round(min(suppression, 12.0), 1)
 
 
 # ---------------------------------------------------------------------------
-# Confidence tier (Decision #12)
+# Confidence tier
 # ---------------------------------------------------------------------------
 
 
 def compute_confidence_tier(
     hemoglobin: Optional[float],
-    glucose: Optional[float],
+    co2: Optional[float],
+    albumin: Optional[float],
 ) -> int:
-    """Determine confidence tier per Decision #12.
-
-    Tier 1: required fields only.
-    Tier 2: required + BOTH hemoglobin AND glucose present.
-    Tier 3: requires 3+ visits (not possible in single-entry mode).
-    """
-    if hemoglobin is not None and glucose is not None:
+    """Tier 1: required fields only. Tier 2: at least one optional field present."""
+    if any(v is not None for v in [hemoglobin, co2, albumin]):
         return 2
     return 1
 
@@ -249,7 +367,6 @@ def compute_stat_cards(
     no_tx = trajectories["no_treatment"]
     bun_12 = trajectories["bun_12"]
 
-    # 10-year values (last point in trajectory)
     egfr_10yr_no_tx = no_tx[-1]
     egfr_10yr_best = bun_12[-1]
 
@@ -263,7 +380,7 @@ def compute_stat_cards(
 
 
 # ---------------------------------------------------------------------------
-# Legacy predict() — kept for backward compatibility with existing callers
+# predict() -- kept for backward compatibility with existing callers
 # ---------------------------------------------------------------------------
 
 
@@ -273,96 +390,97 @@ def predict(
     age: int,
     sex: Literal["male", "female", "unknown"] = "unknown",
     egfr_entered: Optional[float] = None,
+    hemoglobin: Optional[float] = None,
+    co2: Optional[float] = None,
+    albumin: Optional[float] = None,
 ) -> dict:
-    """
-    Main prediction function. Returns the full /predict response body.
-
-    Args:
-        bun: Blood Urea Nitrogen in mg/dL
-        creatinine: Serum creatinine in mg/dL
-        age: Patient age in years
-        sex: Biological sex for CKD-EPI formula
-        egfr_entered: Optional patient-entered eGFR (bypasses CKD-EPI calculation)
-    """
+    """Main prediction function. Returns the full /predict response body."""
     if egfr_entered is not None:
         egfr_baseline = round(float(egfr_entered), 1)
     else:
         egfr_baseline = compute_egfr_ckd_epi_2021(creatinine, age, sex)
 
-    no_tx = compute_no_treatment(egfr_baseline, bun)
-    bun_18_24 = compute_treatment_trajectory(egfr_baseline, bun, "bun_18_24")
-    bun_13_17 = compute_treatment_trajectory(egfr_baseline, bun, "bun_13_17")
-    bun_12 = compute_treatment_trajectory(egfr_baseline, bun, "bun_12")
+    optional_modifier = _compute_optional_modifier(hemoglobin, co2, albumin)
+
+    no_tx = compute_no_treatment(egfr_baseline, bun, optional_modifier)
+    bun_18_24 = compute_treatment_trajectory(egfr_baseline, bun, age, "bun_18_24", optional_modifier)
+    bun_13_17 = compute_treatment_trajectory(egfr_baseline, bun, age, "bun_13_17", optional_modifier)
+    bun_12_traj = compute_treatment_trajectory(egfr_baseline, bun, age, "bun_12", optional_modifier)
+
+    trajectories = {
+        "no_treatment": no_tx,
+        "bun_18_24": bun_18_24,
+        "bun_13_17": bun_13_17,
+        "bun_12": bun_12_traj,
+    }
 
     return {
         "egfr_baseline": egfr_baseline,
         "time_points_months": list(TIME_POINTS_MONTHS),
-        "trajectories": {
-            "no_treatment": no_tx,
-            "bun_18_24": bun_18_24,
-            "bun_13_17": bun_13_17,
-            "bun_12": bun_12,
-        },
+        "trajectories": trajectories,
         "dial_ages": {
             "no_treatment": compute_dial_age(no_tx, age),
             "bun_18_24": compute_dial_age(bun_18_24, age),
             "bun_13_17": compute_dial_age(bun_13_17, age),
-            "bun_12": compute_dial_age(bun_12, age),
+            "bun_12": compute_dial_age(bun_12_traj, age),
         },
         "bun_suppression_estimate": compute_bun_suppression_estimate(bun),
     }
 
 
 # ---------------------------------------------------------------------------
-# LKID-15: predict_for_endpoint() — POST /predict response shape
+# predict_for_endpoint() -- POST /predict response shape (LKID-15 / LKID-14)
 # ---------------------------------------------------------------------------
 
 
 def predict_for_endpoint(
     bun: float,
     creatinine: float,
-    potassium: float,
     age: int,
     sex: Literal["male", "female", "unknown"],
+    potassium: Optional[float] = None,
     hemoglobin: Optional[float] = None,
+    co2: Optional[float] = None,
+    albumin: Optional[float] = None,
     glucose: Optional[float] = None,
 ) -> dict:
-    """Wrapper for POST /predict endpoint (LKID-15).
+    """Wrapper for POST /predict endpoint.
 
-    Adds confidence tier, stat cards, and the response shape expected
-    by the frontend. Potassium is accepted for validation/storage but
-    does not affect the prediction engine (per spec).
+    Potassium and glucose are accepted for backward-compatibility and storage
+    but do not affect the v2.0 engine output.
 
     Args:
         bun: Blood Urea Nitrogen in mg/dL
         creatinine: Serum Creatinine in mg/dL
-        potassium: Potassium in mEq/L (validated but unused by engine)
         age: Patient age in years
         sex: Biological sex
-        hemoglobin: Optional hemoglobin in g/dL
-        glucose: Optional fasting glucose in mg/dL
+        potassium: mEq/L (validated/stored, unused by engine)
+        hemoglobin: g/dL (Confidence Tier 2 modifier)
+        co2: Serum CO2 in mEq/L (Confidence Tier 2 modifier)
+        albumin: g/dL (Confidence Tier 2 modifier)
+        glucose: mg/dL (legacy accepted but unused)
     """
     egfr_baseline = compute_egfr_ckd_epi_2021(creatinine, age, sex)
-    confidence_tier = compute_confidence_tier(hemoglobin, glucose)
+    optional_modifier = _compute_optional_modifier(hemoglobin, co2, albumin)
+    confidence_tier = compute_confidence_tier(hemoglobin, co2, albumin)
 
-    # Run the core engine
-    no_tx = compute_no_treatment(egfr_baseline, bun)
-    bun_18_24 = compute_treatment_trajectory(egfr_baseline, bun, "bun_18_24")
-    bun_13_17 = compute_treatment_trajectory(egfr_baseline, bun, "bun_13_17")
-    bun_12 = compute_treatment_trajectory(egfr_baseline, bun, "bun_12")
+    no_tx = compute_no_treatment(egfr_baseline, bun, optional_modifier)
+    bun_18_24 = compute_treatment_trajectory(egfr_baseline, bun, age, "bun_18_24", optional_modifier)
+    bun_13_17 = compute_treatment_trajectory(egfr_baseline, bun, age, "bun_13_17", optional_modifier)
+    bun_12_traj = compute_treatment_trajectory(egfr_baseline, bun, age, "bun_12", optional_modifier)
 
     trajectories = {
         "no_treatment": no_tx,
         "bun_18_24": bun_18_24,
         "bun_13_17": bun_13_17,
-        "bun_12": bun_12,
+        "bun_12": bun_12_traj,
     }
 
     dial_ages = {
         "no_treatment": compute_dial_age(no_tx, age),
         "bun_18_24": compute_dial_age(bun_18_24, age),
         "bun_13_17": compute_dial_age(bun_13_17, age),
-        "bun_12": compute_dial_age(bun_12, age),
+        "bun_12": compute_dial_age(bun_12_traj, age),
     }
 
     stat_cards = compute_stat_cards(egfr_baseline, bun, trajectories)
@@ -375,4 +493,5 @@ def predict_for_endpoint(
         "dial_ages": dial_ages,
         "dialysis_threshold": DIALYSIS_THRESHOLD,
         "stat_cards": stat_cards,
+        "bun_suppression_estimate": compute_bun_suppression_estimate(bun),
     }
