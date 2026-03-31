@@ -7,7 +7,7 @@
 **Jira:** [SPEC Board](https://automationarchitecture.atlassian.net/jira/software/c/projects/SPEC/boards/329/backlog) | [LKID Board](https://automationarchitecture.atlassian.net/jira/software/c/projects/LKID/boards/363)
 **Repo:** [github.com/Automation-Architecture/LKID](https://github.com/Automation-Architecture/LKID)
 **Specs:** `/Users/brad/IDE/kidneyhood/` (3 docx files)
-**Status:** Sprint 2 DONE (Mar 26 -- Apr 2). 11 PRs merged (#9--#21 minus deferred). Post-merge QA found 4 HIGH bugs — all fixed. LKID-14 (rules engine) and LKID-47 (Klaviyo) blocked on Lee. LKID-19 deferred to Sprint 3.
+**Status:** Sprint 3 IN PROGRESS (Mar 30 – Apr 9). 6 PRs merged (#22–#27). Lee answered all 6 formula questions Mar 30 — LKID-14 unblocked. LKID-47 (Klaviyo) still blocked on Lee API key.
 **Client Dashboard:** https://kidneyhood.vercel.app/client/lee-a3f8b2 — auto-updated by `scripts/refresh-sprint-progress.py`.
 
 ## Sprint Plan
@@ -19,9 +19,8 @@
 | Sprint 3 — PDF, Polish & QA | Mar 30 – Apr 9 | 12 (LKID-4–5, 20–29) | Interactivity, PDF, disclaimers, tests, QA gate |
 
 **Ship date:** April 9, 2026
-**Blockers:** LKID-14 (rules engine) awaiting Lee's response on Phase 1 formula (5 questions + Q6 creatinine max=20.0). LKID-47 (Klaviyo) needs API key from Lee. LKID-19 (Visx chart) deferred to Sprint 3.
-**Lee escalation:** Follow-up email Mar 28 → Luca escalates Mar 30 → fallback decision Mar 30 (ship with CKD-EPI placeholder trajectories if no response).
-**Creatinine max=20.0:** Agreed in backend engineering meeting. DB migration, Pydantic model, and test fixtures all aligned to 20.0. Pending Lee confirmation (Q6) before Sprint 3 prod release.
+**Blockers:** LKID-47 (Klaviyo) needs API key from Lee. Updated golden test vectors expected from Lee this week.
+**Lee responses (2026-03-30):** All 6 questions answered — see `agents/luca/drafts/lee-q1-q6-responses.md`. v2.0 formulas confirmed, eGFR 12 confirmed, creatinine 20.0 confirmed, age attenuation implemented, structural floor added, Path 4 rate updated to -0.33.
 
 ## What's Next
 
@@ -32,21 +31,36 @@
 | 1 | Re-label LKID-20–29 from `sprint:2` → `sprint:3` in Jira | Husser | Done |
 | 2 | Close Sprint 2 (ID 128) in Jira | Husser | Done |
 | 3 | Update epics LKID-2 and LKID-3 to Done (child stories complete) | Husser | Done |
-| 4 | Lee escalation: follow-up email Mar 28, Luca escalates Mar 30, fallback decision Mar 30 | Luca | In progress |
+| 4 | Lee escalation: follow-up email Mar 28, Luca escalates Mar 30, fallback decision Mar 30 | Luca | Done — Lee responded Mar 30 |
 
 ### Sprint 3 Cards (Mar 30 – Apr 9)
 
 | Card | Title | Owner | Dependency |
 |------|-------|-------|------------|
-| LKID-19 | Visx eGFR trajectory chart | Harshit | None |
-| LKID-49 | Visx QA pairing (deferred from Sprint 2) | Yuri | LKID-19 |
-| LKID-4 | PDF export (Playwright rendering) | Harshit + John | LKID-19 (chart in PDF) |
-| LKID-5 | Medical disclaimers (verbatim, all viewports) | Harshit + Inga | **In progress — deploying Mar 30** |
+| LKID-19 | Visx eGFR trajectory chart | Harshit | **MERGED — PR #23** |
+| LKID-5 | Medical disclaimers (verbatim, all viewports) | Harshit + Inga | **MERGED — PR #22** |
+| LKID-14 | Rules engine v2.0 + Lee confirmations | John Donaldson | **MERGED — PRs #25, #26** |
+| LKID-25 | Rate limiting (API endpoints) | John Donaldson | **MERGED — PR #25** |
+| LKID-27 | Boundary tests + golden files | Yuri + Gay Mark | **MERGED — PR #24** |
+| — | BUN structural floor callout (Q3) | Harshit + John | **MERGED — PR #27** |
+| LKID-49 | Visx QA pairing (deferred from Sprint 2) | Yuri | LKID-19 ✓ |
+| LKID-4 | PDF export (Playwright rendering) | Harshit + John | LKID-19 ✓ |
 | LKID-20–29 | Polish, tests, QA gate (10 cards) | Various | See Jira |
-| LKID-14 | Rules engine (Phase 1 formula) — scaffold with CKD-EPI placeholder | John Donaldson | **Blocked on Lee (scaffolding in parallel)** |
-| LKID-25 | Rate limiting (API endpoints) | John Donaldson | None |
 | LKID-47 | Klaviyo lead capture | John Donaldson | **Blocked on Lee API key** |
 | — | Clerk v7 + Next.js 16 migration (re-enable middleware, fix types, remove ts-nocheck) | Harshit | New — discovered Mar 27 |
+
+### Lee's Responses (2026-03-30) — All 6 Questions Answered
+
+Full responses at `agents/luca/drafts/lee-q1-q6-responses.md`. Summary:
+- Q1: Use v2.0 formulas — updated golden vectors coming this week
+- Q2: CKD-stage rates OK for marketing app
+- Q3: Both suppression estimate AND structural floor (BUN > 17)
+- Q4: Dialysis threshold = eGFR 12 confirmed
+- Q5: Age attenuation — implemented (two lines)
+- Q6: Creatinine max 20.0 confirmed
+- Bonus: Path 4 post-decline rate → -0.33 (pilot data n=28)
+
+**Still waiting on Lee:** Updated golden test vectors (this week) + Klaviyo API key (LKID-47).
 
 ### Post-Ship (after April 9 retro)
 
@@ -73,6 +87,22 @@ See `active/chatroom/chatroom_report.md` for the full decision rationale.
 ## Development Workflow
 
 CTO (Luca) opens one PR per Jira card. Each card gets a feature branch (`feat/LKID-{number}-{description}`). Copilot is added as reviewer on every PR. Agents implement on their branches. PRs merge to `main` when approved.
+
+### PR Review & Merge Cycle
+
+1. Push branch → open PR via `gh pr create`
+2. Poll reviews (~60s): `gh api repos/Automation-Architecture/LKID/pulls/{N}/reviews` + `/comments`
+3. Both **Copilot** and **CodeRabbit** auto-review — address all actionable findings
+4. Dispatch engineer agent to fix review findings on the correct branch
+5. Yuri QA pass — verdict must be PASS before merge
+6. Merge via `gh pr merge {N} --squash`
+7. If next PR has overlap, rebase onto updated main before merging
+
+### Merge Order Protocol (from Sprint 2 postmortem)
+
+- Merge in dependency order: lowest-risk/no-overlap first, highest-risk last
+- Rebase between each merge when branches share files
+- See `agents/luca/drafts/sprint3-commit-strategy.md` for the template
 
 ### Sprint 1 PRs (Design Sprint)
 
@@ -107,6 +137,17 @@ CTO (Luca) opens one PR per Jira card. Each card gets a feature branch (`feat/LK
 | — | — | LKID-47 | John Donaldson | Blocked (Lee) |
 | — | — | LKID-19 | Harshit | Deferred to Sprint 3 |
 
+### Sprint 3 PRs (Polish & QA)
+
+| PR | Branch | Card | Owner | Status |
+|----|--------|------|-------|--------|
+| [#22](https://github.com/Automation-Architecture/LKID/pull/22) | `feat/LKID-5-disclaimers` | LKID-5 | Harshit + Inga | Merged |
+| [#23](https://github.com/Automation-Architecture/LKID/pull/23) | `feat/LKID-19-visx-chart` | LKID-19 | Harshit | Merged |
+| [#24](https://github.com/Automation-Architecture/LKID/pull/24) | `feat/LKID-27-boundary-tests` | LKID-27 | Yuri + Gay Mark | Merged |
+| [#25](https://github.com/Automation-Architecture/LKID/pull/25) | `feat/LKID-14-rules-engine` | LKID-14, LKID-25 | John Donaldson | Merged |
+| [#26](https://github.com/Automation-Architecture/LKID/pull/26) | `feat/LKID-14-lee-confirmations` | Lee Q2/Q7 | John Donaldson | Merged |
+| [#27](https://github.com/Automation-Architecture/LKID/pull/27) | `feat/LKID-structural-floor` | Lee Q3 | Harshit + John | Merged |
+
 ## Team
 
 | Role | Agent | Jira Label |
@@ -122,6 +163,8 @@ CTO (Luca) opens one PR per Jira card. Each card gets a feature branch (`feat/LK
 ## Known Issues
 
 - **Worktree subagent permissions:** Background subagents cannot get interactive permission approvals. Worktrees created via `git worktree add` don't help — the Bash/Write tools are still denied. Foreground deployment (sequential) works. Only one background agent (Harshit, Sprint 3) got through permissions; root cause unclear.
+- **Cross-branch stash conflicts:** Never `git stash pop` when the stash contains files from multiple feature branches. Files that exist on one branch but not another (e.g., `chart/` on LKID-19 but not LKID-5) cause add/delete conflicts. Fix: commit each branch sequentially — never stash mixed cross-branch work.
+- **Multi-agent workspace contamination:** When dispatching multiple foreground agents for different branches, each agent's edits land in the same workspace regardless of target branch. The last agent's checkout wins. Fix: dispatch one agent, commit+push its branch, then dispatch the next.
 
 ## Critical Rules
 
@@ -152,20 +195,23 @@ agent-teams/
 ├── agents/
 │   ├── gay_mark/drafts/          # db_design.md, db_docs.md, db_schema.sql, db-deployment-runbook.md, pgaudit-setup-notes.md
 │   ├── gay_mark/outputs/         # Finalized deliverables (currently empty)
-│   ├── harshit/drafts/           # frontend_architecture.md, lean-launch-review.md, clerk-integration-plan.md
+│   ├── harshit/drafts/           # frontend_architecture.md, lean-launch-review.md, clerk-integration-plan.md, lkid-19-poc-decision.md
 │   ├── harshit/outputs/          # Finalized deliverables (currently empty)
 │   ├── husser/drafts/            # lean-launch-stories.md, design-sprint-stories.md, client-dashboard-stories-v2.md, week-1-product-update.md, email-to-lee-week1.md, lean-launch-review.md, product-management-sop.md, execution-velocity-plan.md, jira-cards-yuri-remediation.md, sprint2-close-board-sweep.md
 │   ├── husser/outputs/           # Finalized deliverables (currently empty)
 │   ├── inga/drafts/              # wireframes.md, component-specs.md, design-tokens.md, user-flows.md, chart-specs.md, accessibility-plan.md, clerk-ux-review.md, client-dashboard-mockup.md, client-dashboard-review.md, dashboard-polish-fixes.md, bun-floor-display-design.md, design-sprint-meeting-1.md, design-sprint-sign-off.md, lean-launch-review.md
 │   ├── inga/outputs/             # Finalized deliverables (currently empty)
-│   ├── john_donaldson/drafts/    # api_contract.json, api_contract_summary.md, api_docs.md, backend-research.md, debug_calc.py, finalized-formulas.md, lean-launch-review.md, prediction_engine.py, test_debug.py, test_prediction_engine.py, week-1-technical-update.md, TASK-iterate-rules-engine-v3.md
+│   ├── john_donaldson/drafts/    # api_contract.json, api_contract_summary.md, api_docs.md, backend-research.md, debug_calc.py, finalized-formulas.md, lean-launch-review.md, prediction_engine.py, test_debug.py, test_prediction_engine.py, week-1-technical-update.md, TASK-iterate-rules-engine-v3.md, LKID-14-25-implementation-notes.md
 │   ├── john_donaldson/outputs/   # Finalized deliverables (currently empty)
-│   ├── luca/drafts/              # architecture.md, infrastructure-setup.md, railway-deployment-checklist.md, medical-expert-review.md, backend-meeting-memo.md, lean-launch-review.md, merge-execution-plan.md, sprint2-merge-postmortem.md, sprint3-commit-strategy.md, qa-remediation-brainstorm.md, qa-skills-recommendations.md, yuri-weakness-remediation-plan.md, sprint-progress.json, spec-tracker.json, main.py
+│   ├── luca/drafts/              # architecture.md, infrastructure-setup.md, railway-deployment-checklist.md, medical-expert-review.md, backend-meeting-memo.md, lean-launch-review.md, merge-execution-plan.md, sprint2-merge-postmortem.md, sprint3-commit-strategy.md, lee-q1-q6-responses.md, qa-remediation-brainstorm.md, qa-skills-recommendations.md, yuri-weakness-remediation-plan.md, sprint-progress.json, spec-tracker.json, main.py
 │   ├── luca/outputs/             # Finalized deliverables (currently empty)
-│   ├── yuri/drafts/              # test_strategy.md, design-sprint-qa-report.md, test_golden_file.py, sprint2-qa-report-1.md, sprint2-qa-report-2.md, lean-launch-review.md, qa-report-pr12-clerk-auth.md, qa-re-review-pr12.md, qa-report-pr13-post-predict.md, qa-re-review-pr13.md, qa-batch-prs-14-17.md, test-scaffold-form-chart.md, hipaa-verification-notes.md, sop-review-and-self-assessment.md, qa-client-dashboard-sprint2.md, sprint2-debacle-qa-report.md
+│   ├── yuri/drafts/              # test_strategy.md, design-sprint-qa-report.md, test_golden_file.py, sprint2-qa-report-1.md, sprint2-qa-report-2.md, lean-launch-review.md, qa-report-pr12-clerk-auth.md, qa-re-review-pr12.md, qa-report-pr13-post-predict.md, qa-re-review-pr13.md, qa-batch-prs-14-17.md, test-scaffold-form-chart.md, hipaa-verification-notes.md, sop-review-and-self-assessment.md, qa-client-dashboard-sprint2.md, sprint2-debacle-qa-report.md, qa-lkid-27-boundary-tests.md, sprint3-pr-qa-verdicts.md, sprint3-pr26-27-qa-verdicts.md
 │   └── yuri/outputs/             # Finalized deliverables (currently empty)
 ├── active/
 │   ├── chatroom/                  # Agent chatroom workspace (chat.json, chatroom_report.md)
+│   ├── DISPATCH-sprint3-backend.md   # John's Sprint 3 dispatch
+│   ├── DISPATCH-sprint3-frontend.md  # Harshit's Sprint 3 dispatch
+│   ├── DISPATCH-sprint3-qa.md        # Yuri+Gay Mark's Sprint 3 dispatch
 │   └── archive/sprint2-dispatches/  # Completed DISPATCH/TASK files from Sprint 2 (9 files)
 ├── docs/
 │   ├── discovery-phase-engineering-sop.md
@@ -234,7 +280,9 @@ agent-teams/
 | Component Specs | `agents/inga/drafts/component-specs.md` | Inga | Draft | UI component specifications |
 | Design Tokens | `agents/inga/drafts/design-tokens.md` | Inga | Draft | Color, spacing, typography tokens |
 | **Reports** | | | | |
-| Sprint 3 Commit Strategy | `agents/luca/drafts/sprint3-commit-strategy.md` | Luca | Draft | 4-branch merge plan, conflict risk matrix, execution checklist |
+| Lee Q1-Q6 Responses | `agents/luca/drafts/lee-q1-q6-responses.md` | Luca | Final | Binding clinical answers from Lee (2026-03-30) |
+| Sprint 3 Commit Strategy | `agents/luca/drafts/sprint3-commit-strategy.md` | Luca | Final | 4-branch merge plan, conflict risk matrix |
+| Sprint 3 QA Verdicts | `agents/yuri/drafts/sprint3-pr-qa-verdicts.md` | Yuri | Final | QA verdicts for PRs #22-#27 |
 | Sprint 2 Merge Postmortem | `agents/luca/drafts/sprint2-merge-postmortem.md` | Luca | Final | Corrective actions CA-1 through CA-5 |
 | Sprint 2 Board Sweep | `agents/husser/drafts/sprint2-close-board-sweep.md` | Husser | Final | Jira alignment + Sprint 3 follow-ups |
 | Sprint 2 Debacle QA Report | `agents/yuri/drafts/sprint2-debacle-qa-report.md` | Yuri | Final | Post-merge QA: 4 HIGH bugs found and fixed |
