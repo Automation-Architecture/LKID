@@ -153,7 +153,7 @@
         {
           "id": "LKID-14",
           "title": "Rules engine integration",
-          "status": "upcoming"
+          "status": "done"
         },
         {
           "id": "LKID-15",
@@ -178,7 +178,7 @@
         {
           "id": "LKID-19",
           "title": "End-to-end prediction flow",
-          "status": "in_progress"
+          "status": "done"
         }
       ]
     },
@@ -194,7 +194,7 @@
         {
           "id": "LKID-5",
           "title": "Disclaimer components",
-          "status": "in_progress"
+          "status": "done"
         },
         {
           "id": "LKID-20",
@@ -224,7 +224,7 @@
         {
           "id": "LKID-25",
           "title": "Prediction engine unit tests",
-          "status": "in_progress"
+          "status": "done"
         },
         {
           "id": "LKID-26",
@@ -234,7 +234,7 @@
         {
           "id": "LKID-27",
           "title": "Golden-file boundary tests",
-          "status": "in_progress"
+          "status": "done"
         },
         {
           "id": "LKID-28",
