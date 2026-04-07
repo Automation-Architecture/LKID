@@ -1,7 +1,7 @@
 {
   "sprints": [
     {
-      "name": "Sprint 1 \u2014 Design Sprint",
+      "name": "Sprint 1 — Design Sprint",
       "dates": "Mar 20 - Mar 26",
       "cards": [
         {
@@ -51,48 +51,48 @@
         },
         {
           "id": "LKID-39",
-          "title": "Client dashboard \u2014 scaffold page",
+          "title": "Client dashboard — scaffold page",
           "status": "done"
         },
         {
           "id": "LKID-40",
-          "title": "Client dashboard \u2014 sprint tracker component",
+          "title": "Client dashboard — sprint tracker component",
           "status": "done"
         },
         {
           "id": "LKID-41",
-          "title": "Client dashboard \u2014 spec tracker component",
+          "title": "Client dashboard — spec tracker component",
           "status": "done"
         },
         {
           "id": "LKID-42",
-          "title": "Client dashboard \u2014 weekly update component",
+          "title": "Client dashboard — weekly update component",
           "status": "done"
         },
         {
           "id": "LKID-43",
-          "title": "Client dashboard \u2014 document library",
+          "title": "Client dashboard — document library",
           "status": "done"
         },
         {
           "id": "LKID-44",
-          "title": "Client dashboard \u2014 hero banner + timeline",
+          "title": "Client dashboard — hero banner + timeline",
           "status": "done"
         },
         {
           "id": "LKID-45",
-          "title": "Client dashboard \u2014 prototype embed",
+          "title": "Client dashboard — prototype embed",
           "status": "done"
         },
         {
           "id": "LKID-46",
-          "title": "Client dashboard \u2014 populate data + deploy",
+          "title": "Client dashboard — populate data + deploy",
           "status": "done"
         }
       ]
     },
     {
-      "name": "Sprint 2 \u2014 Core Flow",
+      "name": "Sprint 2 — Core Flow",
       "dates": "Mar 26 - Apr 2",
       "cards": [
         {
@@ -122,7 +122,7 @@
         },
         {
           "id": "LKID-8",
-          "title": "Prediction form \u2014 required fields",
+          "title": "Prediction form — required fields",
           "status": "done"
         },
         {
@@ -183,7 +183,7 @@
       ]
     },
     {
-      "name": "Sprint 3 \u2014 Polish & QA",
+      "name": "Sprint 3 — Polish & QA",
       "dates": "Apr 2 - Apr 9",
       "cards": [
         {
@@ -244,6 +244,26 @@
         {
           "id": "LKID-29",
           "title": "Pre-release QA gate",
+          "status": "upcoming"
+        },
+        {
+          "id": "LKID-47",
+          "title": "Klaviyo lead capture",
+          "status": "upcoming"
+        },
+        {
+          "id": "LKID-49",
+          "title": "Visx QA pairing",
+          "status": "in_progress"
+        },
+        {
+          "id": "LKID-59",
+          "title": "Engine formula verification",
+          "status": "in_progress"
+        },
+        {
+          "id": "LKID-60",
+          "title": "Clerk v7 + Next.js 16 migration",
           "status": "upcoming"
         }
       ]
