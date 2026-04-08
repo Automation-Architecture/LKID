@@ -1,13 +1,27 @@
-import { clerkMiddleware } from "@clerk/nextjs/server";
+import { clerkMiddleware, createRouteMatcher } from "@clerk/nextjs/server";
 
 /**
  * Clerk auth proxy — LKID-60
  *
  * Next.js 16 renamed middleware.ts → proxy.ts. Clerk v7's clerkMiddleware()
- * works as-is inside the proxy convention. All routes pass through Clerk
- * for JWT verification; public routes are handled client-side via ClerkProvider.
+ * works as-is inside the proxy convention. Matched routes pass through Clerk
+ * for JWT verification. Public routes (home, client dashboard, internal pages)
+ * are accessible without authentication.
  */
-export default clerkMiddleware();
+const isPublicRoute = createRouteMatcher([
+  "/",
+  "/auth(.*)",
+  "/client(.*)",
+  "/internal(.*)",
+  "/predict(.*)",
+  "/results(.*)",
+]);
+
+export default clerkMiddleware(async (auth, request) => {
+  if (!isPublicRoute(request)) {
+    await auth.protect();
+  }
+});
 
 export const config = {
   matcher: [
