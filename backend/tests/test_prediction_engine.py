@@ -1,29 +1,20 @@
 """
-LKID-27 — Prediction Engine Boundary Tests + Golden Files
+LKID-27 + LKID-59 — Prediction Engine Tests + Lee Golden Vectors
 
 Comprehensive unit test suite for backend/prediction/engine.py.
 
 Test structure:
-  1. TestGoldenFileVectors     — 3 spec vectors, ±0.2 tolerance
+  1. TestLeeGoldenVectors      — 3 Lee vectors (month 12), ±0.2 tolerance (strict)
   2. TestBoundaryValues        — BVA for all 4 inputs
   3. TestEdgeCases             — edge cases per dispatch spec
   4. TestDeterminism           — no randomness, no side effects
   5. TestNoTreatmentDeclineRates — base rates and BUN modifier
 
-Key findings documented here:
-  Q1 DISCREPANCY: Treatment path golden vectors diverge from engine by 1-5 eGFR
-  pts beyond ±0.2 tolerance. v2.0 engine uses Phase 1 completing at month 6 with
-  dynamic two-component formula; spec vectors were generated with the simplified
-  0.31-coeff model. Golden tests for treatment paths are marked xfail pending
-  Lee's Q1 answer. See: finalized-formulas.md Section 8 Q1.
-
-  Q1 NO-TX DISCREPANCY: no_treatment at t=120 — spec=11.2, engine=8.7 (delta=-2.5).
-  Engine's BUN modifier adds (35-20)/10*0.15 = 0.225 mL/min/yr to decline,
-  compounding over 10 years. Spec vectors may not apply BUN modifier.
-
-  GAP: Optional modifiers (hemoglobin, co2, albumin) DO affect trajectory rates
-  in v2.0 engine via _compute_optional_modifier(). glucose is accepted by
-  predict_for_endpoint() for backward-compat but does not affect trajectories.
+LKID-59: Engine refactored to Lee's confirmed model (2026-04-02):
+  - Phase 1: min(tier_cap, (BUN - target) * 0.31), saturates at month 3
+  - After month 3: linear decline at CKD-stage treatment rate with age attenuation
+  - No Phase 2 gain function
+  - All 3 Lee vectors pass within ±0.2 tolerance (strict, not xfail)
 
 Coverage target: 85% for backend/prediction/engine.py
 Run:
@@ -42,14 +33,16 @@ import pytest
 
 from prediction.engine import (
     DIALYSIS_THRESHOLD,
+    _PATH4_FLOOR_RATE,
     _TIER_CONFIG,
+    _TREATMENT_DECLINE_RATES,
     TIME_POINTS_MONTHS,
     _NO_TX_DECLINE_RATES,
     _get_decline_rate,
     _get_base_decline_rate,
     _get_bun_ratio,
+    _get_treatment_decline_rate,
     _phase1_fraction,
-    _phase2_fraction,
     compute_bun_suppression_estimate,
     compute_confidence_tier,
     compute_dial_age,
@@ -62,12 +55,12 @@ from prediction.engine import (
 
 from tests.fixtures.golden_vectors import (
     GOLDEN_TOLERANCE,
-    GOLDEN_VECTOR_1_EXPECTED,
-    GOLDEN_VECTOR_1_INPUT,
-    GOLDEN_VECTOR_2_EXPECTED,
-    GOLDEN_VECTOR_2_INPUT,
-    GOLDEN_VECTOR_3_EXPECTED,
-    GOLDEN_VECTOR_3_INPUT,
+    LEE_VECTOR_1_EXPECTED_MONTH_12,
+    LEE_VECTOR_1_INPUT,
+    LEE_VECTOR_2_EXPECTED_MONTH_12,
+    LEE_VECTOR_2_INPUT,
+    LEE_VECTOR_3_EXPECTED_MONTH_12,
+    LEE_VECTOR_3_INPUT,
     TIME_POINTS_MONTHS as GV_TIME_POINTS,
 )
 
@@ -97,189 +90,132 @@ def _get_traj_at(result: dict, path: str, month: int) -> float:
 pytestmark = pytest.mark.prediction_engine
 
 
-class TestGoldenFileVectors:
-    """
-    Three calc-spec test vectors from finalized-formulas.md Section 7.
-    Tolerance: ±0.2 eGFR per calc spec Section 4.
+class TestLeeGoldenVectors:
+    """Lee's 3 golden vectors (received 2026-04-02). Strict ±0.2 tolerance.
 
-    IMPORTANT: Treatment path tests are marked xfail because the engine uses
-    a different Phase 1/2 formula than the vectors (Q1 open question).
-    No-treatment tests are marked separately since the discrepancy is
-    smaller (mostly within ±0.5) and has a known cause (BUN modifier).
-
-    Do NOT change xfail to skip — these must fail loudly until Q1 is resolved.
+    These replace the old calc-spec vectors. All tests are strict (not xfail).
+    Each vector checks the treatment trajectory at month 12 for a specific tier.
     """
 
-    # --- Vector 1 -----------------------------------------------------------
-
-    @pytest.mark.xfail(
-        reason=(
-            "Q1 discrepancy: engine no_treatment adds BUN modifier (+0.225/yr) "
-            "that spec vectors do not. At t=120: spec=11.2, engine=8.7, delta=-2.5. "
-            "Escalated to Luca — ref finalized-formulas.md Section 8 Q1."
-        ),
-        strict=False,
-    )
-    @pytest.mark.parametrize(
-        "time_month,expected",
-        [
-            (t, v)
-            for (t, path), v in GOLDEN_VECTOR_1_EXPECTED.items()
-            if path == "no_treatment" and t > 0  # t=0 covered by baseline passthrough test
-        ],
-    )
-    def test_vector_1_no_treatment(self, time_month, expected):
-        """Vector 1 no_treatment trajectory vs spec. BUN modifier causes drift."""
-        inp = GOLDEN_VECTOR_1_INPUT
+    def test_vector_1_bun_13_17_month_12(self):
+        """V1: BUN=16, eGFR=28, Age=58, tier=bun_13_17. Lee expects 26.79."""
+        inp = LEE_VECTOR_1_INPUT
         result = _run_predict(
             bun=inp["bun"],
             creatinine=inp["creatinine"],
             age=inp["age"],
             egfr_entered=inp["egfr_override"],
         )
-        actual = _get_traj_at(result, "no_treatment", time_month)
+        actual = _get_traj_at(result, inp["tier"], 12)
+        expected = LEE_VECTOR_1_EXPECTED_MONTH_12
         assert abs(actual - expected) <= GOLDEN_TOLERANCE, (
-            f"t={time_month}: expected no_treatment={expected}, "
-            f"got {actual} (delta={actual - expected:+.1f}) "
-            f"— exceeds ±{GOLDEN_TOLERANCE}"
+            f"V1 month 12: expected {expected}, got {actual} "
+            f"(delta={actual - expected:+.2f}, tol=±{GOLDEN_TOLERANCE})"
         )
 
-    @pytest.mark.xfail(
-        reason=(
-            "Q1 discrepancy: treatment path formula mismatch. Engine Phase 1 "
-            "completes at month 3 with phase1_cap from _TIER_CONFIG; spec vectors "
-            "appear to use a different Phase 1/2 boundary. Deltas of 1-5 eGFR pts. "
-            "Ref finalized-formulas.md Section 8 Q1."
-        ),
-        strict=False,
-    )
-    @pytest.mark.parametrize(
-        "time_month,path,expected",
-        [
-            (t, path, v)
-            for (t, path), v in GOLDEN_VECTOR_1_EXPECTED.items()
-            if path != "no_treatment" and t > 0  # t=0 covered by baseline passthrough test
-        ],
-    )
-    def test_vector_1_treatment_paths(self, time_month, path, expected):
-        """Vector 1 treatment trajectories vs spec. Phase 1/2 formula mismatch."""
-        inp = GOLDEN_VECTOR_1_INPUT
+    def test_vector_2_bun_12_month_12(self):
+        """V2: BUN=11, eGFR=22, Age=64, tier=bun_12. Lee expects 22.04."""
+        inp = LEE_VECTOR_2_INPUT
         result = _run_predict(
             bun=inp["bun"],
             creatinine=inp["creatinine"],
             age=inp["age"],
             egfr_entered=inp["egfr_override"],
         )
-        actual = _get_traj_at(result, path, time_month)
+        actual = _get_traj_at(result, inp["tier"], 12)
+        expected = LEE_VECTOR_2_EXPECTED_MONTH_12
         assert abs(actual - expected) <= GOLDEN_TOLERANCE, (
-            f"t={time_month} path={path}: expected={expected}, "
-            f"got {actual} (delta={actual - expected:+.1f})"
+            f"V2 month 12: expected {expected}, got {actual} "
+            f"(delta={actual - expected:+.2f}, tol=±{GOLDEN_TOLERANCE})"
         )
 
-    # --- Vector 2 -----------------------------------------------------------
-
-    @pytest.mark.xfail(
-        reason=(
-            "Q1 discrepancy — same formula mismatch as Vector 1. strict=False: "
-            "unexpected passes are allowed until Q1 is resolved."
-        ),
-        strict=False,
-    )
-    @pytest.mark.parametrize(
-        "time_month,path,expected",
-        [
-            (t, path, v)
-            for (t, path), v in GOLDEN_VECTOR_2_EXPECTED.items()
-            if t > 0  # t=0 covered by baseline passthrough test
-        ],
-    )
-    def test_vector_2_stage5_high_bun(self, time_month, path, expected):
-        """Vector 2: Stage 5 (eGFR=10, BUN=53, Age=65). Treatment paths xfail."""
-        inp = GOLDEN_VECTOR_2_INPUT
+    def test_vector_3_bun_18_24_month_12(self):
+        """V3: BUN=22, eGFR=18, Age=74, tier=bun_18_24. Lee expects 17.09."""
+        inp = LEE_VECTOR_3_INPUT
         result = _run_predict(
             bun=inp["bun"],
             creatinine=inp["creatinine"],
             age=inp["age"],
             egfr_entered=inp["egfr_override"],
         )
-        actual = _get_traj_at(result, path, time_month)
+        actual = _get_traj_at(result, inp["tier"], 12)
+        expected = LEE_VECTOR_3_EXPECTED_MONTH_12
         assert abs(actual - expected) <= GOLDEN_TOLERANCE, (
-            f"t={time_month} path={path}: expected={expected}, "
-            f"got {actual} (delta={actual - expected:+.1f})"
+            f"V3 month 12: expected {expected}, got {actual} "
+            f"(delta={actual - expected:+.2f}, tol=±{GOLDEN_TOLERANCE})"
         )
 
-    # --- Vector 3 -----------------------------------------------------------
-
-    @pytest.mark.xfail(
-        reason=(
-            "Q1 discrepancy — same formula mismatch as Vector 1. strict=False: "
-            "unexpected passes are allowed until Q1 is resolved."
-        ),
-        strict=False,
-    )
-    @pytest.mark.parametrize(
-        "time_month,path,expected",
-        [
-            (t, path, v)
-            for (t, path), v in GOLDEN_VECTOR_3_EXPECTED.items()
-            if t > 0  # t=0 covered by baseline passthrough test
-        ],
-    )
-    def test_vector_3_mild_ckd(self, time_month, path, expected):
-        """Vector 3: Mild CKD (eGFR=48, BUN=22, Age=52)."""
-        inp = GOLDEN_VECTOR_3_INPUT
+    def test_vector_1_baseline_passthrough(self):
+        """V1: egfr_entered=28.0 returned as baseline at t=0 for all paths."""
+        inp = LEE_VECTOR_1_INPUT
         result = _run_predict(
             bun=inp["bun"],
             creatinine=inp["creatinine"],
             age=inp["age"],
             egfr_entered=inp["egfr_override"],
         )
-        actual = _get_traj_at(result, path, time_month)
-        assert abs(actual - expected) <= GOLDEN_TOLERANCE, (
-            f"t={time_month} path={path}: expected={expected}, "
-            f"got {actual} (delta={actual - expected:+.1f})"
-        )
-
-    # --- Spot-checks that ARE within tolerance (t=0 for all vectors) -------
-
-    def test_vector_1_baseline_egfr_passthrough(self):
-        """egfr_entered=33.0 must be returned as egfr_baseline at t=0."""
-        inp = GOLDEN_VECTOR_1_INPUT
-        result = _run_predict(
-            bun=inp["bun"],
-            creatinine=inp["creatinine"],
-            age=inp["age"],
-            egfr_entered=inp["egfr_override"],
-        )
-        assert result["egfr_baseline"] == 33.0
+        assert result["egfr_baseline"] == inp["egfr_override"]
         for path in EXPECTED_TRAJECTORY_KEYS:
-            assert _get_traj_at(result, path, 0) == 33.0
+            assert _get_traj_at(result, path, 0) == inp["egfr_override"]
 
-    def test_vector_2_baseline_egfr_passthrough(self):
-        """Vector 2: egfr_entered=10.0 returned at t=0 for all paths."""
-        inp = GOLDEN_VECTOR_2_INPUT
+    def test_vector_2_baseline_passthrough(self):
+        """V2: egfr_entered=22.0 returned at t=0 for all paths."""
+        inp = LEE_VECTOR_2_INPUT
         result = _run_predict(
             bun=inp["bun"],
             creatinine=inp["creatinine"],
             age=inp["age"],
             egfr_entered=inp["egfr_override"],
         )
-        assert result["egfr_baseline"] == 10.0
+        assert result["egfr_baseline"] == inp["egfr_override"]
         for path in EXPECTED_TRAJECTORY_KEYS:
-            assert _get_traj_at(result, path, 0) == 10.0
+            assert _get_traj_at(result, path, 0) == inp["egfr_override"]
 
-    def test_vector_3_baseline_egfr_passthrough(self):
-        """Vector 3: egfr_entered=48.0 returned at t=0 for all paths."""
-        inp = GOLDEN_VECTOR_3_INPUT
+    def test_vector_3_baseline_passthrough(self):
+        """V3: egfr_entered=18.0 returned at t=0 for all paths."""
+        inp = LEE_VECTOR_3_INPUT
         result = _run_predict(
             bun=inp["bun"],
             creatinine=inp["creatinine"],
             age=inp["age"],
             egfr_entered=inp["egfr_override"],
         )
-        assert result["egfr_baseline"] == 48.0
+        assert result["egfr_baseline"] == inp["egfr_override"]
         for path in EXPECTED_TRAJECTORY_KEYS:
-            assert _get_traj_at(result, path, 0) == 48.0
+            assert _get_traj_at(result, path, 0) == inp["egfr_override"]
+
+    def test_vector_3_age_attenuation_applied(self):
+        """V3 (Age=74 > 70): treatment rate should be attenuated by 0.80.
+
+        bun_18_24 decline should be -2.0 * 0.80 = -1.60/yr (not -2.0/yr).
+        From month 3 to month 12 = 9 months = 0.75 years.
+        Decline = -1.60 * 0.75 = -1.20. With Phase 1 gain of 0.285:
+        eGFR(12) ~ 18 + 0.285 - 1.20 = 17.085 ≈ 17.1
+        """
+        inp = LEE_VECTOR_3_INPUT
+        result = _run_predict(
+            bun=inp["bun"],
+            creatinine=inp["creatinine"],
+            age=inp["age"],
+            egfr_entered=inp["egfr_override"],
+        )
+        # Compare bun_18_24 at month 12 — age attenuation baked into Lee's expected
+        actual = _get_traj_at(result, "bun_18_24", 12)
+        assert abs(actual - LEE_VECTOR_3_EXPECTED_MONTH_12) <= GOLDEN_TOLERANCE
+
+    def test_no_treatment_unchanged_for_vector_1(self):
+        """V1 no-treatment path should decline linearly with BUN modifier."""
+        inp = LEE_VECTOR_1_INPUT
+        result = _run_predict(
+            bun=inp["bun"],
+            creatinine=inp["creatinine"],
+            age=inp["age"],
+            egfr_entered=inp["egfr_override"],
+        )
+        no_tx = result["trajectories"]["no_treatment"]
+        # No-treatment is linear decline — must be monotonically non-increasing
+        for i in range(1, len(no_tx)):
+            assert no_tx[i] <= no_tx[i - 1] + 0.01
 
 
 # ---------------------------------------------------------------------------
@@ -293,8 +229,8 @@ def _assert_valid_result(result: dict, label: str = ""):
     Ceiling note: CKD-EPI 2021 can produce values > 100 for very low creatinine
     (e.g., creatinine=0.3, age=20 can yield eGFR ~140+). We check that treatment
     trajectories don't exceed baseline + 35 pts — generous headroom above the
-    ~20 pt maximum from Phase 1 (cap=12) + Phase 2 (max=8). This catches any
-    arithmetic runaway while allowing normal Phase 1+2 gains.
+    ~12 pt maximum from Phase 1 (tier_cap=12). This catches any
+    arithmetic runaway while allowing normal Phase 1 gains.
     """
     prefix = f"[{label}] " if label else ""
     assert "trajectories" in result, f"{prefix}missing 'trajectories'"
@@ -310,7 +246,7 @@ def _assert_valid_result(result: dict, label: str = ""):
         for v in arr:
             assert v >= 0.0, f"{prefix}{key}: negative eGFR value {v}"
         # Arithmetic runaway check: no trajectory should exceed baseline + 35 pts
-        # (max Phase 1 cap = 12 + max Phase 2 = 8.0 = 20 pts total; 35 is generous)
+        # (max Phase 1 tier_cap = 12; 35 is generous headroom)
         ceiling = baseline + 35.0
         for v in arr:
             assert v <= ceiling, (
@@ -352,15 +288,15 @@ class TestBoundaryValuesBUN:
         _assert_valid_result(result, "BUN=150")
 
     def test_bun_at_21_tier_boundary(self):
-        """BUN=21 is the bun_18_24 target — phase1 gain for that tier should be ~0."""
+        """BUN=21 is the bun_18_24 target — phase1 gain for that tier = 0."""
         result = _run_predict(bun=21, creatinine=2.0, age=50, egfr_entered=35.0)
         _assert_valid_result(result, "BUN=21 (tier boundary)")
-        # v2.0: Phase 1 gain has two components: BUN suppression removal (~8% of eGFR)
-        # + rate differential. Even when BUN=21 (bun_18_24 target), the suppression
-        # removal component still applies. bun_18_24 at t=3 should be >= baseline.
+        # Phase 1 = min(6, (21-21)*0.31) = 0. Treatment trajectory declines from baseline.
         bun_18_24_t3 = _get_traj_at(result, "bun_18_24", 3)
-        assert bun_18_24_t3 >= 35.0, (
-            f"BUN=21 (target for 18-24 tier): bun_18_24 at t=3 should be >= baseline=35.0, got {bun_18_24_t3}"
+        # With zero Phase 1 gain and decline starting at month 3, t=3 should be
+        # at or very slightly above baseline (Phase 1 fraction at t=3 is ~0.918 * 0 = 0)
+        assert abs(bun_18_24_t3 - 35.0) <= 0.1, (
+            f"BUN=21 (target for 18-24 tier): bun_18_24 at t=3 should be ~baseline=35.0, got {bun_18_24_t3}"
         )
 
     def test_bun_suppression_at_minimum_is_zero(self):
@@ -455,14 +391,12 @@ class TestBoundaryValuesAge:
         )
 
     def test_age_70_threshold_no_error(self):
-        """Age=70 is a Phase 2 attenuation threshold per v2.0 spec."""
-        # Engine does not yet implement age attenuation in Phase 2
-        # but engine must not error at this boundary
+        """Age=70 is the treatment decline attenuation threshold (×0.80)."""
         result = _run_predict(bun=30, creatinine=2.0, age=70, egfr_entered=35.0)
         _assert_valid_result(result, "age=70")
 
     def test_age_80_threshold_no_error(self):
-        """Age=80 is the stacked Phase 2 attenuation threshold."""
+        """Age=80: same ×0.80 attenuation as age 71+ (no additional stacking)."""
         result = _run_predict(bun=30, creatinine=2.0, age=80, egfr_entered=35.0)
         _assert_valid_result(result, "age=80")
 
@@ -725,7 +659,7 @@ class TestEdgeCases:
         """No trajectory should produce arithmetic-runaway eGFR (ceiling: baseline+35).
 
         When egfr_entered=5.0, baseline is low and ceiling is 5+35=40. All paths
-        must stay below this ceiling (Phase 1 + Phase 2 max gain = ~20 pts).
+        must stay below this ceiling (Phase 1 max tier_cap = 12 pts).
         """
         result = _run_predict(bun=150, creatinine=0.3, age=18, egfr_entered=5.0)
         ceiling = result["egfr_baseline"] + 35.0  # = 40.0
@@ -935,21 +869,20 @@ class TestNoTreatmentDeclineRates:
                 f"t={t}: expected {expected:.2f}, got {actual}"
             )
 
-    def test_phase1_fraction_at_month_6_is_1(self):
-        """Phase 1 must be fully saturated at month 6 (v2.0 — was month 3 in v1.0)."""
-        assert _phase1_fraction(6) == 1.0
+    def test_phase1_fraction_at_month_3_is_0918(self):
+        """Phase 1 saturates at month 3: f(3) = 1 - exp(-2.5) ≈ 0.9179."""
+        import math
+        expected = 1.0 - math.exp(-2.5)
+        assert abs(_phase1_fraction(3) - expected) < 0.001
+
+    def test_phase1_fraction_at_month_6_equals_month_3(self):
+        """After month 3, Phase 1 fraction is constant (no further gain)."""
+        assert _phase1_fraction(6) == _phase1_fraction(3)
+        assert _phase1_fraction(12) == _phase1_fraction(3)
 
     def test_phase1_fraction_at_month_0_is_0(self):
         """Phase 1 starts at 0."""
         assert _phase1_fraction(0) == 0.0
-
-    def test_phase2_fraction_at_month_6_is_0(self):
-        """Phase 2 starts at month 6 (v2.0 — engine uses t<=6 returns 0)."""
-        assert _phase2_fraction(6) == 0.0
-
-    def test_phase2_fraction_at_month_24_is_1(self):
-        """Phase 2 must be complete by month 24."""
-        assert _phase2_fraction(24) == 1.0
 
     def test_no_tx_decline_rates_constants_match_spec(self):
         """_NO_TX_DECLINE_RATES must match binding values from backend-meeting-memo.md."""
@@ -1055,11 +988,10 @@ class TestCKDEPIFormula:
 
 
 class TestTierConfig:
-    """Verify _TIER_CONFIG constants match v2.0 spec.
+    """Verify _TIER_CONFIG constants and treatment decline rates.
 
-    v2.0 _TIER_CONFIG has two keys per tier: target_bun and post_decline.
-    phase1_cap and phase2_total are no longer fixed constants — they are computed
-    dynamically by _compute_phase1() and _compute_phase2_gain() respectively.
+    LKID-59: _TIER_CONFIG now has target_bun, tier_cap, and use_path4_floor.
+    Treatment decline rates are in _TREATMENT_DECLINE_RATES (separate table).
     """
 
     def test_bun_12_target_bun(self):
@@ -1074,56 +1006,61 @@ class TestTierConfig:
         """bun_18_24 tier target BUN = 21 mg/dL."""
         assert _TIER_CONFIG["bun_18_24"]["target_bun"] == 21
 
-    def test_bun_12_post_decline(self):
-        """bun_12 post-Phase 2 post_decline = -0.33 mL/min/yr per Lee's pilot data (n=28).
+    def test_bun_12_tier_cap(self):
+        """bun_12 tier cap = 12 eGFR points."""
+        assert _TIER_CONFIG["bun_12"]["tier_cap"] == 12
 
-        Negative value: patients sustaining BUN ≤12 continue a slight eGFR gain
-        post-Phase 2 rather than declining.
-        """
-        assert _TIER_CONFIG["bun_12"]["post_decline"] == -0.33
+    def test_bun_13_17_tier_cap(self):
+        """bun_13_17 tier cap = 9 eGFR points."""
+        assert _TIER_CONFIG["bun_13_17"]["tier_cap"] == 9
 
-    def test_bun_13_17_post_decline(self):
-        """bun_13_17 post-Phase 2 decline = 1.0 mL/min/yr."""
-        assert _TIER_CONFIG["bun_13_17"]["post_decline"] == 1.0
+    def test_bun_18_24_tier_cap(self):
+        """bun_18_24 tier cap = 6 eGFR points."""
+        assert _TIER_CONFIG["bun_18_24"]["tier_cap"] == 6
 
-    def test_bun_18_24_post_decline(self):
-        """bun_18_24 post-Phase 2 decline = 1.5 mL/min/yr."""
-        assert _TIER_CONFIG["bun_18_24"]["post_decline"] == 1.5
+    def test_path4_floor_rate(self):
+        """Path 4 (bun_12) uses -0.33/yr floor per Lee's pilot data."""
+        assert _PATH4_FLOOR_RATE == -0.33
+        assert _TIER_CONFIG["bun_12"]["use_path4_floor"] is True
 
-    def test_treatment_trajectory_at_t24_above_baseline(self):
-        """At t=24 (end of Phase 2), all treatment trajectories must exceed baseline.
+    def test_non_path4_tiers_use_ckd_stage_rates(self):
+        """bun_13_17 and bun_18_24 use CKD-stage treatment rates (not path4 floor)."""
+        assert _TIER_CONFIG["bun_13_17"]["use_path4_floor"] is False
+        assert _TIER_CONFIG["bun_18_24"]["use_path4_floor"] is False
 
-        v2.0 uses dynamic Phase 1/2 gains — we cannot predict exact peak from config
-        constants alone. This test verifies the structural property: treatment benefit
-        accumulates through Phase 2 and the trajectory at t=24 is above baseline.
-        """
-        egfr0 = 33.0
-        bun = 35.0
+    def test_treatment_decline_rate_stage4_confirmed(self):
+        """Stage 4 treatment rate = -2.0/yr (confirmed by Lee's 3 vectors)."""
+        rate = _get_treatment_decline_rate(22.0, 58, "bun_13_17")
+        assert rate == -2.0
+
+    def test_treatment_decline_rate_path4_floor(self):
+        """bun_12 tier uses -0.33/yr floor regardless of CKD stage."""
+        rate = _get_treatment_decline_rate(22.0, 58, "bun_12")
+        assert rate == -0.33
+
+    def test_treatment_decline_rate_age_attenuation(self):
+        """Age > 70: treatment rate multiplied by 0.80."""
+        rate_young = _get_treatment_decline_rate(22.0, 58, "bun_13_17")
+        rate_old = _get_treatment_decline_rate(22.0, 74, "bun_13_17")
+        assert rate_young == -2.0
+        assert abs(rate_old - (-2.0 * 0.80)) < 0.01
+
+    def test_treatment_trajectory_decline_after_month_3(self):
+        """After month 3, treatment trajectory declines linearly."""
+        egfr0 = 28.0
+        bun = 16.0
         age = 58
-        for tier in ("bun_12", "bun_13_17", "bun_18_24"):
-            traj = compute_treatment_trajectory(egfr0, bun, age, tier)
-            idx_24 = TIME_POINTS_MONTHS.index(24)
-            assert traj[idx_24] > egfr0, (
-                f"{tier} at t=24: expected trajectory > baseline {egfr0}, got {traj[idx_24]}"
-            )
-
-    def test_treatment_trajectory_post_phase2_decline_rate(self):
-        """After t=24, trajectory declines at tier-specific post_decline rate."""
-        egfr0 = 33.0
-        bun = 35.0
-        age = 58
-        for tier in ("bun_12", "bun_13_17", "bun_18_24"):
-            cfg = _TIER_CONFIG[tier]
-            traj = compute_treatment_trajectory(egfr0, bun, age, tier)
-            idx_24 = TIME_POINTS_MONTHS.index(24)
-            idx_36 = TIME_POINTS_MONTHS.index(36)
-            # From t=24 to t=36 is 12 months = 1 year
-            actual_decline = traj[idx_24] - traj[idx_36]
-            expected_decline = cfg["post_decline"] * 1.0  # 1 year
-            assert abs(actual_decline - expected_decline) <= 0.2, (
-                f"{tier} post-phase2: expected decline {expected_decline:.1f}/yr, "
-                f"got {actual_decline:.1f}"
-            )
+        traj = compute_treatment_trajectory(egfr0, bun, age, "bun_13_17")
+        idx_3 = TIME_POINTS_MONTHS.index(3)
+        idx_12 = TIME_POINTS_MONTHS.index(12)
+        # From t=3 to t=12 is 9 months. Rate = -2.0/yr.
+        # Expected decline = -2.0 * 9/12 = -1.5 eGFR pts
+        actual_decline = traj[idx_3] - traj[idx_12]
+        expected_decline = 2.0 * 9 / 12  # 1.5 (positive = trajectory dropped)
+        assert abs(actual_decline - expected_decline) <= 0.2, (
+            f"bun_13_17 decline month 3→12: expected ~{expected_decline:.1f}, "
+            f"got {actual_decline:.1f}"
+        )
 
 
 # ---------------------------------------------------------------------------
