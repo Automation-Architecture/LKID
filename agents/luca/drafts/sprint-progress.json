@@ -189,7 +189,7 @@
         {
           "id": "LKID-4",
           "title": "Playwright PDF generation",
-          "status": "upcoming"
+          "status": "done"
         },
         {
           "id": "LKID-5",
@@ -199,27 +199,27 @@
         {
           "id": "LKID-20",
           "title": "PDF download button + flow",
-          "status": "upcoming"
+          "status": "done"
         },
         {
           "id": "LKID-21",
           "title": "Accessible data table",
-          "status": "upcoming"
+          "status": "done"
         },
         {
           "id": "LKID-22",
           "title": "Loading skeleton states",
-          "status": "upcoming"
+          "status": "done"
         },
         {
           "id": "LKID-23",
           "title": "Error boundary + fallbacks",
-          "status": "upcoming"
+          "status": "done"
         },
         {
           "id": "LKID-24",
           "title": "Rate limiting (slowapi)",
-          "status": "upcoming"
+          "status": "done"
         },
         {
           "id": "LKID-25",
@@ -229,7 +229,7 @@
         {
           "id": "LKID-26",
           "title": "E2E tests (happy + error path)",
-          "status": "upcoming"
+          "status": "done"
         },
         {
           "id": "LKID-27",
@@ -239,12 +239,12 @@
         {
           "id": "LKID-28",
           "title": "axe-core accessibility audit",
-          "status": "upcoming"
+          "status": "done"
         },
         {
           "id": "LKID-29",
           "title": "Pre-release QA gate",
-          "status": "upcoming"
+          "status": "done"
         },
         {
           "id": "LKID-47",
@@ -254,17 +254,17 @@
         {
           "id": "LKID-49",
           "title": "Visx QA pairing",
-          "status": "in_progress"
+          "status": "done"
         },
         {
           "id": "LKID-59",
           "title": "Engine formula verification",
-          "status": "in_progress"
+          "status": "done"
         },
         {
           "id": "LKID-60",
           "title": "Clerk v7 + Next.js 16 migration",
-          "status": "upcoming"
+          "status": "done"
         }
       ]
     }
