@@ -1,24 +1,13 @@
 """
-KidneyHood Prediction Engine — LKID-14 v2.0 Rules Engine
+KidneyHood Prediction Engine — LKID-59 Lee Golden Vectors v2.0
 
-Implements the v2.0 two-component Phase 1 formula from patient_app_spec_v2_updated.pdf
-Section 9.5 and finalized-formulas.md. Replaces the Sprint 2 simplified 0.31-coefficient
-model.
+Treatment trajectory model (confirmed by Lee's 3 golden vectors, 2026-04-02):
+- Phase 1 (months 0-3): min(tier_cap, (BUN - target) * 0.31), exponential saturation
+- After month 3: linear decline at CKD-stage treatment rate with age attenuation
+- Path 4 (bun_12): uses -0.33 mL/min/yr floor instead of CKD-stage rate
+- No Phase 2 gain function — treatment benefit is Phase 1 only
 
-LKID-14 changes from Sprint 2:
-- Phase 1: BUN suppression removal (eGFR * 0.08) + rate differential (NOT 0.31 coeff)
-- Phase 2: Continuous function of achieved BUN (NOT fixed tier totals)
-- Phase 1/2 transition: month 6 completion (NOT month 3)
-- Optional field modifiers: hemoglobin, CO2, albumin increase post-Phase 2 decline
-- Backward-compatible predict_for_endpoint() call signature (potassium accepted, unused)
-
-NOTE — Open questions (pending Lee's response, per finalized-formulas.md Section 8):
-  Q1: Test vectors in calc spec were generated with the simplified 0.31-coeff model.
-      v2.0 will produce different values. This is expected and accepted.
-  Q2: rate_P1 in v2.0 refers to 5-pillar model rate. We substitute CKD-stage base
-      decline rate + BUN modifier. Acceptable simplification for Lean Launch.
-  Q4: Dialysis threshold confirmed as eGFR 12 per calc spec Section 2 correction.
-      If Lee corrects to 15, change DIALYSIS_THRESHOLD below (one line).
+No-treatment path unchanged (Coresh-derived CKD-stage rates + BUN modifier).
 
 PROPRIETARY & CONFIDENTIAL — Kidneyhood.org
 Coefficients must never be exposed to front-end code, logs, or client endpoints.
@@ -36,17 +25,27 @@ TIME_POINTS_MONTHS = [0, 1, 3, 6, 12, 18, 24, 36, 48, 60, 72, 84, 96, 108, 120]
 # eGFR 12 confirmed per calc spec Section 2 correction (see Q4 above).
 DIALYSIS_THRESHOLD = 12.0
 
-# Tier configuration: (target_bun, post_decline_rate)
-# Phase 1 and Phase 2 totals are now computed dynamically (v2.0)
+# Tier configuration
+# tier_cap: maximum Phase 1 gain (eGFR points)
+# use_path4_floor: if True, use -0.33/yr after Phase 1 instead of CKD-stage rate
 _TIER_CONFIG = {
-    # Path 4 (accepts patients with BUN ≤12, targets BUN 10):
-    # post_decline updated to -0.33 per Lee's pilot data (n=28, R²=0.40).
-    # Negative sign: patients sustaining BUN ≤12 continue a slight eGFR gain
-    # post-Phase 2 rather than declining.
-    "bun_12":    {"target_bun": 10, "post_decline": -0.33},
-    "bun_13_17": {"target_bun": 15, "post_decline": 1.0},
-    "bun_18_24": {"target_bun": 21, "post_decline": 1.5},
+    "bun_12":    {"target_bun": 10, "tier_cap": 12, "use_path4_floor": True},
+    "bun_13_17": {"target_bun": 15, "tier_cap": 9,  "use_path4_floor": False},
+    "bun_18_24": {"target_bun": 21, "tier_cap": 6,  "use_path4_floor": False},
 }
+
+# Path 4 floor rate (bun_12 tier, after Phase 1)
+_PATH4_FLOOR_RATE = -0.33
+
+# Treatment decline rates by CKD stage (after Phase 1, months 3+)
+# Stage 4 confirmed by Lee's golden vectors (-2.0/yr).
+# Other stages: interim estimates — need Lee confirmation.
+_TREATMENT_DECLINE_RATES = [
+    (45, 60, -1.2),   # Stage 3a — ESTIMATED, needs Lee confirmation
+    (30, 45, -1.5),   # Stage 3b — ESTIMATED, needs Lee confirmation
+    (15, 30, -2.0),   # Stage 4  — CONFIRMED by Lee (3 vectors)
+    (0,  15, -2.7),   # Stage 5  — ESTIMATED, needs Lee confirmation
+]
 
 # CKD-EPI 2021 sex-specific coefficients
 _CKD_EPI_COEFFICIENTS = {
@@ -114,100 +113,64 @@ def _get_base_decline_rate(egfr: float) -> float:
 
 
 def _get_decline_rate(egfr: float, bun: float) -> float:
-    """Annual decline rate with BUN modifier."""
+    """Annual decline rate with BUN modifier (no-treatment path only)."""
     base_rate = _get_base_decline_rate(egfr)
     bun_modifier = max(0.0, (bun - 20.0) / 10.0) * 0.15
     return base_rate - bun_modifier
 
 
+def _get_treatment_decline_rate(egfr: float, age: int, tier: str) -> float:
+    """Annual decline rate for treatment paths (after Phase 1, months 3+).
+
+    Path 4 (bun_12): uses -0.33/yr floor regardless of CKD stage.
+    All others: CKD-stage treatment rate with age attenuation.
+    Stage 4 rate (-2.0) confirmed by Lee's golden vectors.
+    """
+    cfg = _TIER_CONFIG[tier]
+    if cfg["use_path4_floor"]:
+        rate = _PATH4_FLOOR_RATE
+    else:
+        matched = None
+        for low, high, r in _TREATMENT_DECLINE_RATES:
+            if low <= egfr < high:
+                matched = r
+                break
+        # Fallback to mildest rate if eGFR outside all brackets (e.g. >= 60)
+        rate = matched if matched is not None else max(
+            r for _, _, r in _TREATMENT_DECLINE_RATES
+        )
+
+    if age > 70:
+        rate *= 0.80
+
+    return rate
+
+
 # ---------------------------------------------------------------------------
-# Phase 1 -- v2.0 two-component formula (LKID-14)
+# Phase 1 -- 0.31-coefficient model (Lee golden vectors, LKID-59)
 # ---------------------------------------------------------------------------
 
 
 def _phase1_fraction(t_months: float) -> float:
-    """Exponential saturation: reaches ~92% by month 3, 100% by month 6."""
-    if t_months >= 6:
-        return 1.0
+    """Exponential saturation over months 0-3. Reaches ~91.8% at month 3."""
     if t_months <= 0:
         return 0.0
+    if t_months >= 3:
+        return 1.0 - math.exp(-2.5)  # 0.9179
     return 1.0 - math.exp(-2.5 * t_months / 3.0)
 
 
 def _compute_phase1(
-    egfr_baseline: float,
     bun_baseline: float,
-    age: int,
-    tier_target_bun: float,
-) -> tuple[float, float]:
-    """v2.0 Phase 1 total gain: BUN suppression removal + rate differential.
+    tier: str,
+) -> float:
+    """Phase 1 total gain: min(tier_cap, (BUN - target) * 0.31).
 
-    Returns a (phase1_total, achieved_bun) tuple so callers can pass the
-    true achieved BUN to _compute_phase2_gain() rather than the tier target.
-
-    NOTE: 0.31-coefficient model (calc spec) is intentionally not used here (Q1).
+    Confirmed by Lee's golden vectors (2026-04-02).
     """
-    # Component 1: BUN suppression removal (~8% of current eGFR)
-    phase1_suppression = egfr_baseline * 0.08
-
-    # Component 2: Rate differential via BUN reduction factor
-    reduction = 0.46
-    if age > 75:
-        reduction -= 0.05
-    if age > 85:
-        reduction -= 0.05  # stacks with >75 reduction
-    if egfr_baseline < 15:
-        reduction -= 0.08
-    elif egfr_baseline < 30:
-        reduction -= 0.03
-
-    achieved_bun = max(bun_baseline * (1.0 - reduction), 9.0)
-    # Clamp to tier target: tier label represents the BUN outcome
-    achieved_bun_for_tier = max(achieved_bun, tier_target_bun)
-
-    old_rate = _get_decline_rate(egfr_baseline, bun_baseline)
-    new_rate = _get_decline_rate(egfr_baseline, achieved_bun_for_tier)
-
-    # Rate differential over 6 months (0.5 years)
-    phase1_real = (abs(old_rate) - abs(new_rate)) * 0.5
-
-    return phase1_suppression + phase1_real, achieved_bun_for_tier
-
-
-# ---------------------------------------------------------------------------
-# Phase 2 -- v2.0 continuous function (LKID-14)
-# ---------------------------------------------------------------------------
-
-
-def _phase2_fraction(t_months: float) -> float:
-    """Logarithmic accumulation over months 6-24."""
-    if t_months <= 6:
-        return 0.0
-    if t_months >= 24:
-        return 1.0
-    return math.log(1.0 + (t_months - 6.0)) / math.log(1.0 + 18.0)
-
-
-def _compute_phase2_gain(achieved_bun: float, age: int) -> float:
-    """v2.0 continuous Phase 2 gain function based on achieved BUN with age attenuation."""
-    if achieved_bun <= 12:
-        phase2 = 8.0
-    elif achieved_bun <= 17:
-        phase2 = 8.0 - (achieved_bun - 12.0) / 5.0 * 3.0
-    elif achieved_bun <= 24:
-        phase2 = 5.0 - (achieved_bun - 17.0) / 7.0 * 2.0
-    elif achieved_bun <= 35:
-        phase2 = 3.0 - (achieved_bun - 24.0) / 11.0 * 2.0
-    else:
-        phase2 = 0.0
-
-    # Age-based attenuation of tubular repair capacity
-    if age > 80:
-        phase2 *= 0.80 * 0.65  # both factors stack per v2.0
-    elif age > 70:
-        phase2 *= 0.80
-
-    return max(0.0, phase2)
+    cfg = _TIER_CONFIG[tier]
+    delta = max(0.0, bun_baseline - cfg["target_bun"])
+    return min(cfg["tier_cap"], delta * 0.31)
 
 
 # ---------------------------------------------------------------------------
@@ -220,7 +183,7 @@ def _compute_optional_modifier(
     co2: Optional[float],
     albumin: Optional[float],
 ) -> float:
-    """Additional post-Phase 2 annual decline due to concerning optional fields.
+    """Additional annual decline due to concerning optional fields.
 
     Applied equally to all four trajectories.
     """
@@ -269,7 +232,7 @@ def compute_no_treatment(
 
 
 # ---------------------------------------------------------------------------
-# Treatment trajectory (v2.0 Phase 1 / Phase 2 / Post-Phase 2)
+# Treatment trajectory (Lee golden vectors model, LKID-59)
 # ---------------------------------------------------------------------------
 
 
@@ -280,38 +243,28 @@ def compute_treatment_trajectory(
     tier: str,
     optional_modifier: float = 0.0,
 ) -> list[float]:
-    """Compute a treatment trajectory for a given BUN tier using v2.0 formulas.
+    """Compute a treatment trajectory using Lee's confirmed model.
 
     Structure:
       t=0:     egfr_baseline
-      t=0..6:  Phase 1 -- exponential approach to phase1_total gain
-      t=6..24: Phase 2 -- Phase 1 locked in, logarithmic Phase 2 accumulation
-      t>24:    Post-Phase 2 -- linear decline from peak at tier-specific rate
+      t=0..3:  Phase 1 — exponential approach to phase1_total (saturates ~91.8%)
+      t>3:     Linear decline from eGFR(3) at treatment rate adjusted by optional modifier
     """
-    cfg = _TIER_CONFIG[tier]
-    tier_target_bun = cfg["target_bun"]
-    post_decline_rate = cfg["post_decline"] + optional_modifier
+    phase1_total = _compute_phase1(bun_baseline, tier)
+    treatment_rate = _get_treatment_decline_rate(egfr_baseline, age, tier)
+    decline_rate = treatment_rate - optional_modifier  # modifier worsens decline
 
-    phase1_total, achieved_bun = _compute_phase1(egfr_baseline, bun_baseline, age, tier_target_bun)
-    phase1_total = max(0.0, phase1_total)
-    # Phase 2 gain is a continuous function of the *actual* achieved BUN, not
-    # the tier label.  Using tier_target_bun here was the bug reported in PR #25.
-    phase2_total = _compute_phase2_gain(achieved_bun, age)
-
-    egfr_at_phase1_complete = egfr_baseline + phase1_total  # month 6
-    peak_egfr = egfr_at_phase1_complete + phase2_total      # month 24
+    egfr_at_month3 = egfr_baseline + phase1_total * _phase1_fraction(3)
 
     results = []
     for t in TIME_POINTS_MONTHS:
         if t == 0:
             egfr = egfr_baseline
-        elif t <= 6:
+        elif t <= 3:
             egfr = egfr_baseline + phase1_total * _phase1_fraction(t)
-        elif t <= 24:
-            egfr = egfr_at_phase1_complete + phase2_total * _phase2_fraction(t)
         else:
-            years_after_24 = (t - 24) / 12.0
-            egfr = max(0.0, peak_egfr - post_decline_rate * years_after_24)
+            years_after_3 = (t - 3) / 12.0
+            egfr = egfr_at_month3 + decline_rate * years_after_3
 
         results.append(round(max(0.0, egfr), 1))
 
