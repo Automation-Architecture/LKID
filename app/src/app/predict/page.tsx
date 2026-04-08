@@ -143,6 +143,7 @@ export default function PredictPage() {
 
   /* --- form state --- */
   const [values, setValues] = useState<Record<string, string>>({
+    name: "",
     email: "",
     bun: "",
     creatinine: "",
@@ -170,6 +171,13 @@ export default function PredictPage() {
   /* --- validation --- */
   const errors = useMemo(() => {
     const result: Record<string, string | null> = {};
+    // Name and email
+    result.name = values.name.trim() ? null : "Name is required";
+    result.email = values.email.trim()
+      ? /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(values.email)
+        ? null
+        : "Please enter a valid email"
+      : "Email is required";
     // Required fields always validated
     for (const [field, rule] of Object.entries(PREDICT_FORM_RULES)) {
       result[field] = validateField(values[field] ?? "", rule);
@@ -184,6 +192,8 @@ export default function PredictPage() {
 
   const requiredValid = useMemo(
     () =>
+      errors.name === null &&
+      errors.email === null &&
       Object.keys(PREDICT_FORM_RULES).every(
         (field) => errors[field] === null
       ),
@@ -242,6 +252,7 @@ export default function PredictPage() {
 
     // Build payload matching John's PredictRequest schema
     const payload: Record<string, unknown> = {
+      name: values.name,
       email: values.email,
       bun: Number(values.bun),
       creatinine: Number(values.creatinine),
@@ -390,6 +401,34 @@ export default function PredictPage() {
             </div>
 
             {/* -------------------------------------------------------------- */}
+            {/*  Name field                                                    */}
+            {/* -------------------------------------------------------------- */}
+            <div className="mb-6 space-y-1.5" data-testid="field-name">
+              <Label htmlFor="name">
+                Name <span aria-hidden="true">*</span>
+              </Label>
+              <Input
+                id="name"
+                name="name"
+                type="text"
+                placeholder="Your full name"
+                autoComplete="name"
+                aria-required="true"
+                aria-invalid={!!getFieldError("name")}
+                value={values.name}
+                onChange={(e) => setValue("name", e.target.value)}
+                onBlur={() => setFieldTouched("name")}
+                className="h-12 text-base"
+                data-testid="input-name"
+              />
+              {getFieldError("name") && (
+                <p className="text-sm text-destructive" data-testid="error-name">
+                  {getFieldError("name")}
+                </p>
+              )}
+            </div>
+
+            {/* -------------------------------------------------------------- */}
             {/*  Email field (LKID-17: pre-filled + read-only when signed in)  */}
             {/* -------------------------------------------------------------- */}
             <div className="mb-6 space-y-1.5" data-testid="field-email">
@@ -411,11 +450,17 @@ export default function PredictPage() {
                 className={`h-12 text-base ${
                   isSignedIn ? "bg-muted/50 text-muted-foreground cursor-not-allowed" : ""
                 }`}
+                aria-invalid={!!getFieldError("email")}
                 data-testid="input-email"
               />
               {isSignedIn && (
                 <p className="text-sm text-muted-foreground">
                   Pre-filled from your account.
+                </p>
+              )}
+              {getFieldError("email") && (
+                <p className="text-sm text-destructive" data-testid="error-email">
+                  {getFieldError("email")}
                 </p>
               )}
             </div>
