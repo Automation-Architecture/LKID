@@ -178,17 +178,19 @@ limiter = Limiter(key_func=get_remote_address)
 
 _playwright = None
 _browser = None
+_browser_lock = asyncio.Lock()
 
 
 async def _get_browser():
-    """Return a persistent Chromium browser instance (lazy-initialized)."""
+    """Return a persistent Chromium browser instance (lazy-initialized, thread-safe)."""
     global _playwright, _browser
-    if _browser is None:
-        from playwright.async_api import async_playwright
+    async with _browser_lock:
+        if _browser is None:
+            from playwright.async_api import async_playwright
 
-        _playwright = await async_playwright().start()
-        _browser = await _playwright.chromium.launch(headless=True)
-        logger.info("Playwright browser launched")
+            _playwright = await async_playwright().start()
+            _browser = await _playwright.chromium.launch(headless=True)
+            logger.info("Playwright browser launched")
     return _browser
 
 
@@ -520,9 +522,9 @@ async def predict_pdf(request: Request, body: PredictRequest):
         glucose=body.glucose,
     )
 
-    # 2. Encode prediction data for the internal chart page
+    # 2. Encode prediction data for the internal chart page (standard base64)
     payload = json.dumps({"result": result, "bun": body.bun})
-    data_b64 = base64.urlsafe_b64encode(payload.encode()).decode()
+    data_b64 = base64.b64encode(payload.encode()).decode()
 
     # 3. Build internal chart page URL
     chart_url = (
@@ -530,7 +532,8 @@ async def predict_pdf(request: Request, body: PredictRequest):
         f"?data={data_b64}&secret={PDF_SECRET}"
     )
 
-    # 4. Render PDF via Playwright
+    # 4. Render PDF via Playwright (try/finally ensures page is always closed)
+    page = None
     try:
         browser = await _get_browser()
         page = await browser.new_page(viewport={"width": 1060, "height": 800})
@@ -542,13 +545,15 @@ async def predict_pdf(request: Request, body: PredictRequest):
             print_background=True,
             margin={"top": "0.4in", "bottom": "0.4in", "left": "0.3in", "right": "0.3in"},
         )
-        await page.close()
-    except Exception as exc:
+    except Exception:
         logger.exception("PDF rendering failed")
         raise HTTPException(
             status_code=502,
-            detail=f"PDF rendering failed: {exc}",
+            detail="PDF rendering failed. Please try again.",
         )
+    finally:
+        if page:
+            await page.close()
 
     # 5. Return PDF as downloadable file
     return StreamingResponse(
