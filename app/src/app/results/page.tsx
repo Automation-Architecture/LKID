@@ -77,17 +77,52 @@ interface ResultsContentProps {
   inputBun: number | null;
 }
 
-function ResultsContent({ chartData, rawResponse, inputBun }: ResultsContentProps) {
-  const [pdfState, setPdfState] = useState<"idle" | "loading" | "done">("idle");
+const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000";
 
-  const handlePdfClick = () => {
+function ResultsContent({ chartData, rawResponse, inputBun }: ResultsContentProps) {
+  const [pdfState, setPdfState] = useState<"idle" | "loading" | "done" | "error">(
+    "idle"
+  );
+
+  const handlePdfClick = async () => {
     setPdfState("loading");
-    setTimeout(() => {
+
+    try {
+      // Read the original form inputs from sessionStorage
+      const inputsRaw = sessionStorage.getItem("prediction_inputs");
+      if (!inputsRaw) {
+        throw new Error("No prediction inputs found");
+      }
+      const inputs = JSON.parse(inputsRaw);
+
+      const res = await fetch(`${API_URL}/predict/pdf`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(inputs),
+      });
+
+      if (!res.ok) {
+        throw new Error(`PDF generation failed: ${res.status}`);
+      }
+
+      // Download the PDF
+      const blob = await res.blob();
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = "kidneyhood-prediction.pdf";
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(url);
+
       setPdfState("done");
-      setTimeout(() => {
-        setPdfState("idle");
-      }, 2000);
-    }, 2000);
+      setTimeout(() => setPdfState("idle"), 2000);
+    } catch (err) {
+      console.error("PDF download failed:", err);
+      setPdfState("error");
+      setTimeout(() => setPdfState("idle"), 3000);
+    }
   };
 
   return (
@@ -150,6 +185,8 @@ function ResultsContent({ chartData, rawResponse, inputBun }: ResultsContentProp
           </span>
         ) : pdfState === "done" ? (
           "Download complete!"
+        ) : pdfState === "error" ? (
+          "PDF failed — try again"
         ) : (
           <>
             <FileDown className="mr-2 size-5" />
