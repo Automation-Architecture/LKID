@@ -23,7 +23,7 @@ export const PREDICT_FORM_RULES: FieldRules = {
   creatinine: { required: true, min: 0.3, max: 20.0, message: "Creatinine must be between 0.3 and 20.0 mg/dL" },
   potassium: { required: true, min: 2.0, max: 8.0, message: "Potassium must be between 2.0 and 8.0 mEq/L" },
   age: { required: true, min: 18, max: 120, integer: true, message: "Age must be between 18 and 120" },
-  sex: { required: true, message: "Sex is required" },
+  // Sex field removed from form — engine uses "unknown" (averages male+female)
 };
 
 /** Optional Tier 2 fields — both must be provided together for prediction upgrade */
