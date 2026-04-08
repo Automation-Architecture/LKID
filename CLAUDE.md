@@ -7,8 +7,8 @@
 **Jira:** [SPEC Board](https://automationarchitecture.atlassian.net/jira/software/c/projects/SPEC/boards/329/backlog) | [LKID Board](https://automationarchitecture.atlassian.net/jira/software/c/projects/LKID/boards/363)
 **Repo:** [github.com/Automation-Architecture/LKID](https://github.com/Automation-Architecture/LKID)
 **Specs:** `/Users/brad/IDE/kidneyhood/` (3 docx files)
-**Status:** Sprint 3 IN PROGRESS (Mar 30 – Apr 9). 6 PRs merged (#22–#27). Lee answered all 6 formula questions Mar 30 — LKID-14 unblocked. LKID-47 (Klaviyo) still blocked on Lee API key.
-**Client Dashboard:** https://kidneyhood.vercel.app/client/lee-a3f8b2 — auto-updated by `scripts/refresh-sprint-progress.py`.
+**Status:** Sprint 3 COMPLETE (shipped Apr 8). 59/60 cards Done. PRs #22–#32 merged. App live at kidneyhood-automation-architecture.vercel.app.
+**Client Dashboard:** https://kidneyhood-automation-architecture.vercel.app/client/lee-a3f8b2 — auto-updated by `scripts/refresh-sprint-progress.py`.
 
 ## Sprint Plan
 
@@ -19,12 +19,28 @@
 | Sprint 3 — PDF, Polish & QA | Mar 30 – Apr 9 | 12 (LKID-4–5, 20–29) | Interactivity, PDF, disclaimers, tests, QA gate |
 
 **Ship date:** April 9, 2026
-**Blockers:** LKID-47 (Klaviyo) needs API key from Lee. Updated golden test vectors expected from Lee this week.
-**Lee responses (2026-03-30):** All 6 questions answered — see `agents/luca/drafts/lee-q1-q6-responses.md`. v2.0 formulas confirmed, eGFR 12 confirmed, creatinine 20.0 confirmed, age attenuation implemented, structural floor added, Path 4 rate updated to -0.33.
+**Remaining:** LKID-47 (Klaviyo lead capture) — API key received, needs design sprint for welcome email template + flow before implementation.
 
 ## What's Next
 
-### Sprint 3 Kickoff (Mar 30)
+### Next Sprint — Klaviyo Email Campaign + Polish
+
+**Requires a planning session before starting.** Two workstreams:
+
+1. **Klaviyo Welcome Email Flow** (LKID-47)
+   - Design the welcome email template (personalized prediction results summary)
+   - Configure the Klaviyo Flow in Klaviyo dashboard (trigger: "Prediction Completed" event)
+   - Implement backend integration: `create_event()` call with profile upsert + prediction context
+   - Klaviyo API key already configured on Railway (`KLAVIYO_API_KEY`)
+   - Reference: `Resources/klaviyo-docs-summary.md`
+
+2. **Post-Ship Polish** (from QA gate conditions + Copilot findings)
+   - Treatment decline rates for CKD Stages 3a, 3b, 5 — need Lee confirmation (only Stage 4 confirmed)
+   - Additional golden vectors for non-Stage-4 patients
+   - Extract shared mock data fixture between E2E and a11y tests
+   - Connect GitHub repo to Railway service for auto-deploy on push (currently CLI deploy)
+
+### Sprint 3 Retrospective (Done)
 
 | # | Task | Owner | Status |
 |---|------|-------|--------|
@@ -46,13 +62,14 @@
 | LKID-49 | Visx QA pairing (deferred from Sprint 2) | Yuri | LKID-19 ✓ |
 | LKID-4 | PDF export (Playwright rendering) | Harshit + John | LKID-19 ✓ |
 | LKID-20–29 | Polish, tests, QA gate (10 cards) | Various | See Jira |
+| LKID-59 | Engine Phase 1 formula rewrite (0.31-coefficient model) | John Donaldson | **To Do — awaiting dispatch** |
 | LKID-47 | Klaviyo lead capture | John Donaldson | **Blocked on Lee API key** |
 | — | Clerk v7 + Next.js 16 migration (re-enable middleware, fix types, remove ts-nocheck) | Harshit | New — discovered Mar 27 |
 
 ### Lee's Responses (2026-03-30) — All 6 Questions Answered
 
 Full responses at `agents/luca/drafts/lee-q1-q6-responses.md`. Summary:
-- Q1: Use v2.0 formulas — updated golden vectors coming this week
+- Q1: Use v2.0 formulas — **golden vectors received 2026-04-02** (see `agents/luca/drafts/lee-golden-vectors-v2.md`)
 - Q2: CKD-stage rates OK for marketing app
 - Q3: Both suppression estimate AND structural floor (BUN > 17)
 - Q4: Dialysis threshold = eGFR 12 confirmed
@@ -60,7 +77,7 @@ Full responses at `agents/luca/drafts/lee-q1-q6-responses.md`. Summary:
 - Q6: Creatinine max 20.0 confirmed
 - Bonus: Path 4 post-decline rate → -0.33 (pilot data n=28)
 
-**Still waiting on Lee:** Updated golden test vectors (this week) + Klaviyo API key (LKID-47).
+**Still waiting on Lee:** Klaviyo API key (LKID-47). Treatment decline rates for Stages 3a, 3b, 5 (Lee's vectors only cover Stage 4 — uses -2.0/yr vs engine's -3.0/yr for that stage).
 
 ### Post-Ship (after April 9 retro)
 
@@ -203,7 +220,7 @@ agent-teams/
 │   ├── inga/outputs/             # Finalized deliverables (currently empty)
 │   ├── john_donaldson/drafts/    # api_contract.json, api_contract_summary.md, api_docs.md, backend-research.md, debug_calc.py, finalized-formulas.md, lean-launch-review.md, prediction_engine.py, test_debug.py, test_prediction_engine.py, week-1-technical-update.md, TASK-iterate-rules-engine-v3.md, LKID-14-25-implementation-notes.md
 │   ├── john_donaldson/outputs/   # Finalized deliverables (currently empty)
-│   ├── luca/drafts/              # architecture.md, infrastructure-setup.md, railway-deployment-checklist.md, medical-expert-review.md, backend-meeting-memo.md, lean-launch-review.md, merge-execution-plan.md, sprint2-merge-postmortem.md, sprint3-commit-strategy.md, lee-q1-q6-responses.md, qa-remediation-brainstorm.md, qa-skills-recommendations.md, yuri-weakness-remediation-plan.md, sprint-progress.json, spec-tracker.json, main.py
+│   ├── luca/drafts/              # architecture.md, infrastructure-setup.md, railway-deployment-checklist.md, medical-expert-review.md, backend-meeting-memo.md, lean-launch-review.md, merge-execution-plan.md, sprint2-merge-postmortem.md, sprint3-commit-strategy.md, lee-q1-q6-responses.md, lee-golden-vectors-v2.md, engine-refactor-analysis.md, qa-remediation-brainstorm.md, qa-skills-recommendations.md, yuri-weakness-remediation-plan.md, sprint-progress.json, spec-tracker.json, main.py
 │   ├── luca/outputs/             # Finalized deliverables (currently empty)
 │   ├── yuri/drafts/              # test_strategy.md, design-sprint-qa-report.md, test_golden_file.py, sprint2-qa-report-1.md, sprint2-qa-report-2.md, lean-launch-review.md, qa-report-pr12-clerk-auth.md, qa-re-review-pr12.md, qa-report-pr13-post-predict.md, qa-re-review-pr13.md, qa-batch-prs-14-17.md, test-scaffold-form-chart.md, hipaa-verification-notes.md, sop-review-and-self-assessment.md, qa-client-dashboard-sprint2.md, sprint2-debacle-qa-report.md, qa-lkid-27-boundary-tests.md, sprint3-pr-qa-verdicts.md, sprint3-pr26-27-qa-verdicts.md
 │   └── yuri/outputs/             # Finalized deliverables (currently empty)
@@ -281,6 +298,8 @@ agent-teams/
 | Design Tokens | `agents/inga/drafts/design-tokens.md` | Inga | Draft | Color, spacing, typography tokens |
 | **Reports** | | | | |
 | Lee Q1-Q6 Responses | `agents/luca/drafts/lee-q1-q6-responses.md` | Luca | Final | Binding clinical answers from Lee (2026-03-30) |
+| Lee Golden Vectors v2.0 | `agents/luca/drafts/lee-golden-vectors-v2.md` | Luca | Final | 3 golden vectors + gap analysis (2026-04-02) |
+| Engine Refactor Analysis | `agents/luca/drafts/engine-refactor-analysis.md` | Luca | Final | LKID-59 detailed analysis for John's dispatch |
 | Sprint 3 Commit Strategy | `agents/luca/drafts/sprint3-commit-strategy.md` | Luca | Final | 4-branch merge plan, conflict risk matrix |
 | Sprint 3 QA Verdicts | `agents/yuri/drafts/sprint3-pr-qa-verdicts.md` | Yuri | Final | QA verdicts for PRs #22-#27 |
 | Sprint 2 Merge Postmortem | `agents/luca/drafts/sprint2-merge-postmortem.md` | Luca | Final | Corrective actions CA-1 through CA-5 |
