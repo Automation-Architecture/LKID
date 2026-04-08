@@ -130,11 +130,15 @@ def _get_treatment_decline_rate(egfr: float, age: int, tier: str) -> float:
     if cfg["use_path4_floor"]:
         rate = _PATH4_FLOOR_RATE
     else:
-        rate = -2.0  # default Stage 4
+        matched = None
         for low, high, r in _TREATMENT_DECLINE_RATES:
             if low <= egfr < high:
-                rate = r
+                matched = r
                 break
+        # Fallback to mildest rate if eGFR outside all brackets (e.g. >= 60)
+        rate = matched if matched is not None else max(
+            r for _, _, r in _TREATMENT_DECLINE_RATES
+        )
 
     if age > 70:
         rate *= 0.80
@@ -244,7 +248,7 @@ def compute_treatment_trajectory(
     Structure:
       t=0:     egfr_baseline
       t=0..3:  Phase 1 — exponential approach to phase1_total (saturates ~91.8%)
-      t>3:     Linear decline from eGFR(3) at treatment rate + optional modifier
+      t>3:     Linear decline from eGFR(3) at treatment rate adjusted by optional modifier
     """
     phase1_total = _compute_phase1(bun_baseline, tier)
     treatment_rate = _get_treatment_decline_rate(egfr_baseline, age, tier)

@@ -35,7 +35,6 @@ from prediction.engine import (
     DIALYSIS_THRESHOLD,
     _PATH4_FLOOR_RATE,
     _TIER_CONFIG,
-    _TREATMENT_DECLINE_RATES,
     TIME_POINTS_MONTHS,
     _NO_TX_DECLINE_RATES,
     _get_decline_rate,
