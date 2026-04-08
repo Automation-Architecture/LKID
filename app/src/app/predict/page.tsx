@@ -326,7 +326,7 @@ export default function PredictPage() {
         "prediction_inputs",
         JSON.stringify(payload)
       );
-      router.push("/results");
+      window.location.href = "/results";
     } catch (err: unknown) {
       clearTimeout(timeoutId);
       if (err instanceof DOMException && err.name === "AbortError") {
