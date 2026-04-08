@@ -90,7 +90,8 @@ const REQUIRED_FIELDS: FieldDef[] = [
     placeholder: "e.g. 58",
     rules: PREDICT_FORM_RULES.age,
   },
-  { kind: "sex", id: "sex" },
+  // Sex field removed — engine uses "unknown" (averages male+female eGFR)
+  // { kind: "sex", id: "sex" },
 ];
 
 const TIER2_FIELDS: NumericFieldDef[] = [
@@ -155,13 +156,18 @@ export default function PredictPage() {
   });
   const [touched, setTouched] = useState<Record<string, boolean>>({});
 
-  /* --- LKID-17: pre-fill email from Clerk session --- */
+  /* --- Pre-fill name + email from Clerk session --- */
   const clerkEmail = user?.primaryEmailAddress?.emailAddress;
+  const clerkName = user?.fullName || user?.firstName || "";
   useEffect(() => {
-    if (isSignedIn && clerkEmail) {
-      setValues((prev) => ({ ...prev, email: clerkEmail }));
+    if (isSignedIn) {
+      setValues((prev) => ({
+        ...prev,
+        ...(clerkEmail ? { email: clerkEmail } : {}),
+        ...(clerkName ? { name: clerkName } : {}),
+      }));
     }
-  }, [isSignedIn, clerkEmail]);
+  }, [isSignedIn, clerkEmail, clerkName]);
 
   const [submitted, setSubmitted] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -258,7 +264,7 @@ export default function PredictPage() {
       creatinine: Number(values.creatinine),
       potassium: Number(values.potassium),
       age: Number(values.age),
-      sex: values.sex,
+      sex: "unknown",  // Sex field removed from form; engine averages male+female
     };
 
     // Include tier 2 if both provided
