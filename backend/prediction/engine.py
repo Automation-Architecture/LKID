@@ -179,7 +179,7 @@ def _compute_optional_modifier(
     co2: Optional[float],
     albumin: Optional[float],
 ) -> float:
-    """Additional post-Phase 2 annual decline due to concerning optional fields.
+    """Additional annual decline due to concerning optional fields.
 
     Applied equally to all four trajectories.
     """
