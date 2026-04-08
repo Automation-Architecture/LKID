@@ -12,6 +12,42 @@ interface UpdateData {
 // Static update data — in production this would read from markdown files
 const UPDATES: UpdateData[] = [
   {
+    title: "Week 3 — PDF, Polish & Ship",
+    date: "April 8, 2026",
+    sprint: 3,
+    highlights: [
+      "Prediction engine rewritten to match Lee's confirmed golden vectors — all 3 vectors pass within ±0.2 eGFR tolerance",
+      "PDF export fully operational — Playwright renders pixel-perfect chart, downloads as PDF from results page",
+      "6 E2E integration tests (happy path + error path) and axe-core accessibility audit on all 4 pages",
+      "Clerk v7 auth migrated to Next.js 16 proxy convention — JWT verification re-enabled",
+      "59 of 60 Jira cards Done — only Klaviyo email integration remains (API key now received)",
+    ],
+    productUpdate: `Sprint 3 is complete and the application is live. This was the final sprint before ship — focused on PDF export, polish, testing, and the QA gate. We merged 5 pull requests today (#28–#32) covering the prediction engine rewrite, PDF generation, E2E tests, accessibility audit, and Clerk auth migration.
+
+The most critical delivery was the prediction engine rewrite (LKID-59). Lee sent three golden test vectors on April 2 that revealed the engine was overestimating treatment benefit by 4–8 eGFR points. The root cause: the engine used a two-component Phase 1 formula when Lee's actual model is simpler — a 0.31-coefficient formula with no Phase 2 gain. The engine was rewritten to match Lee's confirmed model. All three golden vectors now pass within ±0.2 tolerance (actual deltas: -0.01, 0.00, -0.01).
+
+PDF export is now fully operational. When a patient clicks "Download Your Results (PDF)" on the results page, the backend re-runs the prediction engine, renders the chart via Playwright (headless Chromium), and returns a pixel-perfect PDF. The PDF includes the eGFR trajectory chart with all 4 treatment scenarios, stat cards, and the medical disclaimer. File size is approximately 104KB per PDF.
+
+The pre-release QA gate passed with conditions: prediction engine tests (124/124 pass), E2E tests (6 tests covering form submission, error handling, and navigation), and the PDF endpoint all verified. Two items deferred as conditions: the axe-core accessibility audit (now implemented — zero critical/serious WCAG 2.1 AA violations) and the Clerk v7 migration (now complete — middleware migrated to Next.js 16 proxy convention).
+
+End-to-end browser testing confirmed the full user flow works in production: form fill → API call → results page with interactive chart → PDF download. The chart renders 4 trajectory lines (BUN ≤12, BUN 13–17, BUN 18–24, No Treatment) with CKD stage bands, dialysis threshold, and stat cards showing 5-year and 10-year projected eGFR.
+
+The only remaining card is LKID-47 (Klaviyo email integration). Lee's API key has been received and configured on Railway. Implementation is planned for next sprint — the Klaviyo flow (welcome email with personalized prediction results) needs the email template designed before we wire up the backend integration.`,
+    technicalUpdate: `Sprint 3 delivered 5 PRs across the full stack. Here is the technical summary of each:
+
+PR #28 (LKID-59) — Engine Formula Rewrite: Replaced the two-component Phase 1 formula (BUN suppression removal + rate differential) with Lee's confirmed 0.31-coefficient model: phase1_total = min(tier_cap, (BUN - target) × 0.31). Removed Phase 2 gain function entirely. Phase 1 saturates at month 3 (~91.8%), then linear decline at CKD-stage treatment rate with age attenuation (×0.80 for age > 70). Path 4 floor (-0.33/yr) preserved for BUN ≤12 tier. Added separate treatment decline rate table (Stage 4 = -2.0/yr confirmed by Lee; other stages estimated). 124 tests pass including 3 strict golden vector assertions.
+
+PR #29 (LKID-4) — PDF Export: Implemented POST /predict/pdf endpoint using Playwright headless Chromium on Railway. Architecture: backend re-runs prediction engine → base64-encodes results → Playwright navigates to internal /internal/chart page → waits for SVG render → page.pdf() → returns StreamingResponse. Internal chart page renders EgfrChart at 960px fixed width with structural floor callout and disclaimer. Browser lifecycle managed in FastAPI lifespan (persistent Chromium instance with asyncio.Lock). Page wrapped in try/finally to prevent leaks on failure.
+
+PR #30 (LKID-28) — E2E Tests: 6 Playwright integration tests covering happy path (form → predict → results with chart + PDF button) and error path (empty submission with validation errors, API 500 with form state preservation, 429 rate limit, direct /results access redirect). Uses route interception to mock /predict API responses. Separate playwright.e2e.config.ts.
+
+PR #31 (LKID-26) — Accessibility Audit: axe-core scans on all 4 user-facing pages (home, predict, results, auth) for WCAG 2.1 AA violations. Zero critical/serious violations required. SVG chart internals excluded (Visx-generated; section has aria-label). Results page test navigates full form→results flow.
+
+PR #32 (LKID-60) — Clerk v7 Migration: Renamed middleware.ts → proxy.ts per Next.js 16 convention. clerkMiddleware() now runs on all matched routes with public route exceptions for /, /auth, /client/*, /internal/*, /predict, /results. This re-enables JWT verification that was disabled since Sprint 2.
+
+Infrastructure: Fixed Vercel deployment (peer dependency conflict with React 19 — added .npmrc with legacy-peer-deps). Fixed Railway deployment (root directory set to backend/, pydantic version unpinned for svix compatibility). Configured env vars on both platforms (CLERK_SECRET_KEY, NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY, PDF_SECRET, FRONTEND_INTERNAL_URL, NEXT_PUBLIC_API_URL, KLAVIYO_API_KEY, CORS_ORIGINS, DATABASE_URL). Vercel Analytics added. Slack webhook configured for Vercel spend management alerts.`,
+  },
+  {
     title: "Week 2 — Core Flow",
     date: "April 2, 2026",
     sprint: 2,
