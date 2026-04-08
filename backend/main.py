@@ -53,6 +53,10 @@ CORS_ORIGINS = [
 
 ADMIN_API_KEY = os.environ.get("ADMIN_API_KEY", "")
 CLERK_WEBHOOK_SECRET = os.environ.get("CLERK_WEBHOOK_SECRET", "")
+PDF_SECRET = os.environ.get("PDF_SECRET", "dev-pdf-secret")
+FRONTEND_INTERNAL_URL = os.environ.get(
+    "FRONTEND_INTERNAL_URL", "http://localhost:3000"
+)
 
 # ---------------------------------------------------------------------------
 # Database
@@ -172,6 +176,24 @@ limiter = Limiter(key_func=get_remote_address)
 # ---------------------------------------------------------------------------
 
 
+_playwright = None
+_browser = None
+_browser_lock = asyncio.Lock()
+
+
+async def _get_browser():
+    """Return a persistent Chromium browser instance (lazy-initialized, thread-safe)."""
+    global _playwright, _browser
+    async with _browser_lock:
+        if _browser is None:
+            from playwright.async_api import async_playwright
+
+            _playwright = await async_playwright().start()
+            _browser = await _playwright.chromium.launch(headless=True)
+            logger.info("Playwright browser launched")
+    return _browser
+
+
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     # Startup: verify DB connection
@@ -179,7 +201,14 @@ async def lifespan(app: FastAPI):
         async with engine.begin() as conn:
             await conn.execute(__import__("sqlalchemy").text("SELECT 1"))
     yield
-    # Shutdown: dispose engine
+    # Shutdown: close Playwright browser + dispose engine
+    global _playwright, _browser
+    if _browser:
+        await _browser.close()
+        _browser = None
+    if _playwright:
+        await _playwright.stop()
+        _playwright = None
     if engine:
         await engine.dispose()
 
@@ -475,13 +504,64 @@ async def predict_pdf(request: Request, body: PredictRequest):
     page via Playwright (headless Chromium), and return the PDF.
 
     Stateless — does not accept pre-computed results.
-
-    TODO (Donaldson): Wire up prediction engine.
-    TODO (Harshit): Wire up Playwright PDF rendering.
+    Flow: run engine -> base64-encode results -> Playwright navigates to
+    /internal/chart?data={b64}&secret={secret} -> page.pdf() -> return PDF.
     """
-    raise HTTPException(
-        status_code=501,
-        detail="PDF generation not yet implemented.",
+    import io
+
+    # 1. Run prediction engine (same as /predict)
+    result = predict_for_endpoint(
+        bun=body.bun,
+        creatinine=body.creatinine,
+        age=body.age,
+        sex=body.sex,
+        potassium=body.potassium,
+        hemoglobin=body.hemoglobin,
+        co2=body.co2,
+        albumin=body.albumin,
+        glucose=body.glucose,
+    )
+
+    # 2. Encode prediction data for the internal chart page (standard base64)
+    payload = json.dumps({"result": result, "bun": body.bun})
+    data_b64 = base64.b64encode(payload.encode()).decode()
+
+    # 3. Build internal chart page URL
+    chart_url = (
+        f"{FRONTEND_INTERNAL_URL}/internal/chart"
+        f"?data={data_b64}&secret={PDF_SECRET}"
+    )
+
+    # 4. Render PDF via Playwright (try/finally ensures page is always closed)
+    page = None
+    try:
+        browser = await _get_browser()
+        page = await browser.new_page(viewport={"width": 1060, "height": 800})
+        await page.goto(chart_url, wait_until="networkidle")
+        # Wait for the chart to render (the page sets id="pdf-ready" when done)
+        await page.wait_for_selector("#pdf-ready", timeout=10000)
+        pdf_bytes = await page.pdf(
+            format="Letter",
+            print_background=True,
+            margin={"top": "0.4in", "bottom": "0.4in", "left": "0.3in", "right": "0.3in"},
+        )
+    except Exception:
+        logger.exception("PDF rendering failed")
+        raise HTTPException(
+            status_code=502,
+            detail="PDF rendering failed. Please try again.",
+        )
+    finally:
+        if page:
+            await page.close()
+
+    # 5. Return PDF as downloadable file
+    return StreamingResponse(
+        io.BytesIO(pdf_bytes),
+        media_type="application/pdf",
+        headers={
+            "Content-Disposition": "attachment; filename=kidneyhood-prediction.pdf",
+        },
     )
 
 
