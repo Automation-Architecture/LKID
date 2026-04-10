@@ -59,12 +59,12 @@
 | LKID-25 | Rate limiting (API endpoints) | John Donaldson | **MERGED — PR #25** |
 | LKID-27 | Boundary tests + golden files | Yuri + Gay Mark | **MERGED — PR #24** |
 | — | BUN structural floor callout (Q3) | Harshit + John | **MERGED — PR #27** |
-| LKID-49 | Visx QA pairing (deferred from Sprint 2) | Yuri | LKID-19 ✓ |
-| LKID-4 | PDF export (Playwright rendering) | Harshit + John | LKID-19 ✓ |
-| LKID-20–29 | Polish, tests, QA gate (10 cards) | Various | See Jira |
-| LKID-59 | Engine Phase 1 formula rewrite (0.31-coefficient model) | John Donaldson | **To Do — awaiting dispatch** |
-| LKID-47 | Klaviyo lead capture | John Donaldson | **Blocked on Lee API key** |
-| — | Clerk v7 + Next.js 16 migration (re-enable middleware, fix types, remove ts-nocheck) | Harshit | New — discovered Mar 27 |
+| LKID-49 | Visx QA pairing (deferred from Sprint 2) | Yuri | **DONE — closed Apr 8** |
+| LKID-4 | PDF export (Playwright rendering) | Harshit + John | **MERGED — PR #29** |
+| LKID-20–29 | Polish, tests, QA gate (10 cards) | Various | **DONE — all merged Apr 8** |
+| LKID-59 | Engine Phase 1 formula rewrite (0.31-coefficient model) | John Donaldson | **MERGED — PR #28** |
+| LKID-47 | Klaviyo lead capture | John Donaldson | **Blocked — needs planning sprint** |
+| LKID-60 | Clerk v7 proxy for Next.js 16 | Harshit | **MERGED — PR #32** |
 
 ### Lee's Responses (2026-03-30) — All 6 Questions Answered
 
@@ -164,6 +164,11 @@ CTO (Luca) opens one PR per Jira card. Each card gets a feature branch (`feat/LK
 | [#25](https://github.com/Automation-Architecture/LKID/pull/25) | `feat/LKID-14-rules-engine` | LKID-14, LKID-25 | John Donaldson | Merged |
 | [#26](https://github.com/Automation-Architecture/LKID/pull/26) | `feat/LKID-14-lee-confirmations` | Lee Q2/Q7 | John Donaldson | Merged |
 | [#27](https://github.com/Automation-Architecture/LKID/pull/27) | `feat/LKID-structural-floor` | Lee Q3 | Harshit + John | Merged |
+| [#28](https://github.com/Automation-Architecture/LKID/pull/28) | `feat/LKID-59-engine-golden-vectors` | LKID-59 | John Donaldson | Merged |
+| [#29](https://github.com/Automation-Architecture/LKID/pull/29) | `feat/LKID-4-pdf-export` | LKID-4 | Harshit + John | Merged |
+| [#30](https://github.com/Automation-Architecture/LKID/pull/30) | `feat/LKID-28-e2e-tests` | LKID-28 | Yuri + Gay Mark | Merged |
+| [#31](https://github.com/Automation-Architecture/LKID/pull/31) | `feat/LKID-26-axe-core-audit` | LKID-26 | Yuri | Merged |
+| [#32](https://github.com/Automation-Architecture/LKID/pull/32) | `feat/LKID-60-clerk-proxy` | LKID-60 | Harshit | Merged |
 
 ## Team
 
