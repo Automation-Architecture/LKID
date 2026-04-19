@@ -69,8 +69,18 @@ def render_report_email(
         Fully rendered HTML string ready to pass to Resend as the `html` body.
 
     Raises:
+        ValueError: If `pdf_failed=True` but `token` is falsy (None or empty).
+            The fallback template's only purpose is to link the user to
+            `/results/{token}`; without a token the email would render
+            `/results/None` (or `/results/`) and deliver a broken link.
         jinja2.exceptions.TemplateNotFound: If the template file is missing.
     """
+    if pdf_failed and not token:
+        raise ValueError(
+            "pdf_failed=True requires a non-empty token; fallback template "
+            "must link to a valid /results/{token} URL"
+        )
+
     template_name = (
         "report_email_fallback.html" if pdf_failed else "report_email.html"
     )

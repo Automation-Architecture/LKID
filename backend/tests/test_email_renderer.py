@@ -135,5 +135,36 @@ def test_confidence_tier_accepted_but_optional() -> None:
     # rendering; the test locks the call signature contract for LKID-62.
 
 
+def test_fallback_requires_token() -> None:
+    """Fallback template (`pdf_failed=True`) MUST refuse to render without a
+    non-empty token. Rendering with `token=None` would produce a live
+    `.../results/None` link in the user's inbox; rendering with `token=""`
+    would produce `.../results/` (equally broken). Guard is in the renderer,
+    not the template, so callers cannot accidentally bypass it. (I-34-1)"""
+    with pytest.raises(ValueError, match="requires a non-empty token"):
+        render_report_email(
+            name="x", egfr_baseline=30.0, pdf_failed=True, token=None
+        )
+    with pytest.raises(ValueError, match="requires a non-empty token"):
+        render_report_email(
+            name="x", egfr_baseline=30.0, pdf_failed=True, token=""
+        )
+
+
+def test_both_templates_include_unsubscribe_note() -> None:
+    """Jira LKID-64 AC + techspec §9 require a plain-text unsubscribe /
+    contact footer. Resend transactional emails don't need List-Unsubscribe
+    headers, but the human-readable note must be present in both the standard
+    and fallback templates. (I-34-2)"""
+    standard = render_report_email(name="Alice", egfr_baseline=30.0)
+    fallback = render_report_email(
+        name="Alice", egfr_baseline=30.0, pdf_failed=True, token="abc123"
+    )
+    assert "transactional email" in standard
+    assert "transactional email" in fallback
+    assert "no marketing list" in standard
+    assert "no marketing list" in fallback
+
+
 if __name__ == "__main__":  # pragma: no cover
     pytest.main([__file__, "-v"])
