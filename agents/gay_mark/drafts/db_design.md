@@ -349,3 +349,61 @@ The seed script will be a standalone SQL file (`seed_test_data.sql`) and/or a py
 - Guest data retention: 24-hour TTL with purge cron (Decision #4).
 - Account data retention: indefinite until user-initiated deletion. HIPAA right-to-delete satisfied via `ON DELETE CASCADE` on user-owned tables.
 - Audit log retention: indefinite (HIPAA minimum 6 years). `ON DELETE SET NULL` preserves audit trail after user deletion (Decision #14).
+
+---
+
+## 12. predictions (LKID-61)
+
+Added 2026-04-19 via migration `004_add_predictions_table.py`. Authoritative spec: `agents/luca/drafts/techspec-new-flow.md` §4.1.
+
+### Purpose
+
+Stores every prediction result keyed by an opaque `report_token`. Supports the no-auth tokenized patient funnel that replaces the Clerk-gated predict/results flow:
+
+```
+/labs  ->  POST /predict  ->  /gate/[token]  ->  POST /leads  ->  /results/[token]
+```
+
+Without this table, the new flow has nowhere to persist results between POST /predict and POST /leads — results previously lived in browser `sessionStorage`, which breaks the "email the PDF" use case.
+
+### Column rationale
+
+| Column | Type | Notes |
+|--------|------|-------|
+| `id` | UUID PK | Standard `gen_random_uuid()` via pgcrypto (matches `leads`). |
+| `report_token` | TEXT NOT NULL UNIQUE | 43-char URL-safe base64 from `secrets.token_urlsafe(32)`. 256 bits of entropy — brute force is not a realistic threat vector (techspec §5.2). Opaque; no JWT/HMAC. |
+| `token_created_at` | TIMESTAMPTZ | When the token was issued. Kept distinct from `created_at` to support future token rotation without rewriting row-creation history. |
+| `revoked_at` | TIMESTAMPTZ NULL | Reserved for future use; unused in MVP (techspec §13 OQ-3: no TTL enforced). Column exists now to avoid a follow-on migration. |
+| `inputs` | JSONB NOT NULL | Validated POST /predict body. JSONB instead of scalar columns because: (a) the input shape is evolving — Tier 2 optional fields (hemoglobin, glucose) may expand; (b) the engine already validates structure via Pydantic; (c) the DB does not query individual inputs, it only reads/writes the blob. |
+| `result` | JSONB NOT NULL | Full PredictResponse payload: `trajectories` (4×15 array), `stat_cards` (variable-length list of labelled values), `dial_ages`, `egfr_baseline`, `confidence_tier`, etc. Scalar columns would be brittle — every engine update would require a migration. JSONB lets the engine evolve freely. |
+| `lead_id` | UUID NULL, FK → leads(id) ON DELETE SET NULL | NULL until the email gate (POST /leads) completes. `SET NULL` on delete preserves the prediction row for analytics if the lead is purged (HIPAA right-to-delete on the lead does not require destroying the de-identified prediction). |
+| `email_sent_at` | TIMESTAMPTZ NULL | Set by the fire-and-forget `_send_report_email()` async task after Resend delivery succeeds. |
+| `created_at` | TIMESTAMPTZ NOT NULL | Row-creation audit timestamp. |
+
+### Why JSONB for trajectory data (not scalar columns)
+
+- The PredictResponse shape is engine-defined, not DB-defined. The engine (`backend/prediction/engine.py`) is the source of truth for the wire shape; the DB should not duplicate its schema.
+- Trajectory arrays are 4 lanes × 15 time points = 60 floats. Modeling that as scalar columns would require 60 columns or a side table — both are worse than one JSONB blob.
+- No queries filter or aggregate on trajectory values. The DB is a blob store for this column; JSONB's indexing capabilities are unused but available if the access pattern changes.
+
+### HIPAA posture
+
+Per techspec §4.1, a `predictions` row created before email capture contains only anonymous lab values and a random token — no name, no email, no DOB, no geographic identifier. This does NOT constitute PHI under HIPAA 45 CFR §164.514. The row becomes linkable to an individual only after `lead_id` is populated (POST /leads step). The existing BAA gap with Railway is documented in `agents/yuri/drafts/hipaa-verification-notes.md` and is unchanged by this table.
+
+### Relationship to `leads`
+
+One-to-one at the application level (each prediction, once gated, links to exactly one lead). The FK direction (`predictions.lead_id → leads.id`, not the reverse) keeps the `leads` table untouched — important because `leads` is already in production and touching it carries more migration risk than adding a brand-new table.
+
+A single lead may have multiple predictions over time (user re-runs the funnel). `leads.email` has a UNIQUE constraint (migration 002), so the POST /leads upsert reuses the existing `lead_id` and new predictions link to it.
+
+### Indexes
+
+| Index | Columns | Access pattern |
+|-------|---------|----------------|
+| `idx_predictions_report_token` | `report_token` | GET /results/[token], GET /reports/[token]/pdf. (Duplicates the UNIQUE index; kept to match the techspec §4.1 DDL verbatim — can be dropped in a future cleanup migration without impact.) |
+| `idx_predictions_lead_id` | `lead_id` | Analytics joins `predictions → leads`. |
+| `idx_predictions_created_at` | `created_at` | Range scans for future cleanup cron / analytics queries. |
+
+### Idempotency
+
+The migration uses `CREATE TABLE IF NOT EXISTS` + `CREATE INDEX IF NOT EXISTS` (raw SQL via `op.execute`) to satisfy the Jira AC "no errors if table already exists". This matches the existing pattern in migration 001 (`CREATE EXTENSION IF NOT EXISTS pgcrypto`).
