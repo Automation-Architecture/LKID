@@ -10,10 +10,8 @@ import { clerkMiddleware, createRouteMatcher } from "@clerk/nextjs/server";
  */
 const isPublicRoute = createRouteMatcher([
   "/",
-  "/auth(.*)",
   "/client(.*)",
   "/internal(.*)",
-  "/predict(.*)",
   "/results(.*)",
   // LKID-63 new tokenized funnel — no-auth by design (token IS the credential)
   "/labs(.*)",
