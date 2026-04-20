@@ -598,9 +598,9 @@ export default function LabsPage() {
       <footer className="kh-foot">
         <div className="brand-foot">KidneyHood.org</div>
         <nav aria-label="Footer navigation">
-          <a href="/#">Privacy</a>
-          <a href="/#">Disclaimer</a>
-          <a href="/#">Contact</a>
+          <Link href="/#privacy">Privacy</Link>
+          <Link href="/#disclaimer">Disclaimer</Link>
+          <Link href="/#contact">Contact</Link>
         </nav>
       </footer>
     </div>
