@@ -281,66 +281,36 @@ Use Excalidraw MCP (`mcp__claude_ai_Excalidraw__create_view`) for all diagrams. 
 
 ## Sitemap
 
+Authoritative file list: **Key Documents** table above. The sitemap here is just folder-level structure.
+
 ```
-agent-teams/
-├── artifacts/
-│   ├── lean-launch-mvp-prd.md    # Lean Launch MVP PRD — binding scope for Development
-│   ├── registry.json             # Approved artifact registry
-│   ├── frontend_build/           # Frontend build artifacts (currently empty)
-│   ├── test_suite/               # Test suite artifacts (currently empty)
-│   └── archive/
-│       └── PRD-v2-original.md    # Original PRD (89 tickets) — archived, reference only
-├── agents/
-│   ├── gay_mark/drafts/          # db_design.md, db_docs.md, db_schema.sql, db-deployment-runbook.md, pgaudit-setup-notes.md
-│   ├── gay_mark/outputs/         # Finalized deliverables (currently empty)
-│   ├── harshit/drafts/           # frontend_architecture.md, lean-launch-review.md, clerk-integration-plan.md, lkid-19-poc-decision.md
-│   ├── harshit/outputs/          # Finalized deliverables (currently empty)
-│   ├── husser/drafts/            # lean-launch-stories.md, design-sprint-stories.md, client-dashboard-stories-v2.md, week-1-product-update.md, email-to-lee-week1.md, lean-launch-review.md, product-management-sop.md, execution-velocity-plan.md, jira-cards-yuri-remediation.md, sprint2-close-board-sweep.md
-│   ├── husser/outputs/           # Finalized deliverables (currently empty)
-│   ├── inga/drafts/              # wireframes.md, component-specs.md, design-tokens.md, user-flows.md, chart-specs.md, accessibility-plan.md, clerk-ux-review.md, client-dashboard-mockup.md, client-dashboard-review.md, dashboard-polish-fixes.md, bun-floor-display-design.md, design-sprint-meeting-1.md, design-sprint-sign-off.md, lean-launch-review.md
-│   ├── inga/outputs/             # Finalized deliverables (currently empty)
-│   ├── john_donaldson/drafts/    # api_contract.json, api_contract_summary.md, api_docs.md, backend-research.md, debug_calc.py, finalized-formulas.md, lean-launch-review.md, prediction_engine.py, test_debug.py, test_prediction_engine.py, week-1-technical-update.md, TASK-iterate-rules-engine-v3.md, LKID-14-25-implementation-notes.md
-│   ├── john_donaldson/outputs/   # Finalized deliverables (currently empty)
-│   ├── luca/drafts/              # architecture.md, infrastructure-setup.md, railway-deployment-checklist.md, medical-expert-review.md, backend-meeting-memo.md, lean-launch-review.md, merge-execution-plan.md, sprint2-merge-postmortem.md, sprint3-commit-strategy.md, lee-q1-q6-responses.md, lee-golden-vectors-v2.md, engine-refactor-analysis.md, qa-remediation-brainstorm.md, qa-skills-recommendations.md, yuri-weakness-remediation-plan.md, sprint-progress.json, spec-tracker.json, main.py
-│   ├── luca/outputs/             # Finalized deliverables (currently empty)
-│   ├── yuri/drafts/              # test_strategy.md, design-sprint-qa-report.md, test_golden_file.py, sprint2-qa-report-1.md, sprint2-qa-report-2.md, lean-launch-review.md, qa-report-pr12-clerk-auth.md, qa-re-review-pr12.md, qa-report-pr13-post-predict.md, qa-re-review-pr13.md, qa-batch-prs-14-17.md, test-scaffold-form-chart.md, hipaa-verification-notes.md, sop-review-and-self-assessment.md, qa-client-dashboard-sprint2.md, sprint2-debacle-qa-report.md, qa-lkid-27-boundary-tests.md, sprint3-pr-qa-verdicts.md, sprint3-pr26-27-qa-verdicts.md
-│   └── yuri/outputs/             # Finalized deliverables (currently empty)
-├── active/
-│   ├── chatroom/                  # Agent chatroom workspace (chat.json, chatroom_report.md)
-│   ├── DISPATCH-sprint3-backend.md   # John's Sprint 3 dispatch
-│   ├── DISPATCH-sprint3-frontend.md  # Harshit's Sprint 3 dispatch
-│   ├── DISPATCH-sprint3-qa.md        # Yuri+Gay Mark's Sprint 3 dispatch
-│   └── archive/sprint2-dispatches/  # Completed DISPATCH/TASK files from Sprint 2 (9 files)
-├── docs/
-│   ├── discovery-phase-engineering-sop.md
-│   ├── discovery-phase-flow.excalidraw
-│   ├── development-phase-engineering-sop.md
-│   ├── qa-testing-sop.md          # Binding QA SOP for Yuri
-│   ├── memory-system-reference.md
-│   ├── design-sprint/              # Placeholder files for each LKID PR branch
-│   ├── prd-sprint-timeline.excalidraw
-│   ├── prd-agent-workload.excalidraw
-│   ├── jira-lean-setup.md
-│   ├── superpowers/specs/2026-03-25-prd-structure-design.md
-│   └── superpowers/specs/2026-03-26-client-dashboard-design.md
-├── memory/
-│   ├── patterns.json, anti_patterns.json, decisions.json
-│   ├── insights.json, tooling.json
-│   └── compressed_summary.md
-├── backend/                      # FastAPI backend — main.py, requirements.txt, Procfile, railway.toml, .env.example, prediction/engine.py, tests/, alembic/, seeds/
-├── app/                          # Next.js frontend (prototype + dashboard screens)
-├── server_side_calc_spec_v1.md
-├── Resources/
-│   ├── agent-teams-reference.md
-│   ├── railway-docs-summary.md   # Railway deployment reference (FastAPI, Postgres, domains, etc.)
-│   ├── klaviyo-docs-summary.md   # Klaviyo Python SDK, Profiles/Events API, Flows, rate limits (LKID-47)
-│   └── specs/
-│       ├── patient_app_spec_v2_updated.pdf  # Patient app specification v2
-│       └── app_spec_amendments.pdf          # Amendments to the original spec
-├── tests/                       # Root-level test directory
-├── scripts/
-│   └── refresh-sprint-progress.py # Sprint progress sync script
+LKID/
+├── app/                          # Next.js 16 frontend (Vercel). Patient funnel (/labs, /gate/[token],
+│                                 # /results/[token]) + PDF render target (/internal/chart/[token]) +
+│                                 # Clerk-gated client dashboard (/client/[slug]).
+├── backend/                      # FastAPI backend (Railway). Prediction engine, tokenized endpoints,
+│                                 # Resend + Klaviyo services, alembic migrations, pytest suite.
+├── project/                      # Design-handoff bundle (claude.ai/design source of truth).
+│                                 # Landing Page.html, Lab Form.html, Email Gate.html, Results.html,
+│                                 # PDF Report.html, Email Template.html, Design Handoff.html +
+│                                 # design_handoff_kidneyhood_web_flow/screenshots/ + uploads/.
+├── artifacts/                    # Binding scope docs (Lean Launch MVP PRD, registry.json, archive/).
+├── agents/                       # Per-role work folders ({agent}/drafts/, {agent}/outputs/).
+│                                 # Each README points back at CLAUDE.md Key Documents for the
+│                                 # authoritative list. Roles: gay_mark, harshit, husser, inga,
+│                                 # john_donaldson, luca, yuri.
+├── active/                       # Currently-active dispatches + chatroom + archive/ for prior sprints.
+├── docs/                         # Binding SOPs (discovery/development/QA), memory-system reference,
+│                                 # excalidraw diagrams, superpowers specs.
+├── memory/                       # JSON-backed memory system (patterns, anti_patterns, decisions,
+│                                 # insights, tooling) + compressed_summary.md.
+├── Resources/                    # Agent reference docs, Railway + Klaviyo SDK summaries,
+│                                 # specs/ (patient_app_spec_v2 + amendments PDFs).
+├── tests/                        # Root-level test directory (most testing lives under app/ or backend/).
+├── scripts/                      # refresh-sprint-progress.py (Jira → dashboard sync fallback).
+├── server_side_calc_spec_v1.md   # Proprietary clinical formulas (NDA).
 ├── launch-team.sh
+├── CLAUDE.md                     # This file — index, not content.
 └── README.md
 ```
 
