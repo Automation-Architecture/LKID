@@ -333,7 +333,9 @@ function InnerChart({ width, data, selectedTrajectoryId }: InnerChartProps) {
                     fill={phase.fillColor}
                     opacity={phase.opacity}
                   />
-                  {/* Phase label: top-right corner, hidden on mobile */}
+                  {/* Phase label: top-right corner, hidden on mobile.
+                      LKID-67 (Inga): #888888 → #475569 slate-600 = 7.58:1 on
+                      white (AA). */}
                   {!isMobile && (
                     <Text
                       x={innerWidth - 8}
@@ -342,7 +344,7 @@ function InnerChart({ width, data, selectedTrajectoryId }: InnerChartProps) {
                       verticalAnchor="start"
                       fontSize={11}
                       fontWeight={400}
-                      fill="#888888"
+                      fill="#475569"
                     >
                       {phase.label}
                     </Text>
@@ -544,7 +546,12 @@ function InnerChart({ width, data, selectedTrajectoryId }: InnerChartProps) {
           />
         </Group>
 
-        {/* Confidence tier badge — top right */}
+        {/* Confidence tier badge — top right.
+            LKID-67 (Inga): Tier-1 stroke/text migrated from #1D9E75 (3.39:1 on
+            white; 3.02:1 on #E8F5F0 pill) → #047857 emerald-700 (5.48:1 on
+            white; 4.90:1 on pill). Matches new BUN ≤12 trajectory so the
+            semantic link "Tier 1 = rigorous BUN control = best path" reads
+            through color. Tier-2 amber #92400E already meets AA (7.09:1). */}
         <g aria-hidden="true">
           <rect
             x={width - margin.right - 60}
@@ -553,7 +560,7 @@ function InnerChart({ width, data, selectedTrajectoryId }: InnerChartProps) {
             height={20}
             rx={4}
             fill={data.confidenceTier === 1 ? "#E8F5F0" : "#FFF8E1"}
-            stroke={data.confidenceTier === 1 ? "#1D9E75" : "#F59E0B"}
+            stroke={data.confidenceTier === 1 ? "#047857" : "#F59E0B"}
             strokeWidth={1}
           />
           <text
@@ -562,7 +569,7 @@ function InnerChart({ width, data, selectedTrajectoryId }: InnerChartProps) {
             textAnchor="middle"
             fontSize={10}
             fontWeight={600}
-            fill={data.confidenceTier === 1 ? "#1D9E75" : "#92400E"}
+            fill={data.confidenceTier === 1 ? "#047857" : "#92400E"}
           >
             Tier {data.confidenceTier}
           </text>
