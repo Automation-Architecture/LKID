@@ -4,10 +4,11 @@ const SPRINTS = [
   { name: "Sprint 1 — Design", start: "2026-03-20", end: "2026-03-26" },
   { name: "Sprint 2 — Core Flow", start: "2026-03-26", end: "2026-04-02" },
   { name: "Sprint 3 — Polish & QA", start: "2026-04-02", end: "2026-04-09" },
+  { name: "Sprint 4 — Tokenized Flow", start: "2026-04-19", end: "2026-04-20" },
 ];
 
 const PROJECT_START = new Date("2026-03-20");
-const PROJECT_END = new Date("2026-04-09");
+const PROJECT_END = new Date("2026-04-20");
 const TOTAL_DAYS = (PROJECT_END.getTime() - PROJECT_START.getTime()) / (1000 * 60 * 60 * 24);
 
 function getProgress(): number {
@@ -38,7 +39,7 @@ export function HeroBanner() {
       <div className="space-y-2">
         <div className="flex justify-between text-sm" style={{ color: "var(--brand-body)" }}>
           <span>Mar 20</span>
-          <span>Apr 9</span>
+          <span>Apr 20</span>
         </div>
         <div
           className="relative h-3 w-full overflow-hidden rounded-full"

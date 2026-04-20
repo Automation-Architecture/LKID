@@ -246,12 +246,7 @@
           "title": "Pre-release QA gate",
           "status": "done"
         },
-        {
-          "id": "LKID-47",
-          "title": "Klaviyo lead capture",
-          "status": "upcoming"
-        },
-        {
+{
           "id": "LKID-49",
           "title": "Visx QA pairing",
           "status": "done"
@@ -265,6 +260,67 @@
           "id": "LKID-60",
           "title": "Clerk v7 + Next.js 16 migration",
           "status": "done"
+        }
+      ]
+    },
+    {
+      "name": "Sprint 4 — No-Auth Tokenized Flow",
+      "dates": "Apr 19 - Apr 20",
+      "cards": [
+        {
+          "id": "LKID-61",
+          "title": "DB: predictions table + report_token",
+          "status": "done"
+        },
+        {
+          "id": "LKID-62",
+          "title": "Backend: no-auth tokenized endpoints",
+          "status": "done"
+        },
+        {
+          "id": "LKID-63",
+          "title": "Frontend: new patient funnel (/labs, /gate, /results)",
+          "status": "done"
+        },
+        {
+          "id": "LKID-64",
+          "title": "Resend transactional email template (PDF attached)",
+          "status": "done"
+        },
+        {
+          "id": "LKID-65",
+          "title": "QA: E2E + a11y tests updated for tokenized flow",
+          "status": "done"
+        },
+        {
+          "id": "LKID-66",
+          "title": "Delete legacy /predict /auth /results pages",
+          "status": "done"
+        },
+        {
+          "id": "LKID-67",
+          "title": "Chart WCAG AA contrast (text + SVG colors)",
+          "status": "done"
+        },
+        {
+          "id": "LKID-70",
+          "title": "Regenerate db_schema.sql from current migrations",
+          "status": "done"
+        },
+        {
+          "id": "LKID-47",
+          "title": "Klaviyo Flow configuration (dashboard)",
+          "status": "upcoming"
+        },
+        {
+          "id": "LKID-68",
+          "title": "Empty-DB postmortem (5 open questions)",
+          "status": "upcoming"
+        },
+        {
+          "id": "LKID-69",
+          "title": "Duplicate Postgres service cleanup",
+          "status": "upcoming"
         }
       ]
     }

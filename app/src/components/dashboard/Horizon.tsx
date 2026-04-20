@@ -1,30 +1,42 @@
 const UPCOMING = [
   {
-    name: "Sprint 2 — Core Flow",
-    dates: "Mar 26 – Apr 2",
+    name: "Sprint 3 — Polish & QA",
+    dates: "Mar 30 – Apr 9",
     status: "done" as const,
     deliverables: [
-      "Clerk magic-link authentication",
-      "PostgreSQL database on Railway",
-      "FastAPI prediction endpoint (your algorithm)",
-      "Prediction form with full validation",
-      "Form-to-chart end-to-end pipeline",
-      "Lead capture webhook",
+      "Visx eGFR trajectory chart (4 lines, responsive)",
+      "PDF export via Playwright (pixel-perfect chart fidelity)",
+      "Medical disclaimers and legal copy",
+      "Rules engine v2.0 — matched against your golden vectors",
+      "Rate limiting on API endpoints",
+      "Boundary tests + golden files + E2E suite + axe-core audit",
+      "Pre-release QA gate signed off",
     ],
   },
   {
-    name: "Sprint 3 — Polish & QA",
-    dates: "Mar 30 – Apr 9",
-    status: "up_next" as const,
+    name: "Sprint 4 — No-Auth Tokenized Flow",
+    dates: "Apr 19 – Apr 20",
+    status: "done" as const,
     deliverables: [
-      "Visx eGFR trajectory chart (4 lines, responsive)",
-      "PDF export via Playwright (exact chart fidelity)",
-      "Medical disclaimers and legal copy",
-      "Rules engine scaffold with v2.0 formulas",
-      "Rate limiting on API endpoints",
-      "Prediction engine boundary tests + golden files",
-      "End-to-end test suite + axe-core audit",
-      "Yuri's QA gate — final sign-off",
+      "New patient funnel: /labs → /gate → /results (no account required)",
+      "Report token delivery — each report has a signed shareable link",
+      "Resend transactional email with PDF report attached",
+      "Klaviyo warm-campaign event wired (eGFR, BUN tier, report link)",
+      "WCAG 2 AA accessibility across the chart and stat cards",
+      "Three deploy guardrails added so we can't ship blind again",
+      "Legacy Clerk-gated pages removed — clean codebase",
+    ],
+  },
+  {
+    name: "Sprint 5 — Launch Readiness",
+    dates: "TBD — awaiting scope confirmation",
+    status: "planned" as const,
+    deliverables: [
+      "Conversion analytics (landing → labs → gate → results → PDF funnel)",
+      "Error monitoring across backend + frontend",
+      "SEO basics (meta tags, structured data, sitemap)",
+      "Security headers hardening",
+      "Dashboard v2 for you (funnel view, recent leads, email-sent counts)",
     ],
   },
 ];
@@ -36,7 +48,7 @@ export function Horizon() {
         What&#39;s Coming
       </h2>
 
-      <div className="grid gap-4 md:grid-cols-2">
+      <div className="grid gap-4 md:grid-cols-3">
         {UPCOMING.map((sprint) => (
           <div
             key={sprint.name}
@@ -50,11 +62,11 @@ export function Horizon() {
               <span
                 className="rounded-full px-3 py-1 text-xs font-medium"
                 style={{
-                  backgroundColor: sprint.status === "done" ? "#DCFCE7" : sprint.status === "up_next" ? "#FEF3C7" : "#F3F4F6",
-                  color: sprint.status === "done" ? "#166534" : sprint.status === "up_next" ? "#92400E" : "#6B7280",
+                  backgroundColor: sprint.status === "done" ? "#DCFCE7" : sprint.status === "planned" ? "#F3F4F6" : "#FEF3C7",
+                  color: sprint.status === "done" ? "#166534" : sprint.status === "planned" ? "#6B7280" : "#92400E",
                 }}
               >
-                {sprint.status === "done" ? "Complete" : sprint.status === "up_next" ? "In Progress" : "Planned"}
+                {sprint.status === "done" ? "Complete" : sprint.status === "planned" ? "Planned" : "In Progress"}
               </span>
             </div>
             <p className="mt-1 text-sm" style={{ color: "#636363" }}>
@@ -72,7 +84,7 @@ export function Horizon() {
         ))}
       </div>
 
-      {/* Ship date */}
+      {/* Launch status */}
       <div
         className="relative flex items-center gap-4 rounded-xl px-8 py-6"
         style={{ backgroundColor: "#004D43" }}
@@ -80,10 +92,13 @@ export function Horizon() {
         <div style={{ width: "4px", height: "32px", backgroundColor: "#E6FF2B", borderRadius: "2px", flexShrink: 0 }} />
         <div>
           <p className="text-sm" style={{ color: "rgba(255,255,255,0.8)" }}>
-            Target Launch
+            Shipped — application live
           </p>
           <p className="mt-1 text-lg font-bold text-white">
-            April 9, 2026
+            April 20, 2026
+          </p>
+          <p className="mt-1 text-xs" style={{ color: "rgba(255,255,255,0.65)" }}>
+            Sprint 4 delivered the no-auth tokenized flow 13 days ahead of plan.
           </p>
         </div>
       </div>
