@@ -12,6 +12,44 @@ interface UpdateData {
 // Static update data — in production this would read from markdown files
 const UPDATES: UpdateData[] = [
   {
+    title: "Week 5 — Launch Readiness (in progress)",
+    date: "April 20, 2026",
+    sprint: 5,
+    highlights: [
+      "Error monitoring live — Sentry wired on both backend and frontend, with PII scrubbing so patient report tokens never land in error logs",
+      "Conversion-funnel analytics live — PostHog events fire on every funnel step (landing → labs → gate → results → PDF) so we can see where users drop off",
+      "Results page visually reworked to match the finalized design — new scenario pills, tinted cards, layout, typography, and footer",
+      "Chart redesigned pixel-for-pixel to the design source — brighter hues, healthy-range gradient, dialysis-threshold band with dashed line, and end-point callouts showing live eGFR projections",
+      "Results page refactored into a reusable component (internal code health — no user-visible change)",
+      "Empty-DB postmortem closed — 5 open questions resolved; governance rules added to prevent recurrence",
+      "Duplicate Postgres service cleaned up — live DB unchanged, 26 predictions + 8 leads intact",
+    ],
+    productUpdate: `Sprint 5 is the last polish layer before public announcement. Five cards already shipped in the first day, three more queued.
+
+What you can see as a user: the Results page now matches the finalized design. Every section from the kidney-health overview header down to the disclaimer has been rebuilt to the design spec — colors, typography, spacing, navy navigation bar, brand footer. The chart itself got the biggest visual update: brighter scenario colors that match your brand identity, a green gradient under the healthy-range line, a red-tinted dialysis zone with a dashed threshold at eGFR 12, and end-point callouts showing where each scenario ends up at the 10-year mark.
+
+One tradeoff worth naming on the chart: the design's brighter yellow line technically fails WCAG AA contrast on white (2.38:1). We went with the design color anyway — pickling into the design language matters more than the contrast number for the trajectory chart specifically, since the shape and position of the line is what carries meaning, not its accessibility to an unsighted user. All the text and buttons on the page remain fully AA-compliant; only the four chart-line strokes are the override. Happy to revisit if you'd rather we darken them.
+
+What's behind the scenes: error monitoring (Sentry) catches any crash in production and alerts us — it scrubs patient report tokens out of every error payload before they ever reach the Sentry dashboard. Analytics (PostHog) captures the conversion funnel so we can answer "of 100 people who land, how many complete labs, how many submit the gate, how many download the PDF." Both are env-gated no-ops until you set the API keys on Vercel, so neither is sending any data yet — the plumbing is there and the code is reviewed, you just flip the switch when you're ready.
+
+What just shipped for you: a new "Launch Metrics" panel row below — total predictions, total leads, opt-in rate, BUN tier distribution, and a recent-leads table with masked emails (first initial + first-char-only email, so it's HIPAA-safe at a glance). Auto-refreshes every 10 minutes. PostHog funnel and Klaviyo email-performance cards are still placeholders — they turn on the moment you set the API keys on the hosting side. After SEO basics (OG tags, sitemap, structured data) and security headers this sprint, we're launch-ready.`,
+    technicalUpdate: `Sprint 5 shipped 6 engineering cards in the first day: LKID-72 (Sentry), LKID-71 (PostHog), LKID-76 (Results design parity), LKID-79 (ResultsView refactor), LKID-80 (chart redesign), LKID-75 (dashboard v2 launch-metrics panels). Two more queued: LKID-73 (SEO), LKID-74 (security headers).
+
+Sentry (LKID-72): @sentry/nextjs v10 + sentry-sdk[fastapi]. Env-gated init on both sides — silent no-op when DSN unset. before_send hook scrubs /results|/gate|/reports/<token> patterns from URLs, exception messages, breadcrumb data, and the extra dict across frontend client/server/edge and backend. Session replay off, traces sample rate 0.1 in prod. Backend has 6 scrubber tests pinning the regex export for frontend parity.
+
+PostHog (LKID-71): posthog-js with person_profiles "identified_only" (we never call posthog.identify), autocapture allowlist of "click" and "submit" (no input events — lab values/names/emails never sent), and explicit exclusions for /client/* and /internal/chart/*. Four custom events — labs_submitted, gate_captured, results_viewed, pdf_downloaded — with no raw PII, only bucketed tier labels (ckd_stage, bun_tier) and a report_token_prefix hash.
+
+Results design parity (LKID-76): rebuilt /results/[token] end-to-end against project/Results.html. Fixed a sitewide font regression — Nunito Sans and Manrope now load via next/font/google at the <html> level instead of being imported locally per-page. Added design tokens (--kh-*, --s-*-bg/-border/-text) in globals.css. Dark navy nav + brand footer now consistent across landing, labs, gate, and results.
+
+ResultsView extract (LKID-79): moved the ready-state JSX of /results/[token] into app/src/components/results/ResultsView.tsx as a pure-presentational component. The page wrapper kept tokenized fetch, PostHog events, and all testids. Zero behavior change.
+
+Chart redesign (LKID-80): palette swapped to the design source (brighter hues — #3FA35B green, #1F2577 navy, #D4A017 amber, #6B6E78 slate). Added SVG healthy-range gradient, red-tinted dialysis band with dashed #E0A0A0 threshold line, and end-point callout circles with live engine-computed eGFR. Chart lines are solid 2.5px round-linecap. Introduced a chrome?: boolean prop so /internal/chart/[token] (PDF render target) keeps its legacy full-chrome layout while /results/[token] shows the design-match version. Inga's palette memo has a SUPERSEDED block at the top explaining the intentional AA-contrast override on the four trajectory strokes.
+
+Dashboard v2 (LKID-75): new GET /client/[slug]/metrics endpoint reads directly from Postgres and returns totals, 7-day windowed counts, opt-in rate (with a min-N gate of 10 to avoid wobbly percentages), BUN tier distribution, and the last 10 captured leads with HIPAA-safe masking (first-char + domain-first-char + TLD, plus first-name initial only). 7 new backend tests cover the endpoint including explicit HIPAA negative-assertions. Frontend LaunchMetrics component polls every 10 minutes and cancels its interval on unmount. PostHog funnel and Klaviyo email-performance panels ship as skeleton placeholders — they turn on automatically once the API keys land on Vercel. 3 non-blocking nits logged as follow-ups: opt-in-rate denominator includes Clerk-webhook leads with no predictions (could exceed 100%), missing @limiter.limit() decorator, sparkline day-buckets not pinned to UTC.
+
+Governance (LKID-68 close-out): added SOP Rule 7 (binding runbook + delta-review requirement on any deploy-touching PR) and Rule 8 (G1 preDeployCommand is fail-closed permanent, no bypass for hotfixes). Railway deployment checklist now classified BINDING with that status in its header. LKID-69 orphan Postgres service verified empty and deleted via Railway GraphQL; post-delete checks passed (live DB unchanged, /health 200).`,
+  },
+  {
     title: "Week 4 — No-Auth Tokenized Flow",
     date: "April 20, 2026",
     sprint: 4,

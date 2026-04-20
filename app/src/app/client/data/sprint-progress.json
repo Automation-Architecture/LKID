@@ -315,11 +315,57 @@
         {
           "id": "LKID-68",
           "title": "Empty-DB postmortem (5 open questions)",
-          "status": "upcoming"
+          "status": "done"
         },
         {
           "id": "LKID-69",
           "title": "Duplicate Postgres service cleanup",
+          "status": "done"
+        }
+      ]
+    },
+    {
+      "name": "Sprint 5 — Launch Readiness",
+      "dates": "Apr 20 - (in progress)",
+      "cards": [
+        {
+          "id": "LKID-72",
+          "title": "Sentry — frontend + backend error monitoring",
+          "status": "done"
+        },
+        {
+          "id": "LKID-71",
+          "title": "PostHog — conversion funnel analytics (labs/gate/results/pdf)",
+          "status": "done"
+        },
+        {
+          "id": "LKID-76",
+          "title": "Results page design parity + sitewide font regression",
+          "status": "done"
+        },
+        {
+          "id": "LKID-79",
+          "title": "Extract Results page into ResultsView component",
+          "status": "done"
+        },
+        {
+          "id": "LKID-80",
+          "title": "Chart redesign — pixel-for-pixel match to design source",
+          "status": "done"
+        },
+        {
+          "id": "LKID-75",
+          "title": "Lee dashboard v2 — launch-metrics panels",
+          "status": "done"
+        },
+        {
+          "id": "LKID-73",
+          "title": "SEO basics — OG tags, sitemap, robots, JSON-LD",
+          "status": "upcoming"
+        },
+        {
+          "id": "LKID-74",
+          "title": "CSP + security headers",
           "status": "upcoming"
         }
       ]
