@@ -1,8 +1,15 @@
-const UPCOMING = [
+type SprintStatus = "done" | "in_progress" | "planned";
+
+const UPCOMING: Array<{
+  name: string;
+  dates: string;
+  status: SprintStatus;
+  deliverables: string[];
+}> = [
   {
     name: "Sprint 3 — Polish & QA",
     dates: "Mar 30 – Apr 9",
-    status: "done" as const,
+    status: "done",
     deliverables: [
       "Visx eGFR trajectory chart (4 lines, responsive)",
       "PDF export via Playwright (pixel-perfect chart fidelity)",
@@ -16,7 +23,7 @@ const UPCOMING = [
   {
     name: "Sprint 4 — No-Auth Tokenized Flow",
     dates: "Apr 19 – Apr 20",
-    status: "done" as const,
+    status: "done",
     deliverables: [
       "New patient funnel: /labs → /gate → /results (no account required)",
       "Report token delivery — each report has a signed shareable link",
@@ -30,7 +37,7 @@ const UPCOMING = [
   {
     name: "Sprint 5 — Launch Readiness",
     dates: "Apr 20 – (in progress)",
-    status: "in_progress" as const,
+    status: "in_progress",
     deliverables: [
       "Shipped — Error monitoring (Sentry) on backend + frontend",
       "Shipped — Conversion analytics (PostHog funnel: labs / gate / results / PDF)",
