@@ -7,7 +7,7 @@
 **Jira:** [SPEC Board](https://automationarchitecture.atlassian.net/jira/software/c/projects/SPEC/boards/329/backlog) | [LKID Board](https://automationarchitecture.atlassian.net/jira/software/c/projects/LKID/boards/363)
 **Repo:** [github.com/Automation-Architecture/LKID](https://github.com/Automation-Architecture/LKID)
 **Specs:** `/Users/brad/IDE/kidneyhood/` (3 docx files)
-**Status:** Sprint 3 COMPLETE (shipped Apr 8). 59/60 cards Done. PRs #22–#32 merged. App live at kidneyhood-automation-architecture.vercel.app.
+**Status:** Sprint 4 COMPLETE (shipped Apr 20 — 13 days ahead of plan). 7 engineering cards Done + LKID-47 backend code shipped. PRs #33–#52 merged. App live at kidneyhood-automation-architecture.vercel.app with no-auth tokenized flow (`/labs` → `/gate/[token]` → `/results/[token]`). G1/G2/G3 guardrails active.
 **Client Dashboard:** https://kidneyhood-automation-architecture.vercel.app/client/lee-a3f8b2 — auto-updated by `scripts/refresh-sprint-progress.py`.
 
 ## Sprint Plan
@@ -17,49 +17,56 @@
 | Sprint 1 — Design Sprint | Mar 20 – Mar 26 (DONE) | 9 (LKID-30–38) | Hi-fi mockup + prototype, Inga sign-off |
 | Sprint 2 — Core Flow | Mar 26 – Apr 2 (DONE) | 17 (LKID-1–3, 6–19) | Auth, DB, API, form, chart — e2e prediction |
 | Sprint 3 — PDF, Polish & QA | Mar 30 – Apr 9 (DONE) | 12 (LKID-4–5, 20–29) | Interactivity, PDF, disclaimers, tests, QA gate |
-| Sprint 4 — No-Auth Tokenized Flow | Apr 19 – May 3 *(proposed — confirm with Brad)* | 6 (LKID-61–66) | Replace Clerk-gated predict/results with `/labs` → `/gate/[token]` → `/results/[token]` + Resend transactional email |
+| Sprint 4 — No-Auth Tokenized Flow | Apr 19 – Apr 20 (DONE) | 7 engineering cards + follow-ups (LKID-61–70) | Replace Clerk-gated flow with `/labs` → `/gate/[token]` → `/results/[token]` + Resend + Klaviyo. Shipped 13 days ahead of plan. |
 
-**Ship date:** April 9, 2026 (shipped). Sprint 4 ship target: May 3, 2026 (proposed).
-**Remaining:** LKID-47 (Klaviyo lead capture) — `create_event()` call subsumed into LKID-62 (TICKET-B). Klaviyo Flow dashboard configuration remains as a manual operational task tracked on LKID-47.
+**Ship date:** April 9, 2026 (Sprint 3). **Sprint 4 shipped:** April 20, 2026.
+**Retrospective:** `agents/husser/drafts/sprint4-retrospective.md` — 18 PRs merged, G1/G2/G3 guardrails added, 4 incidents resolved.
+**Sprint 5 proposal:** `agents/luca/drafts/sprint-5-proposal.md` — 3 theme candidates (Launch Readiness recommended), awaiting Brad sign-off.
+**Brad-hands backlog:** `agents/luca/drafts/brad-action-setup-guide.md` covers Resend DNS, Klaviyo Flow, LKID-68 Q&A, LKID-69 deletion approval, Lee sign-off.
 
 ## What's Next
 
-### Sprint 4 — No-Auth Tokenized Flow (Apr 19 – May 3, proposed)
+### Sprint 5 — Scope pending
 
-**Goal:** Replace the Clerk-gated patient funnel (`/predict` → `/results`) with a no-auth tokenized flow (`/labs` → `/gate/[token]` → `/results/[token]`). Results are stored server-side keyed by an opaque `report_token`; email capture happens after prediction via a separate gate page; Clerk is scoped to `/client/[slug]` only; the PDF report is attached to a Resend transactional email. Engine (`backend/prediction/engine.py`) is frozen — not touched.
+See `agents/luca/drafts/sprint-5-proposal.md` for 3 theme candidates:
+- **Theme A — Launch Readiness** (recommended): PostHog analytics, Sentry error monitoring, SEO basics, CSP headers, Lee dashboard v2
+- **Theme B — Observability**: measurement + alerting foundation before further features
+- **Theme C — Content & Brand**: Inga polish pass on every user-facing surface
 
-**Techspec (approved):** `agents/luca/drafts/techspec-new-flow.md` — §12 has the ticket breakdown, §13 has the resolved decisions from Brad (OQ-1 through OQ-5).
+Awaiting Brad's theme pick + answers to 5 open questions (launch timing, analytics provider, error-monitoring provider, Lee dashboard scope, HIPAA posture). Husser creates cards after selection.
 
-**Sprint dates:** Apr 19 – May 3, 2026 (2 weeks, proposed — confirm with Brad).
+### Sprint 4 — No-Auth Tokenized Flow (DONE — shipped Apr 20, 2026)
 
-#### Sprint 4 Cards
+**Shipped 13 days ahead of plan** in a single autonomous orchestrator run. 18 PRs merged, 7 engineering cards Done, LKID-47 backend code shipped, 3 guardrails added (G1 preDeploy migrations, G2 CI post-deploy smoke, G3 6-hour heartbeat).
 
-| Card | Ticket | Title | Owner | Priority | Dependencies |
-|------|--------|-------|-------|----------|--------------|
-| [LKID-61](https://automationarchitecture.atlassian.net/browse/LKID-61) | A | DB: add predictions table + report_token column | Gay Mark | Medium | — |
-| [LKID-62](https://automationarchitecture.atlassian.net/browse/LKID-62) | B | Backend: rewire POST /predict + new tokenized endpoints (/results, /leads, /reports PDF) | John Donaldson | High | Blocked by LKID-61 |
-| [LKID-63](https://automationarchitecture.atlassian.net/browse/LKID-63) | C | Frontend: new patient funnel pages (/labs, /gate/[token], /results/[token], /internal/chart) + Clerk layout migration | Harshit (+ Inga review) | High | Blocked by LKID-62 |
-| [LKID-64](https://automationarchitecture.atlassian.net/browse/LKID-64) | D | Backend: Resend transactional email template (PDF attached) | John Donaldson (+ Inga sign-off) | Medium | Parallel with LKID-62 |
-| [LKID-65](https://automationarchitecture.atlassian.net/browse/LKID-65) | E | QA: update E2E + a11y tests for new tokenized flow | Yuri | Medium | Blocked by LKID-63 |
-| [LKID-66](https://automationarchitecture.atlassian.net/browse/LKID-66) | F | Frontend cleanup: delete legacy /predict and /results pages after prod smoke test | Harshit | Medium | Blocked by LKID-63, LKID-65 |
+**Full retro:** `agents/husser/drafts/sprint4-retrospective.md`.
 
-**PR chain (per techspec §10):** PR A → PR B → PR C → PR D-equivalent (TICKET-F cleanup). No staging environment (OQ-2) — PRs A+B deploy to prod before PR C's Vercel preview can be fully smoke-tested end-to-end. Wait ≥24h after TICKET-C merges before TICKET-F deletes the old pages.
+#### Sprint 4 Cards (as shipped)
 
-**Stakeholder prerequisites (before TICKET-B merges):**
-- Resend sending domain DNS provisioned (per OQ-1: `reports@kidneyhood.org` or confirmed variant)
-- Klaviyo dedicated subdomain DNS provisioned (e.g. `kl.kidneyhood.org`)
-- `RESEND_API_KEY` set in Railway
+| Card | Title | Owner | Status | PR(s) |
+|------|-------|-------|--------|-------|
+| [LKID-61](https://automationarchitecture.atlassian.net/browse/LKID-61) | DB: predictions table + report_token | Gay Mark | Done | #33 |
+| [LKID-62](https://automationarchitecture.atlassian.net/browse/LKID-62) | Backend: tokenized endpoints | John Donaldson | Done | #35 |
+| [LKID-63](https://automationarchitecture.atlassian.net/browse/LKID-63) | Frontend: new funnel + Clerk migration | Harshit + Inga | Done | #37 |
+| [LKID-64](https://automationarchitecture.atlassian.net/browse/LKID-64) | Resend transactional email template | John + Inga | Done | #34 |
+| [LKID-65](https://automationarchitecture.atlassian.net/browse/LKID-65) | QA: E2E + a11y tests updated | Yuri | Done | #40 |
+| [LKID-66](https://automationarchitecture.atlassian.net/browse/LKID-66) | Delete legacy /predict /auth /results | Harshit | Done | #47 |
+| [LKID-67](https://automationarchitecture.atlassian.net/browse/LKID-67) | Chart WCAG AA contrast (text + SVG) | Harshit + Inga | Done | #48 #49 #50 |
+| [LKID-70](https://automationarchitecture.atlassian.net/browse/LKID-70) | Regen db_schema.sql from migrations | Gay Mark | Done | #43 |
+| [LKID-47](https://automationarchitecture.atlassian.net/browse/LKID-47) | Klaviyo Flow + bun_tier | John | Code Done (#52); Flow config Brad-gated | #52 |
+| [LKID-68](https://automationarchitecture.atlassian.net/browse/LKID-68) | Empty-DB postmortem | Luca | 2/4 AC met; 5 open Qs for Brad | — |
+| [LKID-69](https://automationarchitecture.atlassian.net/browse/LKID-69) | Dup Postgres cleanup | John | Investigation done; deletion Brad-gated | — |
 
-#### Existing-card impact
+**Infrastructure PRs (support):** #36 (chore — landing redesign + techspec), #38 (IS-01 inputs field), #39 (G1 preDeploy), #42 (P0 proxy hotfix), #44 (G2 smoke), #45 (housekeeping), #46 (G3 heartbeat), #51 (Brad setup guide + gitignore).
 
-- **LKID-47 (Klaviyo lead capture)** — the `create_event()` backend call is subsumed into LKID-62. The Klaviyo **Flow configuration** (template + trigger in the Klaviyo dashboard) remains a manual operational step tracked on LKID-47 as originally scoped. LKID-47 is not modified by Sprint 4 planning.
+#### Brad-hands backlog
 
-#### Deferred post-ship polish (not in Sprint 4)
-
-- Treatment decline rates for CKD Stages 3a, 3b, 5 — need Lee confirmation (only Stage 4 confirmed)
-- Additional golden vectors for non-Stage-4 patients
-- Extract shared mock data fixture between E2E and a11y tests
-- Connect GitHub repo to Railway service for auto-deploy on push (currently CLI deploy)
+See `agents/luca/drafts/brad-action-setup-guide.md` for step-by-step:
+1. DNS records for `kidneyhood.org` → flip Resend FROM email
+2. Klaviyo Flow dashboard configuration (profile props + event schema + warm campaign)
+3. LKID-68 postmortem — answer 5 open questions in `lkid-68-postmortem-synthesis.md` §8
+4. LKID-69 deletion approval for the duplicate Postgres service
+5. Lee sign-off on chart palette + optional postmortem share
 
 ### Sprint 3 Retrospective (Done)
 
