@@ -1,0 +1,362 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>KidneyHood — Almost there</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&family=Nunito+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --navy: #1F2577;
+    --navy-deep: #161B5E;
+    --ink: #0E0E12;
+    --ink-2: #2E2F36;
+    --body: #5C5F6A;
+    --muted: #8A8D96;
+    --bg: #F4F5F7;
+    --border: #E4E6EB;
+    --error: #C5352B;
+    --shadow-md: 0 6px 20px rgba(20, 28, 70, .08);
+    --shadow-lg: 0 30px 80px rgba(20, 28, 70, .18);
+  }
+  * { box-sizing: border-box; }
+  html, body { margin: 0; padding: 0; }
+  body {
+    font-family: 'Nunito Sans', system-ui, sans-serif;
+    background: var(--bg);
+    color: var(--ink);
+    font-size: 16px;
+    line-height: 1.55;
+    min-height: 100vh;
+    -webkit-font-smoothing: antialiased;
+    overflow: hidden;
+  }
+  .display { font-family: 'Manrope', sans-serif; font-weight: 800; letter-spacing: -0.01em; line-height: 1.05;}
+
+  /* ---------- dimmed page behind modal ---------- */
+  .nav {
+    background: var(--navy);
+    color: #fff;
+    height: 64px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    position: relative;
+    filter: saturate(.35) opacity(.7);
+  }
+  .nav-inner { display: flex; align-items: center; gap: 48px; font-size: 15px; font-weight: 500;}
+  .nav a { color: rgba(255,255,255,.82); text-decoration: none; padding: 6px 4px; min-height: auto; }
+  .nav .brand { color: #fff; font-weight: 700; font-family: 'Manrope', sans-serif; font-size: 16px;}
+  .nav-brand-mobile { display: none; color: #fff; font-weight: 700; font-family: 'Manrope'; font-size: 16px; padding-left: 20px;}
+  .nav-burger { display: none; background: transparent; border: 0; color: #fff; font-size: 20px; position: absolute; right: 20px; top: 50%; transform: translateY(-50%); min-height: auto; padding: 4px 8px; }
+
+  .behind {
+    padding: 48px 24px;
+    filter: blur(3px) opacity(.6);
+    pointer-events: none;
+    user-select: none;
+  }
+  .behind h1 {
+    font-size: clamp(28px, 4.2vw, 48px);
+    margin: 0 0 28px;
+    color: var(--ink);
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 24px;
+    font-family: 'Manrope', sans-serif;
+    font-weight: 800;
+  }
+  .behind h1 .dl {
+    display: inline-flex;
+    align-items: center;
+    gap: 10px;
+    background: var(--navy);
+    color: #fff;
+    padding: 10px 18px;
+    border-radius: 999px;
+    font-size: 13px;
+    font-weight: 600;
+    box-shadow: 0 0 0 6px rgba(255,255,255,.5), 0 0 0 7px rgba(31,37,119,.12);
+  }
+  .behind .chart-box {
+    background: #fff;
+    border-radius: 14px;
+    padding: 20px 24px;
+    max-width: 1100px;
+    margin: 0 auto 24px;
+    box-shadow: var(--shadow-md);
+    display: grid;
+    grid-template-columns: 2fr 1fr;
+    gap: 28px;
+  }
+  .behind .chart-box h3 { color: var(--navy); font-size: 14px; margin: 0 0 12px; display: flex; align-items: center; gap: 8px;}
+  .behind .chart-box h3::before { content: ""; width: 8px; height: 8px; background: var(--navy); border-radius: 999px;}
+  .behind .fake-chart { height: 220px; border-radius: 8px; background: linear-gradient(180deg, rgba(108,194,74,.12), rgba(108,194,74,0)); position: relative;}
+  .behind .fake-chart svg { width: 100%; height: 100%; }
+  .scenarios-list { display: flex; flex-direction: column; gap: 12px; font-size: 13px;}
+  .scenarios-list .row { display: flex; align-items: center; gap: 10px; color: var(--ink-2); font-weight: 500;}
+  .scenarios-list .sw { width: 18px; height: 18px; border-radius: 4px; display: grid; place-items: center; flex-shrink: 0;}
+  .sw.g { background: rgba(108,194,74,.18); }
+  .sw.b { background: rgba(31,37,119,.18); }
+  .sw.y { background: rgba(235,190,40,.22); }
+  .sw.k { background: rgba(60,60,70,.15); }
+
+  .overview-head { max-width: 1100px; margin: 32px auto 12px; display: flex; align-items: center; gap: 10px; color: var(--navy); font-weight: 700; font-family: 'Manrope'; font-size: 14px;}
+  .overview-head::before { content: ""; width: 8px; height: 8px; background: var(--navy); border-radius: 999px;}
+  .tabs { max-width: 1100px; margin: 0 auto; display: grid; grid-template-columns: repeat(4, 1fr); gap: 16px; }
+  .tabs .t { text-align: center; padding: 12px 0; border-radius: 8px; font-weight: 700; font-size: 15px; font-family: 'Manrope';}
+  .tabs .t.a { background: rgba(108,194,74,.15); color: #1F7A3A;}
+  .tabs .t.b { background: rgba(31,37,119,.10); color: var(--navy);}
+  .tabs .t.c { background: rgba(235,170,40,.15); color: #8A5B0E;}
+  .tabs .t.d { background: rgba(60,60,70,.08); color: var(--ink-2);}
+
+  /* ---------- Modal ---------- */
+  .scrim {
+    position: fixed;
+    inset: 0;
+    background: rgba(20, 28, 70, .35);
+    display: grid;
+    place-items: center;
+    padding: 24px;
+    z-index: 50;
+  }
+  .modal {
+    width: 100%;
+    max-width: 500px;
+    background: #fff;
+    border-radius: 14px;
+    padding: 40px 48px 36px;
+    box-shadow: var(--shadow-lg);
+    text-align: center;
+    position: relative;
+  }
+  .lock {
+    width: 48px; height: 48px;
+    border-radius: 999px;
+    background: #EEF0F5;
+    display: grid; place-items: center;
+    margin: 0 auto 18px;
+  }
+  .lock svg { color: var(--ink-2); }
+  .modal h2 {
+    font-family: 'Manrope', sans-serif;
+    font-weight: 700;
+    color: var(--navy);
+    margin: 0 0 10px;
+    font-size: clamp(22px, 2.2vw, 26px);
+    line-height: 1.2;
+    letter-spacing: -.01em;
+  }
+  .modal .lede {
+    color: var(--body);
+    font-size: 14px;
+    margin: 0 auto 22px;
+    max-width: 380px;
+    line-height: 1.55;
+  }
+  .field {
+    margin-bottom: 10px;
+    text-align: left;
+  }
+  .field input {
+    width: 100%;
+    height: 48px;
+    padding: 0 16px;
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    font-size: 15px;
+    color: var(--ink);
+    background: #fff;
+    font-family: inherit;
+    min-height: 48px;
+    transition: border-color .15s, box-shadow .15s;
+  }
+  .field input::placeholder { color: #9DA0A9; }
+  .field input:focus {
+    outline: none;
+    border-color: var(--navy);
+    box-shadow: 0 0 0 3px rgba(31,37,119,.12);
+  }
+  .field.error input { border-color: var(--error); }
+  .field .err-msg {
+    display: none;
+    color: var(--error);
+    font-size: 12px;
+    margin-top: 4px;
+  }
+  .field.error .err-msg { display: block; }
+
+  .submit-row {
+    display: flex;
+    justify-content: center;
+    margin-top: 20px;
+    margin-bottom: 18px;
+  }
+  .cta-pill {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    background: var(--navy);
+    color: #fff;
+    border: 0;
+    padding: 16px 60px;
+    border-radius: 999px;
+    font-size: 16px;
+    font-weight: 600;
+    cursor: pointer;
+    font-family: inherit;
+    box-shadow: 0 0 0 6px rgba(255,255,255,.7), 0 0 0 7px rgba(31,37,119,.18);
+    transition: transform .15s;
+    min-width: 220px;
+  }
+  .cta-pill:hover { transform: translateY(-1px); }
+  .cta-pill:disabled { opacity: .6; cursor: not-allowed; transform: none; }
+
+  .reassure {
+    color: var(--muted);
+    font-size: 13px;
+    line-height: 1.55;
+    margin: 0;
+  }
+
+  /* mobile */
+  @media (max-width: 640px) {
+    .nav-inner { display: none; }
+    .nav { justify-content: space-between; padding: 0; }
+    .nav-brand-mobile, .nav-burger { display: block; }
+
+    .behind { padding: 24px 16px; }
+    .behind h1 { font-size: 22px; }
+    .behind h1 .dl { font-size: 11px; padding: 8px 12px;}
+    .behind .chart-box { grid-template-columns: 1fr; padding: 14px; gap: 14px; }
+    .tabs { grid-template-columns: repeat(2, 1fr); gap: 10px;}
+
+    .scrim { padding: 0; align-items: flex-start; }
+    .modal {
+      max-width: 420px;
+      padding: 36px 28px 32px;
+      border-radius: 16px;
+      margin: 48px auto;
+    }
+    .modal h2 { font-size: 24px; line-height: 1.2;}
+    .cta-pill { width: 100%; }
+  }
+</style>
+</head>
+<body>
+
+<!-- dimmed nav behind modal -->
+<nav class="nav" aria-hidden="true">
+  <div class="nav-inner">
+    <span class="brand">KidneyHood.org</span>
+  </div>
+</nav>
+
+<!-- dimmed results preview behind modal -->
+<div class="behind" aria-hidden="true">
+  <h1>
+    Kidney Health Overview
+    <span class="dl">Download Your Results ↓</span>
+  </h1>
+  <div class="chart-box">
+    <div>
+      <h3>Your Future Kidney Function</h3>
+      <div class="fake-chart">
+        <svg viewBox="0 0 520 220" preserveAspectRatio="none">
+          <path d="M30 40 C 120 50, 200 70, 280 120 S 420 195, 500 205 L 500 215 L 30 215 Z" fill="rgba(108,194,74,.15)"/>
+          <path d="M30 45 C 120 55, 200 75, 280 125 S 420 200, 500 210" fill="none" stroke="#6CC24A" stroke-width="2"/>
+          <path d="M30 50 C 120 60, 200 80, 280 130 S 420 190, 500 205" fill="none" stroke="#3FA35B" stroke-width="2"/>
+          <path d="M30 55 C 120 65, 200 85, 280 135 S 420 200, 500 215" fill="none" stroke="#1F7A3A" stroke-width="2"/>
+        </svg>
+      </div>
+    </div>
+    <div>
+      <h3>Scenarios</h3>
+      <div class="scenarios-list">
+        <div class="row"><span class="sw g"></span>Healthy range</div>
+        <div class="row"><span class="sw b"></span>Stable range</div>
+        <div class="row"><span class="sw y"></span>Higher risk</div>
+        <div class="row"><span class="sw k"></span>No treatment</div>
+      </div>
+    </div>
+  </div>
+  <div class="overview-head">Scenario Overview</div>
+  <div class="tabs">
+    <div class="t a">BUN &lt; 12</div>
+    <div class="t b">BUN 13-17</div>
+    <div class="t c">BUN 18-24</div>
+    <div class="t d">No Treatment</div>
+  </div>
+</div>
+
+<!-- ---------- Modal scrim ---------- -->
+<div class="scrim" role="dialog" aria-modal="true" aria-labelledby="gateTitle">
+  <form class="modal" id="gateForm" novalidate>
+    <div class="lock" aria-hidden="true">
+      <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <rect x="4" y="11" width="16" height="10" rx="2"/>
+        <path d="M8 11V7a4 4 0 018 0v4"/>
+        <circle cx="12" cy="16" r="1.2" fill="currentColor" stroke="none"/>
+      </svg>
+    </div>
+
+    <h2 id="gateTitle">Almost there — your results are ready!</h2>
+    <p class="lede">We've prepared your kidney health report based on the information you entered. Enter your email to view your results and receive a copy for later.</p>
+
+    <div class="field" id="nameField">
+      <input id="fullName" name="name" type="text" placeholder="Enter Your Full Name" autocomplete="name" required/>
+      <div class="err-msg">Please enter your name</div>
+    </div>
+
+    <div class="field" id="emailField">
+      <input id="email" name="email" type="email" placeholder="Enter Your Email" autocomplete="email" required/>
+      <div class="err-msg">Please enter a valid email</div>
+    </div>
+
+    <div class="submit-row">
+      <button type="submit" class="cta-pill" id="submitBtn">View my report</button>
+    </div>
+
+    <p class="reassure">We'll never spam you or share your email.<br/>Your information is secure and will not be shared.</p>
+  </form>
+</div>
+
+<script>
+(function(){
+  const form = document.getElementById('gateForm');
+  const nameField = document.getElementById('nameField');
+  const emailField = document.getElementById('emailField');
+  const submit = document.getElementById('submitBtn');
+  const emailRe = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+
+  const validate = () => {
+    const name = form.elements.name.value.trim();
+    const email = form.elements.email.value.trim();
+    nameField.classList.toggle('error', !name);
+    emailField.classList.toggle('error', !emailRe.test(email));
+    return name && emailRe.test(email);
+  };
+
+  form.querySelectorAll('input').forEach(i => {
+    i.addEventListener('input', () => {
+      const wrap = i.closest('.field');
+      if (wrap.classList.contains('error')) validate();
+    });
+  });
+
+  form.addEventListener('submit', (e) => {
+    e.preventDefault();
+    if (!validate()) return;
+    submit.disabled = true;
+    submit.textContent = 'Preparing your report…';
+    setTimeout(() => {
+      window.location.href = 'Results.html';
+    }, 1400);
+  });
+})();
+</script>
+</body>
+</html>

@@ -1,0 +1,599 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>KidneyHood — Enter your lab results</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&family=Nunito+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --navy: #1F2577;
+    --navy-deep: #161B5E;
+    --ink: #0E0E12;
+    --ink-2: #2E2F36;
+    --body: #5C5F6A;
+    --muted: #8A8D96;
+    --bg: #F4F5F7;
+    --bg-2: #EEF0F3;
+    --card: #FFFFFF;
+    --border: #E4E6EB;
+    --border-2: #DADDE3;
+    --error: #C5352B;
+    --shadow-sm: 0 1px 2px rgba(16, 24, 40, .04);
+    --shadow-md: 0 6px 20px rgba(20, 28, 70, .08);
+    --shadow-lg: 0 20px 50px rgba(20, 28, 70, .12);
+  }
+  * { box-sizing: border-box; }
+  html, body { margin: 0; padding: 0; }
+  body {
+    font-family: 'Nunito Sans', system-ui, sans-serif;
+    background: var(--bg);
+    color: var(--ink);
+    font-size: 16px;
+    line-height: 1.55;
+    min-height: 100vh;
+    display: flex;
+    flex-direction: column;
+    -webkit-font-smoothing: antialiased;
+  }
+  .display {
+    font-family: 'Manrope', sans-serif;
+    font-weight: 800;
+    letter-spacing: -0.01em;
+    line-height: 1.05;
+    text-transform: uppercase;
+  }
+
+  /* ---------- Nav ---------- */
+  .nav {
+    background: var(--navy);
+    color: #fff;
+    height: 64px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    position: relative;
+    flex-shrink: 0;
+  }
+  .nav-inner { display: flex; align-items: center; gap: 48px; font-size: 15px; font-weight: 500;}
+  .nav a {
+    color: rgba(255,255,255,.82);
+    text-decoration: none;
+    padding: 6px 4px;
+    min-height: auto;
+    transition: color .15s;
+  }
+  .nav a:hover { color: #fff; }
+  .nav .brand { color: #fff; font-weight: 700; font-family: 'Manrope', sans-serif; letter-spacing: -0.01em; font-size: 16px;}
+  .nav-burger { display: none; background: transparent; border: 0; color: #fff; font-size: 20px; position: absolute; right: 20px; top: 50%; transform: translateY(-50%); min-height: auto; padding: 4px 8px;}
+  .nav-brand-mobile { display: none; color: #fff; font-weight: 700; font-family: 'Manrope'; font-size: 16px; letter-spacing: -.01em; padding-left: 20px;}
+
+  /* ---------- Page ---------- */
+  main {
+    flex: 1;
+    padding: 64px 24px 96px;
+    position: relative;
+    overflow: hidden;
+  }
+  .wrap { max-width: 880px; margin: 0 auto; position: relative; z-index: 1; }
+
+  /* kidney watermark (pair flanking) */
+  .watermark {
+    position: absolute;
+    inset: 0;
+    pointer-events: none;
+    z-index: 0;
+    overflow: hidden;
+  }
+  .watermark svg {
+    position: absolute;
+    top: 50%;
+    transform: translateY(-42%);
+    width: 420px;
+    opacity: .35;
+  }
+  .watermark .wl { left: -80px; }
+  .watermark .wr { right: -80px; transform: translateY(-42%) scaleX(-1); }
+
+  h1.title {
+    text-align: center;
+    font-size: clamp(34px, 5.4vw, 64px);
+    color: var(--ink);
+    margin: 0 0 18px;
+  }
+  .lede {
+    text-align: center;
+    color: var(--body);
+    font-size: 14px;
+    margin: 0 auto 36px;
+    max-width: 420px;
+    line-height: 1.5;
+  }
+
+  /* ---------- Form card ---------- */
+  .card {
+    background: #fff;
+    border-radius: 12px;
+    box-shadow: var(--shadow-md);
+    overflow: hidden;
+  }
+  .card-head {
+    background: var(--navy);
+    color: #fff;
+    text-align: center;
+    padding: 16px 20px;
+    font-weight: 600;
+    font-size: 17px;
+  }
+  .card-body {
+    padding: 32px 36px 28px;
+  }
+
+  .grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 24px 32px;
+    margin-bottom: 8px;
+  }
+  .field label {
+    display: block;
+    font-size: 15px;
+    font-weight: 600;
+    color: var(--ink);
+    margin-bottom: 8px;
+  }
+  .input-wrap {
+    position: relative;
+  }
+  .input-wrap input {
+    width: 100%;
+    height: 48px;
+    padding: 0 70px 0 18px;
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    font-size: 15px;
+    color: var(--ink);
+    background: #fff;
+    font-family: inherit;
+    transition: border-color .15s, box-shadow .15s;
+    min-height: 48px;
+  }
+  .input-wrap input::placeholder { color: #B5B8C0; }
+  .input-wrap input:focus {
+    outline: none;
+    border-color: var(--navy);
+    box-shadow: 0 0 0 3px rgba(31,37,119,.12);
+  }
+  .input-wrap .suffix {
+    position: absolute;
+    right: 16px;
+    top: 50%;
+    transform: translateY(-50%);
+    color: var(--muted);
+    font-size: 13px;
+    font-weight: 500;
+    pointer-events: none;
+  }
+  .hint {
+    margin-top: 6px;
+    font-size: 12px;
+    color: var(--muted);
+  }
+  .field.error input { border-color: var(--error); }
+  .field.error .hint { color: var(--error); }
+
+  /* optional section ---- */
+  .optional-bar {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-top: 24px;
+  }
+  .add-link {
+    color: var(--navy);
+    font-weight: 600;
+    font-size: 14px;
+    background: transparent;
+    border: 0;
+    cursor: pointer;
+    padding: 8px 0;
+    min-height: auto;
+    font-family: inherit;
+  }
+  .add-link:hover { text-decoration: underline; }
+  .add-btn {
+    background: var(--navy);
+    color: #fff;
+    border: 0;
+    border-radius: 8px;
+    padding: 10px 22px;
+    font-size: 14px;
+    font-weight: 600;
+    cursor: pointer;
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    font-family: inherit;
+    min-height: 40px;
+    transition: background .15s;
+  }
+  .add-btn:hover { background: var(--navy-deep); }
+  .add-btn.expanded { background: #1F8A3A; }
+  .add-btn.expanded:hover { background: #146C2B; }
+  .add-btn .icon { font-size: 18px; line-height: 1; font-weight: 400; }
+
+  .optional-fields {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 24px 32px;
+    margin-top: 22px;
+    overflow: hidden;
+    max-height: 0;
+    transition: max-height .3s ease, margin-top .3s ease;
+  }
+  .optional-fields.open {
+    max-height: 600px;
+    margin-top: 22px;
+  }
+
+  .divider {
+    height: 1px;
+    background: var(--border);
+    margin: 28px 0 24px;
+  }
+
+  .submit-row {
+    display: flex;
+    justify-content: center;
+    padding-bottom: 8px;
+  }
+  .cta-pill {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    background: var(--navy);
+    color: #fff;
+    border: 0;
+    padding: 16px 56px;
+    border-radius: 999px;
+    font-size: 16px;
+    font-weight: 600;
+    cursor: pointer;
+    font-family: 'Nunito Sans', sans-serif;
+    box-shadow: 0 0 0 8px rgba(255,255,255,.7), 0 0 0 9px rgba(31,37,119,.16);
+    transition: transform .15s, box-shadow .15s;
+  }
+  .cta-pill:hover { transform: translateY(-1px); }
+  .cta-pill:disabled { opacity: .5; cursor: not-allowed; transform: none; }
+
+  /* ---------- Footer ---------- */
+  footer {
+    background: var(--bg);
+    padding: 28px 24px 48px;
+    text-align: center;
+    font-size: 13px;
+    color: var(--muted);
+  }
+  footer .brand-foot { color: var(--navy); font-weight: 700; font-family: 'Manrope', sans-serif; font-size: 16px; margin-bottom: 10px;}
+  footer nav { display: flex; gap: 24px; justify-content: center;}
+  footer a { color: var(--muted); text-decoration: none; min-height: auto; padding: 2px 0;}
+  footer a:hover { color: var(--ink-2); }
+
+  /* ---------- Mobile nav overlay ---------- */
+  .m-menu {
+    position: fixed; inset: 0; background: #fff; z-index: 10000;
+    display: flex; flex-direction: column;
+    transform: translateX(100%); transition: transform .28s ease;
+    visibility: hidden;
+  }
+  .m-menu.open { transform: translateX(0); visibility: visible; }
+  .m-menu-top {
+    background: var(--navy); color: #fff; height: 64px;
+    display: flex; align-items: center; justify-content: space-between;
+    padding: 0 20px; flex-shrink: 0;
+  }
+  .m-menu-top .brand { font-family: 'Manrope', sans-serif; font-weight: 700; font-size: 17px; letter-spacing: -.01em;}
+  .m-menu-close { background: transparent; border: 0; color: #fff; font-size: 24px; line-height: 1; cursor: pointer; min-height: 44px; min-width: 44px; display: grid; place-items: center; padding: 0;}
+  .m-menu-list { padding: 32px 28px 0; display: flex; flex-direction: column; gap: 22px; }
+  .m-menu-list a { color: var(--ink); font-size: 17px; text-decoration: none; min-height: auto; padding: 4px 0; font-weight: 400;}
+  .m-menu-cta { margin: auto 28px 48px; padding-top: 32px; display: flex; justify-content: center; }
+  .m-menu-cta .cta-pill { width: 100%; max-width: 340px; padding: 18px 28px; text-align: center; justify-content: center; }
+
+  /* ---------- Toast ---------- */
+  .toast {
+    position: fixed;
+    bottom: 24px;
+    left: 50%;
+    transform: translateX(-50%) translateY(20px);
+    background: var(--navy);
+    color: #fff;
+    padding: 14px 22px;
+    border-radius: 12px;
+    box-shadow: var(--shadow-lg);
+    font-size: 14px;
+    font-weight: 500;
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity .25s, transform .25s;
+    z-index: 9999;
+  }
+  .toast.show { opacity: 1; transform: translateX(-50%) translateY(0); }
+
+  /* ---------- Mobile ---------- */
+  @media (max-width: 768px) {
+    .nav { justify-content: space-between; padding: 0; }
+    .nav-inner { display: none; }
+    .nav-burger { display: block; }
+    .nav-brand-mobile { display: block; }
+
+    main { padding: 28px 16px 60px; }
+    h1.title { font-size: 30px; margin-bottom: 12px; }
+    .lede { font-size: 14px; margin-bottom: 20px; }
+
+    .card { border-radius: 0; margin: 0 -16px; }
+    .card-head { font-size: 15px; }
+    .card-body { padding: 24px 20px; }
+    .grid, .optional-fields { grid-template-columns: 1fr; gap: 20px; }
+
+    .optional-bar { flex-direction: column; align-items: stretch; gap: 14px; margin-top: 20px; }
+    .add-btn { justify-content: center; padding: 16px 22px; min-height: 52px; font-size: 16px; width: 100%; }
+    .add-link { text-align: left; }
+
+    .watermark svg { width: 220px; opacity: .18; }
+    .watermark .wl { left: -120px; top: 30%; }
+    .watermark .wr { right: -120px; top: 30%; }
+
+    .cta-pill { padding: 16px 36px; width: 100%; max-width: 320px; }
+
+    .divider { margin: 24px 0 20px; }
+  }
+</style>
+</head>
+<body>
+
+<!-- ========== NAV ========== -->
+<nav class="nav" data-screen-label="01 Nav">
+  <div class="nav-inner">
+    <a href="Landing Page.html" class="brand">KidneyHood.org</a>
+  </div>
+</nav>
+
+<!-- Mobile nav overlay -->
+<div class="m-menu" id="mMenu" role="dialog" aria-label="Menu" aria-hidden="true">
+  <div class="m-menu-top">
+    <span class="brand">KidneyHood.org</span>
+    <button class="m-menu-close" id="mMenuClose" aria-label="Close">✕</button>
+  </div>
+  <nav class="m-menu-list">
+    <a href="Landing Page.html#how">How it works</a>
+    <a href="Landing Page.html#preview">Preview</a>
+    <a href="#about">About</a>
+    <a href="#contact">Contact</a>
+  </nav>
+  <div class="m-menu-cta">
+    <a href="Lab Form.html" class="cta-pill" style="text-decoration:none">Start your check</a>
+  </div>
+</div>
+
+<!-- ========== MAIN ========== -->
+<main data-screen-label="02 Lab form">
+  <div class="watermark" aria-hidden="true">
+    <svg class="wl" viewBox="0 0 240 260" xmlns="http://www.w3.org/2000/svg">
+      <defs>
+        <radialGradient id="kwl" cx="45%" cy="40%" r="70%">
+          <stop offset="0%" stop-color="#DCECE2"/>
+          <stop offset="70%" stop-color="#C3D9CA"/>
+          <stop offset="100%" stop-color="#A7C3B2"/>
+        </radialGradient>
+      </defs>
+      <path fill="url(#kwl)" d="M96 20c-46 0-76 40-76 90s28 110 70 124c24 8 48-4 52-28 4-22-8-34-14-50-8-22 8-34 22-48 18-18 22-40 10-58C148 32 126 20 96 20z"/>
+      <g fill="#fff" opacity=".55">
+        <ellipse cx="64" cy="76" rx="8" ry="18" transform="rotate(-18 64 76)"/>
+        <ellipse cx="88" cy="110" rx="4" ry="10" transform="rotate(-18 88 110)"/>
+      </g>
+    </svg>
+    <svg class="wr" viewBox="0 0 240 260" xmlns="http://www.w3.org/2000/svg">
+      <defs>
+        <radialGradient id="kwr" cx="45%" cy="40%" r="70%">
+          <stop offset="0%" stop-color="#DCECE2"/>
+          <stop offset="70%" stop-color="#C3D9CA"/>
+          <stop offset="100%" stop-color="#A7C3B2"/>
+        </radialGradient>
+      </defs>
+      <path fill="url(#kwr)" d="M96 20c-46 0-76 40-76 90s28 110 70 124c24 8 48-4 52-28 4-22-8-34-14-50-8-22 8-34 22-48 18-18 22-40 10-58C148 32 126 20 96 20z"/>
+      <g fill="#fff" opacity=".55">
+        <ellipse cx="64" cy="76" rx="8" ry="18" transform="rotate(-18 64 76)"/>
+      </g>
+    </svg>
+  </div>
+
+  <div class="wrap">
+    <h1 class="title display">Enter your lab results</h1>
+    <p class="lede">You can find these numbers in your blood test results.<br/>If you're not sure, you can still continue.</p>
+
+    <form class="card" id="labForm" novalidate>
+      <div class="card-head">Use values from your recent blood test</div>
+      <div class="card-body">
+
+        <div class="grid">
+          <div class="field">
+            <label for="bun">BUN</label>
+            <div class="input-wrap">
+              <input id="bun" name="bun" type="text" inputmode="decimal" placeholder="e.g. 35" autocomplete="off"/>
+              <span class="suffix">mg/dL</span>
+            </div>
+            <div class="hint">Normal range: 7-20</div>
+          </div>
+
+          <div class="field">
+            <label for="creatinine">Creatinine</label>
+            <div class="input-wrap">
+              <input id="creatinine" name="creatinine" type="text" inputmode="decimal" placeholder="e.g. 2.1" autocomplete="off"/>
+              <span class="suffix">mg/dL</span>
+            </div>
+            <div class="hint">Normal range: 0.6-1.2</div>
+          </div>
+
+          <div class="field">
+            <label for="potassium">Potassium</label>
+            <div class="input-wrap">
+              <input id="potassium" name="potassium" type="text" inputmode="decimal" placeholder="e.g. 4.5" autocomplete="off"/>
+              <span class="suffix">mg/dL</span>
+            </div>
+            <div class="hint">Normal range: 3.5-5.0</div>
+          </div>
+
+          <div class="field">
+            <label for="age">Age</label>
+            <div class="input-wrap">
+              <input id="age" name="age" type="text" inputmode="numeric" placeholder="e.g. 58" autocomplete="off"/>
+              <span class="suffix">years</span>
+            </div>
+            <div class="hint" style="visibility:hidden">&nbsp;</div>
+          </div>
+        </div>
+
+        <div class="optional-bar">
+          <button type="button" class="add-link" id="toggleOptional" aria-expanded="false">Add more details (optional)</button>
+          <button type="button" class="add-btn" id="addBtn" aria-label="Add more fields" aria-expanded="false"><span id="addBtnLabel">Add</span> <span class="icon" id="addBtnIcon">+</span></button>
+        </div>
+
+        <div class="optional-fields" id="optionalFields">
+          <div class="field">
+            <label for="hemoglobin">Hemoglobin</label>
+            <div class="input-wrap">
+              <input id="hemoglobin" name="hemoglobin" type="text" inputmode="decimal" placeholder="e.g. 11.5"/>
+              <span class="suffix">g/dL</span>
+            </div>
+            <div class="hint">&nbsp;</div>
+          </div>
+          <div class="field">
+            <label for="glucose">Glucose</label>
+            <div class="input-wrap">
+              <input id="glucose" name="glucose" type="text" inputmode="decimal" placeholder="e.g. 105"/>
+              <span class="suffix">mg/dL</span>
+            </div>
+            <div class="hint">&nbsp;</div>
+          </div>
+        </div>
+
+        <div class="divider"></div>
+
+        <div class="submit-row">
+          <button type="submit" class="cta-pill" id="submitBtn">See my results</button>
+        </div>
+
+      </div>
+    </form>
+  </div>
+</main>
+
+<!-- ========== FOOTER ========== -->
+<footer data-screen-label="03 Footer">
+  <div class="brand-foot">KidneyHood.org</div>
+  <nav>
+    <a href="#">Privacy</a>
+    <a href="#">Disclaimer</a>
+    <a href="#">Contact</a>
+  </nav>
+</footer>
+
+<div class="toast" id="toast">Calculating your results…</div>
+
+<script>
+(function(){
+  const burger = document.getElementById('navBurger');
+  const menu = document.getElementById('mMenu');
+  const close = document.getElementById('mMenuClose');
+  const open = () => { menu.classList.add('open'); menu.setAttribute('aria-hidden','false'); document.body.style.overflow='hidden'; };
+  const shut = () => { menu.classList.remove('open'); menu.setAttribute('aria-hidden','true'); document.body.style.overflow=''; };
+  burger && burger.addEventListener('click', open);
+  close && close.addEventListener('click', shut);
+  menu && menu.querySelectorAll('a').forEach(a => a.addEventListener('click', shut));
+  document.addEventListener('keydown', e => { if (e.key === 'Escape') shut(); });
+})();
+(function(){
+  const form = document.getElementById('labForm');
+  const toggle = document.getElementById('toggleOptional');
+  const addBtn = document.getElementById('addBtn');
+  const optional = document.getElementById('optionalFields');
+  const toast = document.getElementById('toast');
+  const submitBtn = document.getElementById('submitBtn');
+
+  const openOptional = () => {
+    optional.classList.add('open');
+    toggle.setAttribute('aria-expanded', 'true');
+    toggle.textContent = 'Hide optional details';
+    addBtn.classList.add('expanded');
+    addBtn.setAttribute('aria-expanded', 'true');
+    document.getElementById('addBtnIcon').textContent = '−';
+  };
+  const closeOptional = () => {
+    optional.classList.remove('open');
+    toggle.setAttribute('aria-expanded', 'false');
+    toggle.textContent = 'Add more details (optional)';
+    addBtn.classList.remove('expanded');
+    addBtn.setAttribute('aria-expanded', 'false');
+    document.getElementById('addBtnIcon').textContent = '+';
+  };
+  toggle.addEventListener('click', () => {
+    optional.classList.contains('open') ? closeOptional() : openOptional();
+  });
+  addBtn.addEventListener('click', () => {
+    optional.classList.contains('open') ? closeOptional() : openOptional();
+  });
+
+  // inline validation: numeric / non-negative / plausible
+  const constraints = {
+    bun:        { min: 0,  max: 300, required: true },
+    creatinine: { min: 0,  max: 30,  required: true },
+    potassium:  { min: 0,  max: 15,  required: true },
+    age:        { min: 0,  max: 120, required: true, integer: true },
+  };
+  const validateField = (input) => {
+    const wrap = input.closest('.field');
+    const c = constraints[input.name];
+    if (!c) return true;
+    const v = input.value.trim();
+    if (!v) { wrap.classList.remove('error'); return !c.required; }
+    const n = Number(v);
+    const ok = !isNaN(n) && n >= c.min && n <= c.max && (!c.integer || Number.isInteger(n));
+    wrap.classList.toggle('error', !ok);
+    return ok;
+  };
+  form.querySelectorAll('input').forEach(i => {
+    i.addEventListener('blur', () => validateField(i));
+    i.addEventListener('input', () => {
+      if (i.closest('.field').classList.contains('error')) validateField(i);
+    });
+  });
+
+  form.addEventListener('submit', (e) => {
+    e.preventDefault();
+    let allValid = true;
+    Object.keys(constraints).forEach(name => {
+      const input = form.elements[name];
+      if (!validateField(input)) allValid = false;
+    });
+    if (!allValid) {
+      toast.textContent = 'Please check the highlighted fields';
+      toast.classList.add('show');
+      setTimeout(() => toast.classList.remove('show'), 2200);
+      const firstErr = form.querySelector('.field.error input');
+      if (firstErr) firstErr.focus();
+      return;
+    }
+    submitBtn.disabled = true;
+    submitBtn.textContent = 'Calculating…';
+    toast.textContent = 'Calculating your results…';
+    toast.classList.add('show');
+    setTimeout(() => {
+      window.location.href = 'Email Gate.html';
+    }, 1200);
+  });
+})();
+</script>
+</body>
+</html>

@@ -1,0 +1,945 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>KidneyHood — Design Handoff</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&family=Nunito+Sans:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --navy: #1F2577;
+    --navy-deep: #161B5E;
+    --ink: #0E0E12;
+    --ink-2: #2E2F36;
+    --body: #5C5F6A;
+    --muted: #8A8D96;
+    --bg: #F4F5F7;
+    --bg-2: #EEF0F3;
+    --card: #FFFFFF;
+    --border: #E4E6EB;
+    --border-2: #DADDE3;
+    --lime: #6CC24A;
+    --green-1: #1F7A3A;
+    --amber: #EBBE28;
+    --amber-text: #8A5B0E;
+    --radius: 14px;
+    --shadow-sm: 0 1px 2px rgba(16,24,40,.04);
+    --shadow-md: 0 6px 20px rgba(20,28,70,.08);
+  }
+  * { box-sizing: border-box; }
+  html, body { margin: 0; padding: 0; }
+  body {
+    font-family: 'Nunito Sans', system-ui, sans-serif;
+    background: var(--bg);
+    color: var(--ink);
+    font-size: 15px;
+    line-height: 1.6;
+    -webkit-font-smoothing: antialiased;
+  }
+  .display { font-family: 'Manrope', sans-serif; font-weight: 800; letter-spacing: -.015em; line-height: 1.1;}
+  .mono { font-family: 'JetBrains Mono', ui-monospace, monospace; font-size: 13px; }
+
+  /* ---------- Doc chrome ---------- */
+  .doc-top {
+    background: var(--navy);
+    color: #fff;
+    padding: 14px 40px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    position: sticky;
+    top: 0;
+    z-index: 20;
+  }
+  .doc-top .brand {
+    font-family: 'Manrope', sans-serif; font-weight: 800; font-size: 15px; letter-spacing: -.01em;
+  }
+  .doc-top .meta { font-size: 12px; color: rgba(255,255,255,.7); }
+  .doc-top .meta span { margin-left: 16px; }
+  .doc-top .meta span::before { content: "●"; margin-right: 8px; color: var(--lime); font-size: 8px; vertical-align: middle; }
+
+  /* ---------- Cover ---------- */
+  .cover {
+    background: #fff;
+    padding: 80px 80px 64px;
+    border-bottom: 1px solid var(--border);
+  }
+  .kicker {
+    font-family: 'Manrope', sans-serif;
+    font-size: 12px;
+    font-weight: 700;
+    letter-spacing: .18em;
+    text-transform: uppercase;
+    color: var(--navy);
+    margin-bottom: 18px;
+  }
+  .kicker::before { content: "▸ "; font-size: 14px; color: var(--lime);}
+  .cover h1 {
+    font-size: clamp(38px, 5vw, 62px);
+    color: var(--ink);
+    margin: 0 0 18px;
+    max-width: 900px;
+  }
+  .cover h1 em { font-style: normal; color: var(--navy); }
+  .cover .lede {
+    font-size: 18px;
+    color: var(--body);
+    max-width: 720px;
+    margin-bottom: 40px;
+    line-height: 1.55;
+  }
+  .cover-meta {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 32px;
+    max-width: 900px;
+    padding-top: 28px;
+    border-top: 1px solid var(--border);
+  }
+  .cover-meta dt {
+    font-family: 'Manrope', sans-serif;
+    font-size: 11px;
+    font-weight: 700;
+    letter-spacing: .14em;
+    text-transform: uppercase;
+    color: var(--muted);
+    margin-bottom: 6px;
+  }
+  .cover-meta dd {
+    margin: 0;
+    font-size: 14px;
+    color: var(--ink-2);
+    font-weight: 500;
+  }
+
+  /* ---------- Sections ---------- */
+  main { padding: 0 40px 80px; }
+  .section {
+    max-width: 1280px;
+    margin: 0 auto;
+    padding: 72px 0 48px;
+    border-bottom: 1px solid var(--border);
+  }
+  .section:last-child { border: 0; }
+  .section-head {
+    display: flex;
+    align-items: baseline;
+    gap: 20px;
+    margin-bottom: 36px;
+  }
+  .section-num {
+    font-family: 'Manrope', sans-serif;
+    font-weight: 800;
+    font-size: 28px;
+    color: var(--lime);
+    line-height: 1;
+  }
+  .section-title {
+    font-family: 'Manrope', sans-serif;
+    font-weight: 800;
+    font-size: 32px;
+    color: var(--ink);
+    letter-spacing: -.015em;
+    margin: 0;
+  }
+  .section-lede {
+    font-size: 16px;
+    color: var(--body);
+    max-width: 780px;
+    margin-bottom: 40px;
+    margin-left: 64px;
+    line-height: 1.55;
+  }
+
+  /* ---------- Flow diagram ---------- */
+  .flow {
+    display: grid;
+    grid-template-columns: repeat(6, 1fr);
+    gap: 12px;
+    margin-bottom: 16px;
+    position: relative;
+  }
+  .flow-step {
+    background: #fff;
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 18px 16px;
+    position: relative;
+  }
+  .flow-step .n {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 11px;
+    color: var(--muted);
+    margin-bottom: 8px;
+  }
+  .flow-step .name {
+    font-family: 'Manrope', sans-serif;
+    font-weight: 700;
+    color: var(--navy);
+    font-size: 14px;
+    margin-bottom: 6px;
+  }
+  .flow-step .desc {
+    font-size: 12px;
+    color: var(--body);
+    line-height: 1.45;
+  }
+  .flow-step:not(:last-child)::after {
+    content: "→";
+    position: absolute;
+    right: -16px;
+    top: 50%;
+    transform: translateY(-50%);
+    color: var(--muted);
+    font-size: 16px;
+    z-index: 1;
+  }
+
+  /* ---------- Page gallery ---------- */
+  .pages {
+    display: grid;
+    grid-template-columns: 1fr;
+    gap: 56px;
+  }
+  .page-card {
+    background: #fff;
+    border-radius: var(--radius);
+    overflow: hidden;
+    box-shadow: var(--shadow-md);
+    border: 1px solid var(--border);
+  }
+  .page-head {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    padding: 28px 32px 24px;
+    border-bottom: 1px solid var(--border);
+    gap: 32px;
+  }
+  .page-head-l { flex: 1; }
+  .page-idx {
+    display: inline-block;
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 11px;
+    color: var(--muted);
+    margin-bottom: 6px;
+  }
+  .page-title {
+    font-family: 'Manrope', sans-serif;
+    font-weight: 800;
+    font-size: 24px;
+    color: var(--ink);
+    margin: 0 0 10px;
+    letter-spacing: -.01em;
+  }
+  .page-desc {
+    color: var(--body);
+    font-size: 14px;
+    max-width: 640px;
+    line-height: 1.55;
+  }
+  .page-meta {
+    flex-shrink: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    min-width: 220px;
+  }
+  .page-meta-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    font-size: 12px;
+    padding-bottom: 8px;
+    border-bottom: 1px dashed var(--border);
+  }
+  .page-meta-row:last-child { border: 0; padding-bottom: 0;}
+  .page-meta-row dt {
+    color: var(--muted);
+    font-family: 'Manrope', sans-serif;
+    font-weight: 600;
+    letter-spacing: .06em;
+    text-transform: uppercase;
+    font-size: 10px;
+  }
+  .page-meta-row dd {
+    color: var(--ink-2);
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 12px;
+    margin: 0;
+  }
+
+  .page-shot {
+    background: var(--bg-2);
+    padding: 28px;
+    text-align: center;
+  }
+  .page-shot img {
+    max-width: 100%;
+    border-radius: 8px;
+    box-shadow: 0 10px 30px rgba(20,28,70,.12);
+    border: 1px solid var(--border);
+    display: block;
+    margin: 0 auto;
+  }
+
+  .page-specs {
+    padding: 24px 32px 28px;
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 28px;
+    border-top: 1px solid var(--border);
+  }
+  .spec-group h4 {
+    font-family: 'Manrope', sans-serif;
+    font-weight: 700;
+    font-size: 11px;
+    letter-spacing: .14em;
+    text-transform: uppercase;
+    color: var(--navy);
+    margin: 0 0 12px;
+  }
+  .spec-list { list-style: none; padding: 0; margin: 0; display: flex; flex-direction: column; gap: 8px;}
+  .spec-list li {
+    font-size: 13px;
+    color: var(--ink-2);
+    line-height: 1.5;
+    padding-left: 20px;
+    position: relative;
+  }
+  .spec-list li::before {
+    content: "";
+    width: 6px; height: 6px;
+    border-radius: 999px;
+    background: var(--lime);
+    position: absolute;
+    left: 4px;
+    top: 8px;
+  }
+  .spec-list li b {
+    color: var(--navy);
+    font-weight: 700;
+  }
+
+  /* ---------- Tokens ---------- */
+  .token-grid {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 20px;
+  }
+  .swatch {
+    background: #fff;
+    border-radius: 10px;
+    border: 1px solid var(--border);
+    overflow: hidden;
+  }
+  .swatch .chip {
+    height: 92px;
+  }
+  .swatch .info {
+    padding: 12px 14px 14px;
+  }
+  .swatch .name {
+    font-family: 'Manrope', sans-serif;
+    font-weight: 700;
+    font-size: 13px;
+    color: var(--ink);
+    margin-bottom: 2px;
+  }
+  .swatch .hex {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 11px;
+    color: var(--muted);
+  }
+
+  .type-grid {
+    display: grid;
+    grid-template-columns: 170px 1fr 1fr;
+    gap: 0;
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    background: #fff;
+    overflow: hidden;
+  }
+  .type-row {
+    display: contents;
+  }
+  .type-row > div {
+    padding: 16px 20px;
+    border-bottom: 1px solid var(--border);
+  }
+  .type-row:last-child > div { border-bottom: 0; }
+  .type-label {
+    font-family: 'Manrope', sans-serif;
+    font-weight: 700;
+    font-size: 12px;
+    color: var(--navy);
+    letter-spacing: .04em;
+    background: var(--bg-2);
+  }
+  .type-spec {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 11px;
+    color: var(--muted);
+    background: var(--bg-2);
+  }
+
+  /* ---------- Dev notes ---------- */
+  .notes {
+    background: #fff;
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 24px 28px;
+  }
+  .notes h3 {
+    font-family: 'Manrope', sans-serif;
+    font-weight: 800;
+    font-size: 15px;
+    color: var(--navy);
+    margin: 24px 0 10px;
+  }
+  .notes h3:first-child { margin-top: 0; }
+  .notes p, .notes li {
+    font-size: 14px;
+    color: var(--ink-2);
+    line-height: 1.6;
+  }
+  .notes ul {
+    margin: 0 0 4px;
+    padding-left: 22px;
+  }
+  .notes li { margin-bottom: 4px; }
+  .notes code {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 12.5px;
+    background: var(--bg-2);
+    padding: 1px 6px;
+    border-radius: 4px;
+    color: var(--navy-deep);
+  }
+
+  /* ---------- Assets table ---------- */
+  .assets-table {
+    width: 100%;
+    border-collapse: collapse;
+    background: #fff;
+    border-radius: 10px;
+    overflow: hidden;
+    border: 1px solid var(--border);
+  }
+  .assets-table th {
+    text-align: left;
+    padding: 14px 18px;
+    background: var(--bg-2);
+    font-family: 'Manrope', sans-serif;
+    font-size: 11px;
+    letter-spacing: .1em;
+    text-transform: uppercase;
+    color: var(--navy);
+    border-bottom: 1px solid var(--border);
+  }
+  .assets-table td {
+    padding: 14px 18px;
+    border-bottom: 1px solid var(--border);
+    font-size: 13.5px;
+    color: var(--ink-2);
+    vertical-align: top;
+  }
+  .assets-table tr:last-child td { border-bottom: 0;}
+  .assets-table td.file {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 12.5px;
+    color: var(--navy-deep);
+    width: 220px;
+  }
+  .assets-table td a { color: var(--navy); text-decoration: none; border-bottom: 1px solid rgba(31,37,119,.3); }
+  .assets-table td a:hover { border-bottom-color: var(--navy); }
+
+  /* ---------- Footer ---------- */
+  .doc-foot {
+    background: var(--navy-deep);
+    color: rgba(255,255,255,.7);
+    padding: 28px 40px;
+    text-align: center;
+    font-size: 13px;
+  }
+  .doc-foot b { color: #fff; font-weight: 700; }
+
+  @media (max-width: 900px) {
+    .cover { padding: 48px 28px 40px; }
+    main { padding: 0 20px 40px; }
+    .section-lede { margin-left: 0;}
+    .flow { grid-template-columns: 1fr 1fr; gap: 10px;}
+    .flow-step:not(:last-child)::after { display: none;}
+    .page-head { flex-direction: column; padding: 20px;}
+    .page-meta { min-width: 0;}
+    .page-specs { grid-template-columns: 1fr; padding: 20px;}
+    .token-grid { grid-template-columns: 1fr 1fr;}
+    .type-grid { grid-template-columns: 1fr;}
+    .type-row > div { border-bottom: 1px solid var(--border);}
+    .cover-meta { grid-template-columns: 1fr 1fr;}
+  }
+</style>
+</head>
+<body data-screen-label="Design Handoff">
+
+<!-- ============ Top bar ============ -->
+<div class="doc-top">
+  <div class="brand">KidneyHood.org · Design Handoff</div>
+  <div class="meta"><span>v1.0</span><span>6 pages</span><span>Ready for dev</span></div>
+</div>
+
+<!-- ============ Cover ============ -->
+<section class="cover">
+  <div class="kicker">Design → Development</div>
+  <h1 class="display">KidneyHood <em>web flow</em> handoff.<br/>Six pages, one kidney‑health experience.</h1>
+  <p class="lede">
+    A complete specification for the KidneyHood.org patient flow — from public landing page
+    through lab‑value entry, email gate, and personalised kidney‑function results — plus the
+    transactional email and printable PDF report it produces.
+  </p>
+  <dl class="cover-meta">
+    <div><dt>Project</dt><dd>KidneyHood.org Web MVP</dd></div>
+    <div><dt>Scope</dt><dd>6 HTML screens · 1 email · 1 PDF</dd></div>
+    <div><dt>Delivered</dt><dd>This package</dd></div>
+    <div><dt>Format</dt><dd>Static HTML/CSS, ready to wire</dd></div>
+  </dl>
+</section>
+
+<main>
+
+<!-- ============ 01 Flow ============ -->
+<section class="section">
+  <div class="section-head">
+    <div class="section-num">01</div>
+    <h2 class="section-title">User flow</h2>
+  </div>
+  <p class="section-lede">
+    A patient arrives at the landing page, enters four required lab values, verifies their
+    email, and receives a four‑scenario kidney‑function trajectory. A PDF copy is emailed for
+    their records.
+  </p>
+  <div class="flow">
+    <div class="flow-step">
+      <div class="n">01</div>
+      <div class="name">Landing</div>
+      <div class="desc">Marketing page. CTA → Lab Form.</div>
+    </div>
+    <div class="flow-step">
+      <div class="n">02</div>
+      <div class="name">Lab Form</div>
+      <div class="desc">4 required values + optional Hb / Glucose.</div>
+    </div>
+    <div class="flow-step">
+      <div class="n">03</div>
+      <div class="name">Email Gate</div>
+      <div class="desc">Name + email modal over blurred results.</div>
+    </div>
+    <div class="flow-step">
+      <div class="n">04</div>
+      <div class="name">Results</div>
+      <div class="desc">4‑scenario chart + scenario detail cards.</div>
+    </div>
+    <div class="flow-step">
+      <div class="n">05</div>
+      <div class="name">PDF Report</div>
+      <div class="desc">Printable A4 copy of results.</div>
+    </div>
+    <div class="flow-step">
+      <div class="n">06</div>
+      <div class="name">Email</div>
+      <div class="desc">Transactional "report ready" with PDF attached.</div>
+    </div>
+  </div>
+</section>
+
+<!-- ============ 02 Tokens ============ -->
+<section class="section">
+  <div class="section-head">
+    <div class="section-num">02</div>
+    <h2 class="section-title">Design tokens</h2>
+  </div>
+  <p class="section-lede">Use these CSS custom properties as the single source of truth. They're declared in <code class="mono" style="background:var(--bg-2);padding:1px 6px;border-radius:4px;">:root</code> of every page.</p>
+
+  <h4 style="font-family:'Manrope';font-weight:700;font-size:11px;letter-spacing:.14em;text-transform:uppercase;color:var(--navy);margin:0 0 14px;">Colour</h4>
+  <div class="token-grid">
+    <div class="swatch"><div class="chip" style="background:#1F2577"></div><div class="info"><div class="name">Navy / Primary</div><div class="hex">--navy · #1F2577</div></div></div>
+    <div class="swatch"><div class="chip" style="background:#161B5E"></div><div class="info"><div class="name">Navy deep</div><div class="hex">--navy-deep · #161B5E</div></div></div>
+    <div class="swatch"><div class="chip" style="background:#6CC24A"></div><div class="info"><div class="name">Lime accent</div><div class="hex">--lime · #6CC24A</div></div></div>
+    <div class="swatch"><div class="chip" style="background:#1F7A3A"></div><div class="info"><div class="name">Green healthy</div><div class="hex">--green-1 · #1F7A3A</div></div></div>
+    <div class="swatch"><div class="chip" style="background:#EBBE28"></div><div class="info"><div class="name">Amber risk</div><div class="hex">--amber · #EBBE28</div></div></div>
+    <div class="swatch"><div class="chip" style="background:#0E0E12"></div><div class="info"><div class="name">Ink</div><div class="hex">--ink · #0E0E12</div></div></div>
+    <div class="swatch"><div class="chip" style="background:#5C5F6A"></div><div class="info"><div class="name">Body text</div><div class="hex">--body · #5C5F6A</div></div></div>
+    <div class="swatch"><div class="chip" style="background:#F4F5F7;border-bottom:1px solid #E4E6EB"></div><div class="info"><div class="name">Surface</div><div class="hex">--bg · #F4F5F7</div></div></div>
+  </div>
+
+  <h4 style="font-family:'Manrope';font-weight:700;font-size:11px;letter-spacing:.14em;text-transform:uppercase;color:var(--navy);margin:32px 0 14px;">Typography</h4>
+  <div class="type-grid">
+    <div class="type-row">
+      <div class="type-label">Display / H1</div>
+      <div style="font-family:'Manrope';font-weight:800;font-size:44px;letter-spacing:-.015em;line-height:1.05;color:var(--ink);">Know your kidneys</div>
+      <div class="type-spec">Manrope 800 · 44–62px<br/>line 1.05 · tracking −.015em</div>
+    </div>
+    <div class="type-row">
+      <div class="type-label">H2 section</div>
+      <div style="font-family:'Manrope';font-weight:800;font-size:28px;letter-spacing:-.01em;color:var(--ink);">Your future kidney function</div>
+      <div class="type-spec">Manrope 800 · 28–32px<br/>line 1.2 · tracking −.01em</div>
+    </div>
+    <div class="type-row">
+      <div class="type-label">H3 / label</div>
+      <div style="font-family:'Manrope';font-weight:700;font-size:14px;color:var(--navy);">Scenario overview</div>
+      <div class="type-spec">Manrope 700 · 14px<br/>colour --navy</div>
+    </div>
+    <div class="type-row">
+      <div class="type-label">Body</div>
+      <div style="font-family:'Nunito Sans';font-weight:400;font-size:16px;line-height:1.55;color:var(--body);">Understand how your kidney function may change under four realistic treatment scenarios, based on your lab values.</div>
+      <div class="type-spec">Nunito Sans 400 · 16px<br/>line 1.55 · colour --body</div>
+    </div>
+    <div class="type-row">
+      <div class="type-label">Small / meta</div>
+      <div style="font-family:'Nunito Sans';font-weight:500;font-size:12px;color:var(--muted);">LAST UPDATED · 2 MIN AGO</div>
+      <div class="type-spec">Nunito Sans 500 · 12px<br/>tracking .08em uppercase</div>
+    </div>
+  </div>
+
+  <h4 style="font-family:'Manrope';font-weight:700;font-size:11px;letter-spacing:.14em;text-transform:uppercase;color:var(--navy);margin:32px 0 14px;">Shape &amp; elevation</h4>
+  <div class="token-grid">
+    <div class="swatch"><div class="chip" style="background:#fff;display:grid;place-items:center;"><div style="width:70%;height:60%;background:#EEF0F3;border-radius:14px;"></div></div><div class="info"><div class="name">Radius md</div><div class="hex">--radius · 14px</div></div></div>
+    <div class="swatch"><div class="chip" style="background:#fff;display:grid;place-items:center;"><div style="width:70%;height:60%;background:#EEF0F3;border-radius:999px;"></div></div><div class="info"><div class="name">Radius pill</div><div class="hex">999px · buttons</div></div></div>
+    <div class="swatch"><div class="chip" style="background:#F4F5F7;display:grid;place-items:center;"><div style="width:70%;height:60%;background:#fff;border-radius:8px;box-shadow:0 6px 20px rgba(20,28,70,.08);"></div></div><div class="info"><div class="name">Shadow md</div><div class="hex">0 6 20 rgba(20,28,70,.08)</div></div></div>
+    <div class="swatch"><div class="chip" style="background:#F4F5F7;display:grid;place-items:center;"><div style="width:70%;height:60%;background:#fff;border-radius:8px;box-shadow:0 20px 50px rgba(20,28,70,.12);"></div></div><div class="info"><div class="name">Shadow lg</div><div class="hex">0 20 50 rgba(20,28,70,.12)</div></div></div>
+  </div>
+</section>
+
+<!-- ============ 03 Pages ============ -->
+<section class="section">
+  <div class="section-head">
+    <div class="section-num">03</div>
+    <h2 class="section-title">Screens &amp; specs</h2>
+  </div>
+  <p class="section-lede">Each screen below links to the raw HTML, lists its API contract, and calls out the details engineers should watch.</p>
+
+  <div class="pages">
+
+    <!-- ---- Landing ---- -->
+    <article class="page-card">
+      <header class="page-head">
+        <div class="page-head-l">
+          <div class="page-idx">01 · Landing</div>
+          <h3 class="page-title">Landing Page</h3>
+          <p class="page-desc">Public marketing page. Establishes trust, explains the three‑step flow, previews the chart outcome, and drives to the Lab Form.</p>
+        </div>
+        <dl class="page-meta">
+          <div class="page-meta-row"><dt>File</dt><dd><a href="Landing Page.html" target="_blank">Landing Page.html</a></dd></div>
+          <div class="page-meta-row"><dt>Route</dt><dd>/</dd></div>
+          <div class="page-meta-row"><dt>Viewport</dt><dd>responsive</dd></div>
+          <div class="page-meta-row"><dt>State</dt><dd>static</dd></div>
+        </dl>
+      </header>
+      <div class="page-shot"><img src="design_handoff_kidneyhood_web_flow/screenshots/01-landing-page.png" alt="Landing page"/></div>
+      <div class="page-specs">
+        <div class="spec-group">
+          <h4>Sections (top → bottom)</h4>
+          <ul class="spec-list">
+            <li><b>Nav</b> — KidneyHood.org centered; How it works · Preview · About · Contact.</li>
+            <li><b>Hero</b> — H1 + lede + primary CTA "Check my kidney health".</li>
+            <li><b>How it works</b> — 3 numbered steps (Enter values → Review results → Take action).</li>
+            <li><b>Navy band</b> — reassurance + chart preview in white card.</li>
+            <li><b>Future chart</b> — static 4‑scenario preview (matches Results).</li>
+            <li><b>Final CTA</b> — repeat primary action.</li>
+          </ul>
+        </div>
+        <div class="spec-group">
+          <h4>Dev notes</h4>
+          <ul class="spec-list">
+            <li>Nav collapses to burger at <code>&lt;900px</code>.</li>
+            <li>Primary CTA targets <code>Lab Form.html</code>.</li>
+            <li>Chart is inline SVG — no library needed.</li>
+            <li>All copy lives in the markup; no CMS wired.</li>
+          </ul>
+        </div>
+      </div>
+    </article>
+
+    <!-- ---- Lab Form ---- -->
+    <article class="page-card">
+      <header class="page-head">
+        <div class="page-head-l">
+          <div class="page-idx">02 · Input</div>
+          <h3 class="page-title">Lab Form</h3>
+          <p class="page-desc">Collects the four required lab values and two optional ones. Validates on submit and advances to the Email Gate.</p>
+        </div>
+        <dl class="page-meta">
+          <div class="page-meta-row"><dt>File</dt><dd><a href="Lab Form.html" target="_blank">Lab Form.html</a></dd></div>
+          <div class="page-meta-row"><dt>Route</dt><dd>/enter</dd></div>
+          <div class="page-meta-row"><dt>Submits to</dt><dd>/api/predict</dd></div>
+          <div class="page-meta-row"><dt>State</dt><dd>form · validation</dd></div>
+        </dl>
+      </header>
+      <div class="page-shot"><img src="design_handoff_kidneyhood_web_flow/screenshots/02-lab-form.png" alt="Lab Form"/></div>
+      <div class="page-specs">
+        <div class="spec-group">
+          <h4>Required fields</h4>
+          <ul class="spec-list">
+            <li><b>Age</b> — integer, 18–100.</li>
+            <li><b>Sex</b> — segmented toggle (Male / Female).</li>
+            <li><b>Creatinine</b> — number, mg/dL, 0.3–15.</li>
+            <li><b>BUN</b> — number, mg/dL, 3–100.</li>
+          </ul>
+        </div>
+        <div class="spec-group">
+          <h4>Optional · dev notes</h4>
+          <ul class="spec-list">
+            <li>Toggle row reveals <b>Hemoglobin</b> &amp; <b>Glucose</b> inputs.</li>
+            <li>Inline error: red border + 12px message below field.</li>
+            <li>Submit → persist payload to session, navigate to <code>Email Gate.html</code>.</li>
+            <li>Do <em>not</em> call the prediction API until after email is captured.</li>
+          </ul>
+        </div>
+      </div>
+    </article>
+
+    <!-- ---- Email Gate ---- -->
+    <article class="page-card">
+      <header class="page-head">
+        <div class="page-head-l">
+          <div class="page-idx">03 · Gate</div>
+          <h3 class="page-title">Email Gate</h3>
+          <p class="page-desc">Modal over a blurred preview of the results. Captures full name and email before revealing the report.</p>
+        </div>
+        <dl class="page-meta">
+          <div class="page-meta-row"><dt>File</dt><dd><a href="Email Gate.html" target="_blank">Email Gate.html</a></dd></div>
+          <div class="page-meta-row"><dt>Route</dt><dd>/results?gate=1</dd></div>
+          <div class="page-meta-row"><dt>Submits to</dt><dd>/api/capture</dd></div>
+          <div class="page-meta-row"><dt>State</dt><dd>modal · form</dd></div>
+        </dl>
+      </header>
+      <div class="page-shot"><img src="design_handoff_kidneyhood_web_flow/screenshots/03-email-gate.png" alt="Email Gate (rendered illustration)"/></div>
+      <div class="page-specs">
+        <div class="spec-group">
+          <h4>Modal</h4>
+          <ul class="spec-list">
+            <li><b>Lock icon</b> ring (48px) signals privacy.</li>
+            <li>Title: "Almost there — your results are ready!"</li>
+            <li>Fields: Full name, Email (both required).</li>
+            <li>CTA: <b>View my report</b> (navy pill, full width).</li>
+            <li>Reassurance line: "We'll never spam you…"</li>
+          </ul>
+        </div>
+        <div class="spec-group">
+          <h4>Behavior · dev notes</h4>
+          <ul class="spec-list">
+            <li>Body is <code>overflow:hidden</code> while modal open.</li>
+            <li>Nav + behind layer use <code>filter: blur(3px) opacity(.6)</code>.</li>
+            <li>On submit: call <code>/api/capture</code>, then <code>/api/predict</code>, then render Results.</li>
+            <li>Validate email with standard RFC pattern; empty name = inline error.</li>
+          </ul>
+        </div>
+      </div>
+    </article>
+
+    <!-- ---- Results ---- -->
+    <article class="page-card">
+      <header class="page-head">
+        <div class="page-head-l">
+          <div class="page-idx">04 · Results</div>
+          <h3 class="page-title">Results</h3>
+          <p class="page-desc">Kidney Health Overview. Renders the four‑scenario trajectory chart, scenario detail cards, an explanation block, and download/edit actions.</p>
+        </div>
+        <dl class="page-meta">
+          <div class="page-meta-row"><dt>File</dt><dd><a href="Results.html" target="_blank">Results.html</a></dd></div>
+          <div class="page-meta-row"><dt>Route</dt><dd>/results</dd></div>
+          <div class="page-meta-row"><dt>Consumes</dt><dd>/api/predict response</dd></div>
+          <div class="page-meta-row"><dt>State</dt><dd>authenticated</dd></div>
+        </dl>
+      </header>
+      <div class="page-shot"><img src="design_handoff_kidneyhood_web_flow/screenshots/04-results.png" alt="Results"/></div>
+      <div class="page-specs">
+        <div class="spec-group">
+          <h4>Blocks</h4>
+          <ul class="spec-list">
+            <li><b>Chart card</b> — 2‑col (chart + legend).</li>
+            <li><b>Scenario pills</b> — BUN ≤12 · 13–17 · 18–24 · No Treatment.</li>
+            <li><b>Scenario cards</b> — 4 coloured cards with key numbers.</li>
+            <li><b>What your results mean</b> — plain‑English explanation.</li>
+            <li><b>Footer actions</b> — Download PDF · Edit info.</li>
+          </ul>
+        </div>
+        <div class="spec-group">
+          <h4>Data · dev notes</h4>
+          <ul class="spec-list">
+            <li>Expect <code>predict</code> to return 4 series of 12 quarterly points.</li>
+            <li>Chart uses inline SVG path; no chart library required.</li>
+            <li>Download PDF button posts to <code>/api/pdf</code> or links to <code>PDF Report.html</code> with query params.</li>
+            <li>"Edit info" navigates back to Lab Form preserving prior answers.</li>
+          </ul>
+        </div>
+      </div>
+    </article>
+
+    <!-- ---- PDF ---- -->
+    <article class="page-card">
+      <header class="page-head">
+        <div class="page-head-l">
+          <div class="page-idx">05 · Output</div>
+          <h3 class="page-title">PDF Report</h3>
+          <p class="page-desc">A4 print‑ready version of the results, optimised for <code>@page</code> rules and headless PDF generation.</p>
+        </div>
+        <dl class="page-meta">
+          <div class="page-meta-row"><dt>File</dt><dd><a href="PDF Report.html" target="_blank">PDF Report.html</a></dd></div>
+          <div class="page-meta-row"><dt>Route</dt><dd>/report/pdf</dd></div>
+          <div class="page-meta-row"><dt>Page size</dt><dd>A4 · 20mm margin</dd></div>
+          <div class="page-meta-row"><dt>Engine</dt><dd>Chromium headless</dd></div>
+        </dl>
+      </header>
+      <div class="page-shot"><img src="design_handoff_kidneyhood_web_flow/screenshots/05-pdf-report.png" alt="PDF Report"/></div>
+      <div class="page-specs">
+        <div class="spec-group">
+          <h4>Layout</h4>
+          <ul class="spec-list">
+            <li><b>Header band</b> — KidneyHood.org + report date.</li>
+            <li><b>Patient card</b> — name, age, sex.</li>
+            <li><b>Chart</b> — same 4‑scenario SVG.</li>
+            <li><b>Scenario table</b> — BUN target, creatinine end‑of‑year, risk band.</li>
+            <li><b>Disclaimer</b> — small grey footer.</li>
+          </ul>
+        </div>
+        <div class="spec-group">
+          <h4>Dev notes</h4>
+          <ul class="spec-list">
+            <li>"Save as PDF" button calls <code>window.print()</code> — hidden in print via <code>@media print</code>.</li>
+            <li>Generate server‑side with Chromium: <code>page.pdf({ format: 'A4', printBackground: true })</code>.</li>
+            <li>File is attached to the transactional email (see 06).</li>
+            <li>Keep width ≤ 780px so headless renders at 1:1.</li>
+          </ul>
+        </div>
+      </div>
+    </article>
+
+    <!-- ---- Email ---- -->
+    <article class="page-card">
+      <header class="page-head">
+        <div class="page-head-l">
+          <div class="page-idx">06 · Comms</div>
+          <h3 class="page-title">Email Template</h3>
+          <p class="page-desc">Transactional "your report is ready" email. Hero illustration + primary CTA + note about the attached PDF.</p>
+        </div>
+        <dl class="page-meta">
+          <div class="page-meta-row"><dt>File</dt><dd><a href="Email Template.html" target="_blank">Email Template.html</a></dd></div>
+          <div class="page-meta-row"><dt>Trigger</dt><dd>after /api/capture</dd></div>
+          <div class="page-meta-row"><dt>Width</dt><dd>640px (table‑safe)</dd></div>
+          <div class="page-meta-row"><dt>Attachment</dt><dd>PDF Report</dd></div>
+        </dl>
+      </header>
+      <div class="page-shot"><img src="design_handoff_kidneyhood_web_flow/screenshots/06-email-template.png" alt="Email Template"/></div>
+      <div class="page-specs">
+        <div class="spec-group">
+          <h4>Merge fields</h4>
+          <ul class="spec-list">
+            <li><code>{{first_name}}</code> — e.g. "Hi John,".</li>
+            <li><code>{{report_url}}</code> — deep link to /results with session token.</li>
+            <li><code>{{unsubscribe_url}}</code> — required footer link.</li>
+          </ul>
+        </div>
+        <div class="spec-group">
+          <h4>Dev notes</h4>
+          <ul class="spec-list">
+            <li>Style is inline‑ready — move CSS into <code>style=""</code> attrs at build time for Outlook compatibility.</li>
+            <li>Hero illustration is a radial‑gradient scene + inline SVG kidney (no external images).</li>
+            <li>Light‑mode only; do not add dark‑mode meta (renders unpredictably across clients).</li>
+            <li>Attach PDF via provider (SendGrid / Postmark) — do not inline base64.</li>
+          </ul>
+        </div>
+      </div>
+    </article>
+
+  </div>
+</section>
+
+<!-- ============ 04 Integration ============ -->
+<section class="section">
+  <div class="section-head">
+    <div class="section-num">04</div>
+    <h2 class="section-title">Integration contract</h2>
+  </div>
+  <p class="section-lede">Suggested endpoints — rename freely, but the shape should be preserved so the pages wire cleanly.</p>
+
+  <div class="notes">
+    <h3>POST /api/capture</h3>
+    <p>Called when the user submits the Email Gate. Stores name + email + pending lab payload. Returns a session token used by subsequent calls.</p>
+    <p><b>Request</b>: <code>{ name, email, labs: { age, sex, creatinine, bun, hemoglobin?, glucose? } }</code></p>
+    <p><b>Response</b>: <code>{ token }</code></p>
+
+    <h3>POST /api/predict</h3>
+    <p>Consumes the stored labs, returns the 4 kidney‑function scenarios. The Results page plots <code>series</code> directly into its SVG.</p>
+    <p><b>Request</b>: <code>{ token }</code></p>
+    <p><b>Response</b>:</p>
+    <ul>
+      <li><code>series: [{ id: 'healthy' | 'stable' | 'higher' | 'no_treatment', points: [{ month, gfr }] }]</code></li>
+      <li><code>scenarios: [{ id, bun_target, end_creatinine, risk_band }]</code></li>
+      <li><code>patient: { name, age, sex }</code></li>
+    </ul>
+
+    <h3>GET /api/pdf?token=…</h3>
+    <p>Server renders <code>PDF Report.html</code> via Chromium headless and returns <code>application/pdf</code>.</p>
+    <p>The same endpoint is called by the worker that sends the email, then the PDF is attached to the message generated from <code>Email Template.html</code>.</p>
+  </div>
+</section>
+
+<!-- ============ 05 Accessibility ============ -->
+<section class="section">
+  <div class="section-head">
+    <div class="section-num">05</div>
+    <h2 class="section-title">Accessibility &amp; QA</h2>
+  </div>
+  <div class="notes">
+    <h3>Must‑haves</h3>
+    <ul>
+      <li>All interactive targets ≥ 44×44px (enforced on mobile nav, form inputs, and CTAs).</li>
+      <li>Colour contrast ≥ WCAG AA — navy on white, white on navy, and body‑grey on white all pass.</li>
+      <li>Every form field has a visible label above the input (not placeholder‑only).</li>
+      <li>Focus ring: 3px <code>rgba(31,37,119,.12)</code> + 1px <code>--navy</code> border.</li>
+      <li>Modal (Email Gate) traps focus and is closeable via <code>Esc</code>.</li>
+    </ul>
+    <h3>QA scenarios</h3>
+    <ul>
+      <li>Submit Lab Form with 0 values → four inline errors.</li>
+      <li>Toggle optional fields, fill one, toggle off → values persist on re‑open.</li>
+      <li>Submit Email Gate with invalid email → inline error, button stays enabled.</li>
+      <li>Refresh Results page → session restored from token, not re‑prompted for email.</li>
+      <li>Print Results → only the PDF layout shows; nav, buttons hidden via <code>@media print</code>.</li>
+    </ul>
+  </div>
+</section>
+
+<!-- ============ 06 Files ============ -->
+<section class="section">
+  <div class="section-head">
+    <div class="section-num">06</div>
+    <h2 class="section-title">File index</h2>
+  </div>
+  <table class="assets-table">
+    <thead>
+      <tr><th>File</th><th>Purpose</th><th>Notes</th></tr>
+    </thead>
+    <tbody>
+      <tr><td class="file"><a href="Landing Page.html" target="_blank">Landing Page.html</a></td><td>Public marketing page</td><td>Static · responsive</td></tr>
+      <tr><td class="file"><a href="Lab Form.html" target="_blank">Lab Form.html</a></td><td>Lab‑value capture</td><td>4 required, 2 optional · validation</td></tr>
+      <tr><td class="file"><a href="Email Gate.html" target="_blank">Email Gate.html</a></td><td>Name + email modal</td><td>Modal over blurred Results preview</td></tr>
+      <tr><td class="file"><a href="Results.html" target="_blank">Results.html</a></td><td>Kidney health overview</td><td>SVG chart · scenario cards · actions</td></tr>
+      <tr><td class="file"><a href="PDF Report.html" target="_blank">PDF Report.html</a></td><td>Printable report</td><td>A4 · Chromium headless target</td></tr>
+      <tr><td class="file"><a href="Email Template.html" target="_blank">Email Template.html</a></td><td>Transactional email</td><td>640px · inline‑style at build time</td></tr>
+    </tbody>
+  </table>
+</section>
+
+</main>
+
+<div class="doc-foot">
+  <b>KidneyHood.org</b> · Design handoff package · Questions → ping the design team.
+</div>
+
+</body>
+</html>

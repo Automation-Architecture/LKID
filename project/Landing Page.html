@@ -1,0 +1,1113 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>KidneyHood — Understand your kidney health</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&family=Nunito+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+  /* ---------- Tweakable defaults ---------- */
+  :root {
+    --navy: #1F2577;
+    --navy-deep: #161B5E;
+    --navy-700: #2A3192;
+    --ink: #0E0E12;
+    --ink-2: #2E2F36;
+    --body: #5C5F6A;
+    --muted: #8A8D96;
+    --bg: #F4F5F7;
+    --bg-2: #EEF0F3;
+    --card: #FFFFFF;
+    --border: #E4E6EB;
+    --border-2: #DADDE3;
+
+    --mint-bg: #E3F5E8;
+    --mint-dot: #2FB872;
+    --mint-text: #1B7A41;
+
+    --lime: #6CC24A;
+    --green-1: #1F7A3A;
+    --green-2: #3FA35B;
+    --green-3: #6CC24A;
+
+    --radius: 14px;
+    --radius-lg: 20px;
+    --shadow-sm: 0 1px 2px rgba(16, 24, 40, .04), 0 1px 1px rgba(16, 24, 40, .03);
+    --shadow-md: 0 6px 20px rgba(20, 28, 70, .08);
+    --shadow-lg: 0 20px 50px rgba(20, 28, 70, .12);
+  }
+
+  * { box-sizing: border-box; }
+  html, body { margin: 0; padding: 0; }
+  body {
+    font-family: 'Nunito Sans', system-ui, sans-serif;
+    background: #fff;
+    color: var(--ink);
+    font-size: 16px;
+    line-height: 1.55;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+  }
+
+  .display {
+    font-family: 'Manrope', sans-serif;
+    font-weight: 800;
+    letter-spacing: -0.01em;
+    line-height: 1.05;
+    text-transform: uppercase;
+  }
+
+  .navy { color: var(--navy); }
+  .muted { color: var(--muted); }
+  .body { color: var(--body); }
+
+  /* ---------- Nav ---------- */
+  .nav {
+    background: var(--navy);
+    color: #fff;
+    height: 64px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    position: relative;
+  }
+  .nav-inner {
+    display: flex;
+    align-items: center;
+    gap: 48px;
+    font-size: 15px;
+    font-weight: 500;
+  }
+  .nav a {
+    color: rgba(255,255,255,.82);
+    text-decoration: none;
+    padding: 6px 4px;
+    min-height: auto;
+    transition: color .15s;
+  }
+  .nav a:hover { color: #fff; }
+  .nav .brand {
+    color: #fff;
+    font-weight: 700;
+    font-family: 'Manrope', sans-serif;
+    letter-spacing: -0.01em;
+    font-size: 16px;
+  }
+  .nav-burger { display: none; }
+
+  /* ---------- Layout ---------- */
+  .section {
+    padding: 80px 24px;
+  }
+  .wrap {
+    max-width: 1200px;
+    margin: 0 auto;
+  }
+
+  /* ---------- Hero ---------- */
+  .hero {
+    background: var(--bg);
+    padding: 72px 24px 100px;
+    position: relative;
+    overflow: hidden;
+  }
+  .hero-inner { position: relative; text-align: center; max-width: 1100px; margin: 0 auto; }
+  .hero h1 {
+    font-size: clamp(36px, 5.6vw, 74px);
+    margin: 0 0 20px;
+    color: var(--ink);
+  }
+  .hero h1 .accent { color: var(--navy); }
+  .hero .lede {
+    color: var(--body);
+    max-width: 460px;
+    margin: 0 auto 28px;
+    font-size: 16px;
+  }
+
+  .cta-pill {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    background: var(--navy);
+    color: #fff;
+    border: 0;
+    padding: 18px 44px;
+    border-radius: 999px;
+    font-size: 16px;
+    font-weight: 600;
+    cursor: pointer;
+    position: relative;
+    font-family: 'Nunito Sans', sans-serif;
+    box-shadow: 0 0 0 8px rgba(255,255,255,.7), 0 0 0 9px rgba(31,37,119,.12);
+    transition: transform .15s, box-shadow .15s;
+  }
+  .cta-pill:hover { transform: translateY(-1px); }
+  .cta-pill.on-tint {
+    box-shadow: 0 0 0 8px rgba(244,245,247,.9), 0 0 0 9px rgba(31,37,119,.18);
+  }
+
+  /* kidney watermark */
+  .kidney-watermark {
+    position: absolute;
+    inset: 20px 0 0 0;
+    display: flex;
+    justify-content: center;
+    pointer-events: none;
+    opacity: .55;
+  }
+  .kidney-watermark svg { width: 820px; max-width: 95%; height: auto; }
+
+  .hero-stage {
+    position: relative;
+    margin-top: 40px;
+    display: flex;
+    justify-content: center;
+    min-height: 380px;
+  }
+  .hero-photo {
+    width: 420px;
+    max-width: 60%;
+    aspect-ratio: 4/3.2;
+    border-radius: 12px;
+    background: linear-gradient(135deg, #c9d5e8, #a6b7cf);
+    position: relative;
+    overflow: hidden;
+    z-index: 2;
+  }
+  .hero-photo .photo-label {
+    position: absolute;
+    inset: auto 0 12px 0;
+    text-align: center;
+    font-family: 'Geist Mono', ui-monospace, monospace;
+    font-size: 11px;
+    color: rgba(255,255,255,.9);
+    letter-spacing: .04em;
+    text-transform: uppercase;
+  }
+  /* placeholder couple illustration */
+  .hero-photo .ph-couple {
+    position: absolute; inset: 0;
+    background:
+      radial-gradient(ellipse at 35% 42%, #f3dbc6 0 8%, transparent 9%),
+      radial-gradient(ellipse at 62% 44%, #e9c8a8 0 8%, transparent 9%),
+      radial-gradient(ellipse at 35% 68%, #f6f1ea 0 14%, transparent 15%),
+      radial-gradient(ellipse at 62% 68%, #d8e3cd 0 14%, transparent 15%),
+      linear-gradient(180deg, #d9e0ea 0%, #b8c6dc 100%);
+  }
+
+  .stat-card {
+    position: absolute;
+    background: #fff;
+    border-radius: 12px;
+    padding: 16px 20px;
+    box-shadow: var(--shadow-md);
+    min-width: 220px;
+    z-index: 3;
+  }
+  .stat-card .label {
+    font-size: 13px;
+    color: var(--ink-2);
+    font-weight: 600;
+    margin-bottom: 8px;
+    white-space: nowrap;
+  }
+  .stat-card .value {
+    font-family: 'Manrope', sans-serif;
+    font-size: 34px;
+    font-weight: 700;
+    color: var(--navy);
+    line-height: 1;
+  }
+  .stat-card .unit {
+    font-size: 12px;
+    color: var(--muted);
+    margin-left: 4px;
+    font-weight: 500;
+  }
+
+  .stat-left { top: 30px; left: 4%; }
+  .stat-right { top: 30px; right: 4%; }
+
+  .hero-sub {
+    position: absolute;
+    font-size: 13px;
+    color: var(--muted);
+    line-height: 1.5;
+  }
+  .hero-sub.left { bottom: -20px; left: 10%; }
+  .hero-sub.right { bottom: -20px; right: 10%; text-align: right; }
+  .hero-sub.right .impact {
+    font-family: 'Manrope', sans-serif;
+    font-size: 28px;
+    font-weight: 700;
+    color: #B9BCC5;
+    display: block;
+    margin-top: 4px;
+    line-height: 1;
+  }
+
+  /* trajectory chart */
+  .trajectory-card {
+    margin: 80px auto 0;
+    max-width: 900px;
+    background: #fff;
+    border-radius: 20px;
+    padding: 28px 32px 36px;
+    box-shadow: var(--shadow-md);
+    position: relative;
+    z-index: 2;
+  }
+  .trajectory-title {
+    position: absolute;
+    top: 28px;
+    right: 36px;
+    font-size: 14px;
+    color: var(--ink-2);
+    font-weight: 500;
+    max-width: 180px;
+    text-align: right;
+    line-height: 1.3;
+  }
+  .trajectory-chart { width: 100%; height: 240px; display: block; }
+  .trajectory-axis {
+    display: flex;
+    justify-content: space-between;
+    padding: 10px 4px 0;
+    font-size: 12px;
+    color: var(--muted);
+    font-weight: 500;
+  }
+
+  /* ---------- How it works ---------- */
+  .how {
+    background: #fff;
+    padding: 100px 24px 80px;
+  }
+  .section-head {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-end;
+    gap: 32px;
+    margin-bottom: 64px;
+    flex-wrap: wrap;
+  }
+  .chip {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    background: var(--mint-bg);
+    color: var(--mint-text);
+    padding: 6px 14px;
+    border-radius: 999px;
+    font-size: 13px;
+    font-weight: 500;
+    min-height: auto;
+  }
+  .chip .dot {
+    width: 8px; height: 8px;
+    background: var(--mint-dot);
+    border-radius: 999px;
+  }
+  .chip-dot-sm {
+    width: 10px; height: 10px;
+    background: var(--mint-dot);
+    border-radius: 999px;
+    display: inline-block;
+    margin-right: 8px;
+    vertical-align: middle;
+  }
+  .section-title {
+    font-size: clamp(32px, 4.2vw, 56px);
+    margin: 14px 0 0;
+    color: var(--ink);
+  }
+  .head-tags {
+    display: flex;
+    gap: 10px;
+    flex-wrap: wrap;
+  }
+  .tag-pill {
+    border: 1px solid var(--border);
+    border-radius: 999px;
+    padding: 8px 16px;
+    font-size: 13px;
+    color: var(--ink-2);
+    background: #fff;
+    min-height: auto;
+    font-weight: 500;
+  }
+
+  .steps {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 20px;
+    position: relative;
+  }
+  .steps::before {
+    content: "";
+    position: absolute;
+    top: 36px; left: 0; right: 0;
+    height: 1px;
+    background: repeating-linear-gradient(to right, var(--border-2) 0 6px, transparent 6px 12px);
+    z-index: 0;
+  }
+  .step {
+    position: relative;
+    z-index: 1;
+  }
+  .step-num {
+    font-family: 'Manrope', sans-serif;
+    font-size: 15px;
+    font-weight: 600;
+    color: var(--navy);
+    letter-spacing: .04em;
+    text-align: center;
+    margin-bottom: 48px;
+    background: #fff;
+    display: inline-block;
+    padding: 0 16px;
+    position: relative;
+    left: 50%;
+    transform: translateX(-50%);
+  }
+  .step-card {
+    background: #fff;
+    border: 1px solid var(--border);
+    border-radius: 16px;
+    padding: 24px 22px 28px;
+    box-shadow: 0 1px 2px rgba(16,24,40,.04);
+  }
+  .step-card .h {
+    font-size: 15px;
+    font-weight: 600;
+    color: var(--ink);
+    margin: 0 0 20px;
+  }
+  .step-card .desc {
+    color: var(--body);
+    font-size: 13px;
+    margin-top: 14px;
+    line-height: 1.5;
+  }
+
+  .field-pill {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    background: #fff;
+    border: 1px solid var(--border);
+    border-radius: 999px;
+    padding: 10px 20px;
+    font-size: 14px;
+    color: var(--ink-2);
+    margin-bottom: 10px;
+    box-shadow: 0 1px 2px rgba(16,24,40,.03);
+    min-height: auto;
+  }
+  .field-pill::after {
+    content: "";
+    width: 8px; height: 8px;
+    border-right: 1.5px solid var(--muted);
+    border-bottom: 1.5px solid var(--muted);
+    transform: rotate(45deg) translateY(-2px);
+  }
+
+  .ticker {
+    display: flex;
+    justify-content: center;
+    gap: 18px;
+    font-family: 'Manrope', sans-serif;
+    font-size: 14px;
+    color: var(--muted);
+    margin-bottom: 10px;
+    font-weight: 500;
+  }
+  .ticker .active {
+    color: var(--navy);
+    font-size: 18px;
+    font-weight: 700;
+  }
+
+  .mini-chart { width: 100%; height: 70px; display: block; }
+
+  .dl-box {
+    background: #fff;
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 14px 18px;
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    box-shadow: 0 1px 2px rgba(16,24,40,.03);
+  }
+  .dl-ico {
+    width: 32px; height: 32px;
+    border-radius: 999px;
+    background: var(--bg-2);
+    display: grid;
+    place-items: center;
+    flex-shrink: 0;
+  }
+
+  /* ---------- Navy band ---------- */
+  .band {
+    background: linear-gradient(90deg, var(--navy-deep) 0%, var(--navy) 55%, #3A4AB8 100%);
+    color: #fff;
+    padding: 80px 24px;
+    position: relative;
+    overflow: hidden;
+  }
+  .band::before {
+    content: "";
+    position: absolute;
+    inset: 0;
+    background: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 800 400'><defs><radialGradient id='g' cx='50%25' cy='50%25'><stop offset='0%25' stop-color='%238FA8E8' stop-opacity='.5'/><stop offset='100%25' stop-color='%231F2577' stop-opacity='0'/></radialGradient></defs><ellipse cx='500' cy='200' rx='260' ry='180' fill='url(%23g)'/><ellipse cx='680' cy='260' rx='180' ry='110' fill='url(%23g)' opacity='.6'/></svg>") right center / auto 100% no-repeat;
+    opacity: .85;
+  }
+  .band-inner {
+    position: relative;
+    display: grid;
+    grid-template-columns: 1.05fr 1fr;
+    gap: 48px;
+    max-width: 1200px;
+    margin: 0 auto;
+    align-items: center;
+  }
+  .band h2 {
+    font-size: clamp(28px, 3.4vw, 44px);
+    margin: 0 0 28px;
+    color: #fff;
+    line-height: 1.1;
+  }
+  .band p {
+    color: rgba(255,255,255,.86);
+    margin: 0 0 12px;
+    font-size: 15px;
+    line-height: 1.55;
+    max-width: 460px;
+  }
+  .cta-pill.light {
+    background: var(--navy);
+    box-shadow: 0 0 0 8px rgba(255,255,255,.18), 0 0 0 9px rgba(255,255,255,.08);
+  }
+
+  /* ---------- See your future ---------- */
+  .future {
+    background: var(--bg);
+    padding: 100px 24px;
+  }
+  .future-inner {
+    display: grid;
+    grid-template-columns: 1fr 1.1fr;
+    gap: 48px;
+    max-width: 1200px;
+    margin: 0 auto;
+    align-items: center;
+  }
+  .future h2 { font-size: clamp(32px, 4.2vw, 54px); margin: 14px 0 18px; }
+  .future p { color: var(--body); max-width: 440px; margin: 0; font-size: 15px;}
+
+  .future-chart {
+    background: #fff;
+    border-radius: 18px;
+    padding: 26px 28px 22px;
+    box-shadow: var(--shadow-md);
+  }
+  .future-chart .cap {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    color: var(--navy);
+    font-weight: 700;
+    font-family: 'Manrope', sans-serif;
+    font-size: 15px;
+    margin-bottom: 8px;
+  }
+  .future-chart .cap::before {
+    content: ""; width: 9px; height: 9px; background: var(--navy); border-radius: 999px;
+  }
+
+  .calm-quote {
+    max-width: 640px;
+    margin: 80px auto 0;
+    text-align: center;
+    color: var(--muted);
+    font-size: clamp(18px, 2.2vw, 24px);
+    line-height: 1.45;
+    font-weight: 400;
+  }
+
+  /* ---------- Final CTA ---------- */
+  .final {
+    background: var(--bg);
+    padding: 40px 24px 90px;
+  }
+  .final-card {
+    max-width: 1100px;
+    margin: 0 auto;
+    background: #fff;
+    border-radius: 22px;
+    display: grid;
+    grid-template-columns: 1.2fr 1fr;
+    align-items: center;
+    padding: 48px 52px;
+    gap: 32px;
+    box-shadow: var(--shadow-md);
+    overflow: hidden;
+    position: relative;
+  }
+  .final-card h2 {
+    font-size: clamp(28px, 3vw, 44px);
+    margin: 0 0 10px;
+  }
+  .final-card h2 .accent { color: var(--navy); }
+  .final-card .sub { color: var(--body); font-size: 14px; margin: 0 0 26px; }
+
+  .kidney-art {
+    width: 100%;
+    aspect-ratio: 1/1;
+    max-width: 340px;
+    margin-left: auto;
+    position: relative;
+    border-radius: 999px;
+    background: radial-gradient(circle at 50% 50%, #fff 0%, #fff 55%, rgba(0,0,0,.02) 56%, rgba(0,0,0,0) 70%);
+  }
+  .kidney-art::before {
+    content: "";
+    position: absolute; inset: 8%;
+    border-radius: 999px;
+    border: 1px solid rgba(31,37,119,.07);
+  }
+  .kidney-art::after {
+    content: "";
+    position: absolute; inset: 16%;
+    border-radius: 999px;
+    border: 1px solid rgba(31,37,119,.05);
+  }
+  .kidney-art .kidney {
+    position: absolute; inset: 0;
+    display: grid;
+    place-items: center;
+  }
+  .kidney-art svg { width: 78%; height: auto; filter: drop-shadow(0 14px 30px rgba(31, 122, 58, .35)); }
+
+  /* ---------- Footer ---------- */
+  footer {
+    background: var(--bg);
+    padding: 28px 24px 48px;
+    text-align: center;
+    font-size: 13px;
+    color: var(--muted);
+  }
+  footer .brand-foot {
+    color: var(--navy);
+    font-weight: 700;
+    font-family: 'Manrope', sans-serif;
+    font-size: 16px;
+    margin-bottom: 10px;
+  }
+  footer nav {
+    display: flex;
+    gap: 24px;
+    justify-content: center;
+  }
+  footer a { color: var(--muted); text-decoration: none; min-height: auto; padding: 2px 0;}
+  footer a:hover { color: var(--ink-2); }
+
+  /* ---------- Tweaks panel ---------- */
+  .tweaks-btn {
+    position: fixed;
+    bottom: 20px; right: 20px;
+    background: var(--navy);
+    color: #fff;
+    border: 0;
+    padding: 12px 16px;
+    border-radius: 999px;
+    font-size: 13px;
+    font-weight: 600;
+    cursor: pointer;
+    z-index: 9999;
+    box-shadow: var(--shadow-lg);
+    display: none;
+  }
+  .tweaks-btn.visible { display: inline-flex; }
+  .tweaks-panel {
+    position: fixed;
+    bottom: 72px; right: 20px;
+    width: 280px;
+    background: #fff;
+    border-radius: 16px;
+    box-shadow: var(--shadow-lg);
+    padding: 18px;
+    z-index: 9999;
+    font-size: 13px;
+    display: none;
+  }
+  .tweaks-panel.open { display: block; }
+  .tweaks-panel h3 { margin: 0 0 14px; font-family: 'Manrope'; font-size: 14px; color: var(--ink);}
+  .tweak-row { margin-bottom: 12px; }
+  .tweak-row label { display: block; font-weight: 600; margin-bottom: 6px; color: var(--ink-2); font-size: 12px;}
+  .tweak-row input[type="color"] { width: 100%; height: 32px; border: 1px solid var(--border); border-radius: 6px; min-height: auto; padding: 2px;}
+  .tweak-row select { width: 100%; padding: 6px 8px; border: 1px solid var(--border); border-radius: 6px; font-size: 13px; min-height: auto; background: #fff;}
+  .tweak-row .seg { display: flex; gap: 4px; }
+  .tweak-row .seg button { flex: 1; border: 1px solid var(--border); background: #fff; padding: 6px 8px; font-size: 12px; border-radius: 6px; cursor: pointer; min-height: auto;}
+  .tweak-row .seg button.active { background: var(--navy); color: #fff; border-color: var(--navy);}
+
+  /* ---------- Mobile nav overlay ---------- */
+  .m-menu {
+    position: fixed;
+    inset: 0;
+    background: #fff;
+    z-index: 10000;
+    display: flex;
+    flex-direction: column;
+    transform: translateX(100%);
+    transition: transform .28s ease;
+    visibility: hidden;
+  }
+  .m-menu.open { transform: translateX(0); visibility: visible; }
+  .m-menu-top {
+    background: var(--navy);
+    color: #fff;
+    height: 64px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 0 20px;
+    flex-shrink: 0;
+  }
+  .m-menu-top .brand { font-family: 'Manrope', sans-serif; font-weight: 700; font-size: 17px; letter-spacing: -.01em;}
+  .m-menu-close { background: transparent; border: 0; color: #fff; font-size: 24px; line-height: 1; cursor: pointer; min-height: 44px; min-width: 44px; display: grid; place-items: center; padding: 0;}
+  .m-menu-list { padding: 32px 28px 0; display: flex; flex-direction: column; gap: 22px; }
+  .m-menu-list a { color: var(--ink); font-size: 17px; text-decoration: none; min-height: auto; padding: 4px 0; font-weight: 400;}
+  .m-menu-cta { margin: auto 28px 48px; padding-top: 32px; display: flex; justify-content: center; }
+  .m-menu-cta a { width: 100%; max-width: 340px; padding: 18px 28px; text-align: center; justify-content: center; }
+
+  /* ---------- Mobile ---------- */
+  @media (max-width: 900px) {
+    .nav-inner { gap: 18px; font-size: 13px; }
+    .nav-inner a:not(.brand) { display: none; }
+    .nav-burger { display: block; position: absolute; right: 20px; top: 50%; transform: translateY(-50%); color: #fff; background: transparent; border: 0; min-height: auto; padding: 4px 8px;}
+
+    .hero { padding: 40px 20px 60px; }
+    .hero .lede { font-size: 14px; }
+    .cta-pill { padding: 14px 28px; font-size: 14px; }
+
+    .hero-stage { min-height: 240px; margin-top: 24px; }
+    .hero-photo { width: 88%; max-width: 100%; aspect-ratio: 4/3; }
+    .stat-card { display: none; }
+    .hero-sub { display: none; }
+    .kidney-watermark { opacity: .25; }
+    .kidney-watermark svg { width: 300px; }
+
+    .trajectory-card { margin-top: 40px; padding: 18px 16px 22px; border-radius: 14px; }
+    .trajectory-title { position: static; text-align: left; max-width: none; margin-bottom: 10px; font-size: 13px; }
+
+    .section, .how, .band, .future, .final { padding: 60px 20px; }
+    .section-head { flex-direction: column; align-items: flex-start; gap: 14px; margin-bottom: 36px; }
+    .head-tags { order: 3; }
+
+    .steps { grid-template-columns: 1fr; gap: 32px; }
+    .steps::before { display: none; }
+    .step-num { left: 0; transform: none; padding: 0 0 8px; font-size: 14px; }
+
+    .band-inner, .future-inner, .final-card { grid-template-columns: 1fr; gap: 24px; }
+    .final-card { padding: 32px 24px; }
+    .kidney-art { max-width: 220px; margin: 0 auto; }
+
+    .calm-quote { margin-top: 48px; font-size: 18px; padding: 0 8px; }
+  }
+</style>
+</head>
+<body>
+<!-- Tweakable defaults JSON for edit mode -->
+<script id="tweak-defaults" type="application/json">/*EDITMODE-BEGIN*/{
+  "accent": "#1F2577",
+  "background": "#F4F5F7",
+  "uppercase": true,
+  "density": "comfortable"
+}/*EDITMODE-END*/</script>
+
+<!-- ========== NAV ========== -->
+<nav class="nav" data-screen-label="01 Nav">
+  <div class="nav-inner">
+    <span class="brand">KidneyHood.org</span>
+  </div>
+</nav>
+
+<!-- Mobile nav overlay -->
+<div class="m-menu" id="mMenu" role="dialog" aria-label="Menu" aria-hidden="true">
+  <div class="m-menu-top">
+    <span class="brand">KidneyHood.org</span>
+    <button class="m-menu-close" id="mMenuClose" aria-label="Close">✕</button>
+  </div>
+  <nav class="m-menu-list">
+    <a href="#how">How it works</a>
+    <a href="#preview">Preview</a>
+    <a href="#about">About</a>
+    <a href="#contact">Contact</a>
+  </nav>
+  <div class="m-menu-cta">
+    <a href="Lab Form.html" class="cta-pill on-tint" style="text-decoration:none">Start your check</a>
+  </div>
+</div>
+
+<!-- ========== HERO ========== -->
+<section class="hero" data-screen-label="02 Hero">
+  <div class="kidney-watermark" aria-hidden="true">
+    <!-- twin kidney shapes as watermark -->
+    <svg viewBox="0 0 820 420" xmlns="http://www.w3.org/2000/svg">
+      <g fill="none" stroke="#1F2577" stroke-width="1" opacity=".12">
+        <path d="M220 80c-80 0-140 70-140 150s60 140 130 140c50 0 70-20 70-60s-30-40-30-80 40-40 40-90-30-60-70-60z"/>
+        <path d="M600 80c80 0 140 70 140 150s-60 140-130 140c-50 0-70-20-70-60s30-40 30-80-40-40-40-90 30-60 70-60z"/>
+      </g>
+      <g fill="none" stroke="#1F2577" stroke-width="0.6" opacity=".08">
+        <ellipse cx="410" cy="210" rx="400" ry="180"/>
+        <ellipse cx="410" cy="210" rx="340" ry="150"/>
+        <ellipse cx="410" cy="210" rx="280" ry="120"/>
+      </g>
+    </svg>
+  </div>
+
+  <div class="hero-inner">
+    <h1 class="display">Understand your<br/><span class="accent">Kidney Health</span> in a simple way</h1>
+    <p class="lede">See what your lab results mean and how your kidney health may change over time.</p>
+    <a href="Lab Form.html" class="cta-pill on-tint" style="text-decoration:none">Start your check</a>
+
+    <div class="hero-stage">
+      <div class="stat-card stat-left">
+        <div class="label">Your current kidney function</div>
+        <div class="value">33<span class="unit">eGFR points</span></div>
+      </div>
+      <div class="stat-card stat-right">
+        <div class="label">Possible future level (5 years)</div>
+        <div class="value">25.9<span class="unit">eGFR points</span></div>
+      </div>
+
+      <div class="hero-photo" aria-label="Older couple placeholder">
+        <div class="ph-couple"></div>
+        <div class="photo-label">// couple photo</div>
+      </div>
+
+      <div class="hero-sub left">
+        No account needed<br/>Takes less than a minute
+      </div>
+      <div class="hero-sub right">
+        Impact from your BUN level
+        <span class="impact">-7.8 impact</span>
+      </div>
+    </div>
+
+    <div class="trajectory-card">
+      <div class="trajectory-title">How your kidney function may<br/>change over time</div>
+      <svg class="trajectory-chart" viewBox="0 0 860 240" preserveAspectRatio="none">
+        <defs>
+          <linearGradient id="trajLine" x1="0" x2="1" y1="0" y2="0">
+            <stop offset="0%" stop-color="#2A3192"/>
+            <stop offset="100%" stop-color="#8FA8E8"/>
+          </linearGradient>
+        </defs>
+        <!-- vertical gridlines -->
+        <g stroke="#E4E6EB" stroke-dasharray="2 4" stroke-width="1">
+          <line x1="80"  y1="30" x2="80"  y2="200"/>
+          <line x1="210" y1="30" x2="210" y2="200"/>
+          <line x1="340" y1="30" x2="340" y2="200"/>
+          <line x1="470" y1="30" x2="470" y2="200"/>
+          <line x1="600" y1="30" x2="600" y2="200"/>
+          <line x1="730" y1="30" x2="730" y2="200"/>
+        </g>
+        <!-- line -->
+        <polyline fill="none" stroke="url(#trajLine)" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"
+                  points="80,60 210,80 340,110 470,135 600,160 730,185" />
+        <!-- dots -->
+        <g>
+          <circle cx="80"  cy="60"  r="8" fill="#2A3192"/>
+          <circle cx="210" cy="80"  r="8" fill="#3F4AA4"/>
+          <circle cx="340" cy="110" r="8" fill="#5563B6"/>
+          <circle cx="470" cy="135" r="8" fill="#6B7BC4"/>
+          <circle cx="600" cy="160" r="8" fill="#8293D0"/>
+          <circle cx="730" cy="185" r="8" fill="#9AA9DA"/>
+        </g>
+      </svg>
+      <div class="trajectory-axis">
+        <span>Today</span><span>3 mo</span><span>1 yr</span><span>2 yrs</span><span>4 yrs</span><span>5 yrs</span>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ========== HOW IT WORKS ========== -->
+<section class="how" id="how" data-screen-label="03 How it works">
+  <div class="wrap">
+    <div class="section-head">
+      <div>
+        <span class="chip"><span class="dot"></span>Clear</span>
+        <h2 class="display section-title">How it works</h2>
+      </div>
+      <div class="head-tags">
+        <span class="tag-pill">Takes less than a minute</span>
+        <span class="tag-pill">No account needed</span>
+        <span class="tag-pill">Instant results</span>
+      </div>
+    </div>
+
+    <div class="steps">
+      <div class="step">
+        <div class="step-num">01</div>
+        <div class="step-card">
+          <div class="h">Enter your lab results:</div>
+          <div class="field-pill">BUN</div>
+          <div class="field-pill">Creatinine</div>
+          <div class="field-pill">Your Age</div>
+        </div>
+      </div>
+
+      <div class="step">
+        <div class="step-num">02</div>
+        <div class="step-card">
+          <div class="h">Get your projection:</div>
+          <div class="ticker"><span>07</span><span>06</span><span class="active">05</span><span>04</span><span>03</span></div>
+          <svg class="mini-chart" viewBox="0 0 260 70" preserveAspectRatio="none">
+            <polyline fill="none" stroke="#2F8F52" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"
+                      points="8,50 40,40 70,42 100,22 130,10 160,26 190,36 220,28 252,34"/>
+          </svg>
+          <div class="desc">Understand your current kidney function and what it may mean</div>
+        </div>
+      </div>
+
+      <div class="step">
+        <div class="step-num">03</div>
+        <div class="step-card">
+          <div class="h">Download your report:</div>
+          <div class="dl-box">
+            <div class="dl-ico">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#1F2577" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3v12"/><path d="M7 10l5 5 5-5"/><path d="M5 21h14"/></svg>
+            </div>
+            <span style="font-weight:600;font-size:14px;color:var(--ink)">Download PDF</span>
+          </div>
+          <div class="desc">Download a simple report you can keep or share</div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ========== NAVY BAND ========== -->
+<section class="band" data-screen-label="04 Real understanding">
+  <div class="band-inner">
+    <div>
+      <h2 class="display">More than numbers —<br/>real understanding</h2>
+      <a href="Lab Form.html" class="cta-pill light" style="text-decoration:none">Get your prediction</a>
+    </div>
+    <div>
+      <p><strong>KidneyHood</strong> helps you understand your kidney health in a simple and clear way.</p>
+      <p>Instead of just numbers, you see where you stand today and what may happen over time. It shows the bigger picture, so you can see your current condition and possible future trends.</p>
+    </div>
+  </div>
+</section>
+
+<!-- ========== SEE YOUR FUTURE ========== -->
+<section class="future" id="preview" data-screen-label="05 See your future">
+  <div class="future-inner">
+    <div>
+      <span class="chip"><span class="dot"></span>Prediction</span>
+      <h2 class="display">See your future,<br/>not just your results</h2>
+      <p>Each result is presented with a clear trajectory, helping you understand direction over time — not just isolated data.</p>
+    </div>
+
+    <div class="future-chart">
+      <div class="cap">Your Future Kidney Function</div>
+      <svg viewBox="0 0 480 260" preserveAspectRatio="none" style="width:100%;height:auto;display:block">
+        <defs>
+          <linearGradient id="fill1" x1="0" y1="0" x2="0" y2="1">
+            <stop offset="0%" stop-color="#6CC24A" stop-opacity=".22"/>
+            <stop offset="100%" stop-color="#6CC24A" stop-opacity="0"/>
+          </linearGradient>
+        </defs>
+        <!-- y-axis labels -->
+        <g font-family="Nunito Sans" font-size="11" fill="#8A8D96">
+          <text x="20" y="50">30</text>
+          <text x="20" y="120">20</text>
+          <text x="20" y="190">10</text>
+          <text x="5" y="130" transform="rotate(-90 10 130)">eGFR</text>
+        </g>
+        <!-- filled area -->
+        <path d="M60 45 C 140 48, 200 60, 260 110 S 360 190, 440 205 L 440 220 L 60 220 Z"
+              fill="url(#fill1)"/>
+        <!-- 3 lines -->
+        <path d="M60 55 C 140 60, 200 75, 260 125 S 360 200, 440 210"
+              fill="none" stroke="#1F7A3A" stroke-width="2.5"/>
+        <path d="M60 48 C 140 52, 200 65, 260 110 S 360 180, 440 195"
+              fill="none" stroke="#3FA35B" stroke-width="2.5"/>
+        <path d="M60 42 C 140 46, 200 58, 260 95 S 360 160, 440 175"
+              fill="none" stroke="#6CC24A" stroke-width="2.5"/>
+        <!-- x-axis dots -->
+        <g fill="#1F7A3A">
+          <circle cx="60" cy="220" r="6"/>
+          <circle cx="180" cy="220" r="6"/>
+          <circle cx="300" cy="220" r="6"/>
+          <circle cx="440" cy="220" r="6"/>
+        </g>
+        <g font-family="Nunito Sans" font-size="11" fill="#8A8D96">
+          <text x="56" y="245">0</text>
+          <text x="176" y="245">2</text>
+          <text x="296" y="245">4</text>
+          <text x="436" y="245">6</text>
+          <text x="445" y="258" font-weight="600">Years</text>
+        </g>
+      </svg>
+    </div>
+  </div>
+
+  <div class="calm-quote">
+    Designed to be clear, calm, and easy to understand, without unnecessary complexity or overwhelming medical language.
+  </div>
+</section>
+
+<!-- ========== FINAL CTA ========== -->
+<section class="final" data-screen-label="06 Final CTA">
+  <div class="final-card">
+    <div>
+      <h2 class="display">Get your<br/><span class="accent">Personalized</span> Kidney<br/>Health Report</h2>
+      <p class="sub">Based on your lab results</p>
+      <a href="Lab Form.html" class="cta-pill" style="text-decoration:none">Get your prediction</a>
+    </div>
+    <div class="kidney-art" aria-hidden="true">
+      <div class="kidney">
+        <!-- stylized kidney pair -->
+        <svg viewBox="0 0 260 260" xmlns="http://www.w3.org/2000/svg">
+          <defs>
+            <radialGradient id="kg" cx="50%" cy="40%" r="70%">
+              <stop offset="0%" stop-color="#8FE078"/>
+              <stop offset="55%" stop-color="#3FA35B"/>
+              <stop offset="100%" stop-color="#1F7A3A"/>
+            </radialGradient>
+          </defs>
+          <g fill="url(#kg)">
+            <path d="M92 40c-36 0-64 32-64 72s20 76 52 96c18 11 44 6 54-14 8-14 0-28-6-42-8-18 4-30 16-42 14-14 18-30 10-46-8-16-28-24-62-24z"/>
+            <path d="M168 40c36 0 64 32 64 72s-20 76-52 96c-18 11-44 6-54-14-8-14 0-28 6-42 8-18-4-30-16-42-14-14-18-30-10-46 8-16 28-24 62-24z"/>
+          </g>
+          <!-- shine -->
+          <g fill="#fff" opacity=".35">
+            <ellipse cx="70" cy="80" rx="14" ry="24" transform="rotate(-18 70 80)"/>
+            <ellipse cx="190" cy="80" rx="14" ry="24" transform="rotate(18 190 80)"/>
+          </g>
+        </svg>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ========== FOOTER ========== -->
+<footer data-screen-label="07 Footer">
+  <div class="brand-foot">KidneyHood.org</div>
+  <nav>
+    <a href="#">Privacy</a>
+    <a href="#">Disclaimer</a>
+    <a href="#">Contact</a>
+  </nav>
+</footer>
+
+<!-- ========== TWEAKS ========== -->
+<div class="tweaks-panel" id="tweaksPanel">
+  <h3>Tweaks</h3>
+  <div class="tweak-row">
+    <label>Accent color</label>
+    <input type="color" id="tw-accent" value="#1F2577"/>
+  </div>
+  <div class="tweak-row">
+    <label>Page background</label>
+    <div class="seg" id="tw-bg">
+      <button data-v="#F4F5F7" class="active">Cool</button>
+      <button data-v="#F6F3EC">Cream</button>
+      <button data-v="#F1F4F1">Sage</button>
+    </div>
+  </div>
+  <div class="tweak-row">
+    <label>Display headings</label>
+    <div class="seg" id="tw-case">
+      <button data-v="1" class="active">Uppercase</button>
+      <button data-v="0">Sentence</button>
+    </div>
+  </div>
+  <div class="tweak-row">
+    <label>Density</label>
+    <div class="seg" id="tw-density">
+      <button data-v="comfortable" class="active">Comfortable</button>
+      <button data-v="compact">Compact</button>
+    </div>
+  </div>
+</div>
+<button class="tweaks-btn" id="tweaksBtn">✎ Tweaks</button>
+
+<script>
+(function(){
+  const burger = document.getElementById('navBurger');
+  const menu = document.getElementById('mMenu');
+  const close = document.getElementById('mMenuClose');
+  const open = () => { menu.classList.add('open'); menu.setAttribute('aria-hidden','false'); document.body.style.overflow='hidden'; };
+  const shut = () => { menu.classList.remove('open'); menu.setAttribute('aria-hidden','true'); document.body.style.overflow=''; };
+  burger && burger.addEventListener('click', open);
+  close && close.addEventListener('click', shut);
+  menu && menu.querySelectorAll('a').forEach(a => a.addEventListener('click', shut));
+  document.addEventListener('keydown', e => { if (e.key === 'Escape') shut(); });
+})();
+(function(){
+  // ---- edit-mode protocol: register listener first ----
+  let editMode = false;
+  const btn = document.getElementById('tweaksBtn');
+  const panel = document.getElementById('tweaksPanel');
+
+  window.addEventListener('message', (e) => {
+    const d = e.data || {};
+    if (d.type === '__activate_edit_mode') { editMode = true; btn.classList.add('visible'); }
+    if (d.type === '__deactivate_edit_mode') { editMode = false; btn.classList.remove('visible'); panel.classList.remove('open'); }
+  });
+  try { window.parent.postMessage({type:'__edit_mode_available'}, '*'); } catch(_){}
+
+  btn.addEventListener('click', () => panel.classList.toggle('open'));
+
+  // load defaults
+  let defs = {};
+  try { defs = JSON.parse(document.getElementById('tweak-defaults').textContent.replace(/\/\*EDITMODE-[A-Z]+\*\//g,'')); } catch(_){}
+
+  const apply = (patch) => {
+    const { accent, background, uppercase, density } = { ...defs, ...patch };
+    if (accent) {
+      document.documentElement.style.setProperty('--navy', accent);
+      document.documentElement.style.setProperty('--navy-700', accent);
+      document.documentElement.style.setProperty('--navy-deep', accent);
+    }
+    if (background) document.documentElement.style.setProperty('--bg', background);
+    document.querySelectorAll('.display').forEach(el => {
+      el.style.textTransform = uppercase ? 'uppercase' : 'none';
+    });
+    if (density === 'compact') {
+      document.documentElement.style.setProperty('--radius-lg','14px');
+      document.querySelectorAll('.section, .how, .band, .future, .final').forEach(s => s.style.paddingBlock = '60px');
+    } else {
+      document.querySelectorAll('.section, .how, .band, .future, .final').forEach(s => s.style.paddingBlock = '');
+    }
+    Object.assign(defs, patch);
+    try { window.parent.postMessage({type:'__edit_mode_set_keys', edits: patch}, '*'); } catch(_){}
+  };
+  apply({});
+
+  document.getElementById('tw-accent').addEventListener('input', (e)=> apply({ accent: e.target.value }));
+  const seg = (id, key, parse=(x)=>x) => {
+    document.querySelectorAll(`#${id} button`).forEach(b => b.addEventListener('click', () => {
+      document.querySelectorAll(`#${id} button`).forEach(x => x.classList.remove('active'));
+      b.classList.add('active');
+      apply({ [key]: parse(b.dataset.v) });
+    }));
+  };
+  seg('tw-bg','background');
+  seg('tw-case','uppercase', v => v === '1');
+  seg('tw-density','density');
+})();
+</script>
+</body>
+</html>
