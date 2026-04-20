@@ -938,7 +938,7 @@ export default function ResultsTokenPage({
             <div className="explain-cta">
               <DownloadPill href={pdfHref} onClick={handlePdfClick} id="download-bottom" />
             </div>
-            <p className="fine">
+            <p className="fine" data-testid="disclaimer-full-panel-desktop">
               This tool is for informational purposes only and does not constitute medical
               advice.
               <br />
