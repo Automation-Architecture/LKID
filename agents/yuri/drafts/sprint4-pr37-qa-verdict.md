@@ -374,3 +374,201 @@ No HIGH findings. No blockers in this PR's scope.
 **PASS — MERGE-READY.** Diff is 100% within scope (color values only), no secrets, a11y regressions from today's run are cleared on `/` and `/predict`. The one failure is pre-existing Yuri test-mock debt on `/predict`'s `input-bun` selector; it does not impugn Harshit's fix. Safe to merge.
 
 GitHub review URL: see `gh pr review 41` comment filed at the same time as this verdict.
+
+---
+
+## PR #48 verification — LKID-67 Harshit-half (chart stat-card text re-tokening)
+
+**Date:** 2026-04-19
+**Reviewer:** Yuri
+**PR:** https://github.com/Automation-Architecture/LKID/pull/48
+**Branch:** `feat/LKID-67-chart-text-retoken`
+**Commit SHA verified:** `a3307783dae5e12245ec16815497062783fc879c`
+
+### Diff scope
+
+`git diff origin/main...HEAD --stat`:
+
+```
+ app/src/components/chart/EgfrChart.tsx | 10 +++++++---
+ app/tests/a11y/accessibility.spec.ts   | 20 +++++++++++++-------
+ 2 files changed, 20 insertions(+), 10 deletions(-)
+```
+
+Exactly the 2 files the dispatch specified. No unrelated files touched.
+
+### 5 hex values — HTML text fixes verified, SVG occurrences untouched
+
+Case-insensitive scan of `app/src/components/chart/EgfrChart.tsx`:
+
+| Hex | Prior usage (HTML text) | In this PR | Any remaining occurrence | Context |
+|-----|-------------------------|------------|--------------------------|---------|
+| `#1d9e75` / `#1D9E75` | via `traj.color` in stat-card `<p style={{color:…}}>` (line 716) | Replaced by `text-foreground` class | Line 556 (`stroke`), line 565 (`fill`) | SVG Tier-1 badge — Inga's scope |
+| `#378add` / `#378ADD` | via `traj.color` in stat-card `<p style={{color:…}}>` (line 716) | Replaced by `text-foreground` class | None in file (comes from `traj.color` prop at runtime; used inside `<Text fill={traj.color}>` at line 477 — SVG) | SVG end-of-line label — Inga's scope |
+| `#85b7eb` / `#85B7EB` | via `traj.color` in stat-card `<p style={{color:…}}>` (line 716) | Replaced by `text-foreground` class | Same as above — prop-driven, only consumed inside SVG | SVG end-of-line label — Inga's scope |
+| `#aaaaaa` / `#AAAAAA` | N/A (not found statically; referenced by prior `.exclude` comment) | N/A | No literal match in file | — |
+| `#888888` | HTML footnote `<p style={{color:"#888888"}}>` (line 786) | Replaced by `text-muted-foreground` class | Line 345 (`fill="#888888"`) | SVG phase-label `<Text>` — Inga's scope |
+
+All HTML text occurrences are now token-based (`text-foreground` / `text-muted-foreground`). Only remaining literal hex values live inside SVG (`<Text fill=...>`, stroke/fill on Tier badge) — explicitly Inga's half.
+
+### Exclusion narrowing — PASS
+
+`accessibility.spec.ts`:
+
+- Broad `.exclude('[data-testid="egfr-chart-wrapper"]')` — **removed**
+- Only `.exclude("svg")` remains — scopes audit to HTML chrome of the chart wrapper (stat cards, footnote, header) while keeping SVG internals out-of-scope for Inga's half.
+
+### Test results
+
+| Suite | Command | Result |
+|-------|---------|--------|
+| a11y | `npx playwright test --config=playwright.a11y.config.ts` | **5/5 PASS** (8.5s) |
+| E2E | `npx playwright test --config=playwright.e2e.config.ts` | **6/6 PASS** (7.8s) |
+| Typecheck | `npx tsc --noEmit` | Clean (0 errors) |
+| Lint | `npx eslint src/components/chart/EgfrChart.tsx` | Clean (0 warnings) |
+
+A11y suite now audits the chart's HTML wrapper (post-narrowing) and still passes — confirms the re-tokened colors meet AA contrast.
+
+### Forbidden-change check — PASS
+
+Lines Harshit was explicitly told not to touch:
+
+| Line | Content | Touched in PR? |
+|------|---------|----------------|
+| 345 | `fill="#888888"` (SVG phase label) | No |
+| 477 | `fill={traj.color}` (SVG end-of-line label) | No |
+| 556 | `stroke={… "#1D9E75" : "#F59E0B"}` (SVG Tier badge) | No |
+| 565 | `fill={… "#1D9E75" : "#92400E"}` (SVG Tier badge) | No |
+
+All SVG-internal chart colors intact for Inga's follow-up PR.
+
+### Secret scan — PASS
+
+`git diff origin/main...HEAD | grep -E "(re_[A-Za-z0-9]{15,}|pk_live_|sk_live_)"` returned zero matches.
+
+### Verdict
+
+**PASS — MERGE-READY.** Harshit executed the narrow Harshit-half of LKID-67 exactly to spec: (1) 2 HTML text sites re-tokened, (2) a11y exclusion narrowed from whole-wrapper to SVG-only, (3) SVG internals untouched for Inga, (4) a11y 5/5 and E2E 6/6 green, (5) typecheck + lint clean, (6) no secrets. The Inga-half (chart SVG colors — lines, phase labels, Tier badges, end-of-line labels) remains the outstanding AC on LKID-67 and must ship in a separate PR before the card can close.
+
+GitHub review URL: see `gh pr review 48` comment filed at the same time as this verdict.
+
+---
+
+# PR #49 verification — LKID-67 Inga half (chart SVG colors)
+
+**PR:** [#49](https://github.com/Automation-Architecture/LKID/pull/49) — "fix(chart): LKID-67 Inga half — AA-compliant trajectory + label colors"
+**Branch:** `feat/LKID-67-chart-svg-colors`
+**Commit SHA:** `62f8ecba5e7c80ceda4fa2e620fee680fc45ab78`
+**Reviewer:** Yuri (QA)
+**Review date:** 2026-04-19
+
+## Diff scope — PASS
+
+Exactly the 3 expected files, no scope creep:
+
+```
+agents/inga/drafts/lkid-67-chart-color-decision.md | 123 +++++++++++++++++++
+app/src/components/chart/EgfrChart.tsx             |  17 ++-
+app/src/components/chart/transform.ts              |  16 ++-
+3 files changed, 147 insertions(+), 9 deletions(-)
+```
+
+## Hex replacements — PASS
+
+All 5 new AA-compliant hex values present in code:
+
+| Hex | Location | Role |
+|---|---|---|
+| `#047857` (emerald-700) | `transform.ts:26`, `EgfrChart.tsx:563,572` | BUN ≤ 12 trajectory + Tier-1 badge stroke/text |
+| `#0369A1` (sky-700) | `transform.ts:32` | BUN 13–17 trajectory |
+| `#B45309` (amber-700) | `transform.ts:39` | BUN 18–24 trajectory |
+| `#374151` (slate-700) | `transform.ts:46` | No-treatment trajectory |
+| `#475569` (slate-600) | `EgfrChart.tsx:347` | Phase-band labels |
+
+All 5 old values (`#AAAAAA`, `#85B7EB`, `#378ADD`, `#1D9E75`, `#888888`) are **absent from code paths**; the only remaining occurrences are in historical/documentation comments (`EgfrChart.tsx:337, 550, 794`) which is expected and intentional.
+
+## Contrast verification — PASS
+
+Independently recomputed on the confirming side (against `#FFFFFF` background) — all five ratios exceed WCAG AA 4.5:1:
+
+```
+#047857 → 5.48:1
+#0369A1 → 5.93:1
+#B45309 → 5.02:1
+#374151 → 10.31:1
+#475569 → 7.58:1
+```
+
+Matches Inga's design-note table exactly.
+
+## A11y suite (current — with `.exclude("svg")`) — PASS
+
+```
+5 passed (5.3s)
+```
+
+5/5: home, labs, gate, results, auth. No regression from PR #48 state.
+
+## A11y suite (temporary — WITHOUT `.exclude("svg")`) — PASS
+
+Temporarily removed `.exclude("svg")` from `app/tests/a11y/accessibility.spec.ts` line 133, re-ran the full a11y suite, then reverted the edit. Result:
+
+```
+5 passed (4.6s)
+```
+
+**5/5 PASS with the SVG chart internals in scope.** Zero critical/serious axe violations from the re-tokened `<svg>` tree. This is the definitive test of Inga's fix: with the charcoal/emerald/sky/amber/slate palette in place and the phase labels at slate-600, axe finds no color-contrast violations in the chart SVG. Working tree reverted clean — confirmed by `git diff app/tests/a11y/accessibility.spec.ts` returning empty.
+
+## E2E suite — PASS
+
+```
+6 passed (3.9s)
+```
+
+6/6: happy path, 2× error paths, 3× token routing guards. No regression.
+
+## tsc + lint — PASS
+
+- `npx tsc --noEmit` — zero errors
+- `npx eslint src/components/chart/` — zero errors/warnings
+
+## Design note — PASS
+
+`agents/inga/drafts/lkid-67-chart-color-decision.md` (123 lines) explains:
+- Four-hue semantic palette rationale (emerald/sky/amber/slate) vs the previous monochromatic blue/green gradient
+- Explicit "charcoal, not red" decision for No Treatment to avoid clash with the `#D32F2F` dialysis-threshold line
+- Before/after contrast table covering all five direct changes + two inherit-by-reference sites (end-of-line labels, stat-card dots)
+- Tier-1 badge re-tokening (emerald-700 on `#E8F5F0` pill → 4.90:1)
+- Options considered (A monochromatic dark blues / B semantic story / C darkened greens) with rationale for choosing B
+
+Note: the "Lee items" prompt does not apply here — LKID-67 is a pure design/a11y fix with no clinical inputs. The design note appropriately flags none.
+
+## Secret scan — PASS
+
+No matches for api keys / secrets / passwords / bearer tokens in the 3 changed files.
+
+## Workspace discipline — PASS
+
+- Temporary edit to `accessibility.spec.ts` reverted cleanly (verified via `git diff`).
+- Pre-existing unrelated working-tree modifications (`sprint4-pr37-qa-verdict.md` = this file; untracked `luca/drafts/lkid-68-postmortem-synthesis.md` + `docs/client-comms/`) are out of scope and do not originate from this verification run.
+
+## Follow-up recommendation — `.exclude("svg")` is now SAFELY REMOVABLE
+
+**Yes — the exclusion can be removed in a tiny follow-up.** Evidence:
+
+1. Re-ran the a11y suite without `.exclude("svg")` on the PR #49 branch: **5/5 PASS, zero critical/serious violations in the chart SVG tree**.
+2. All five failing hex values identified in LKID-67 are fixed at their source (4 trajectory colors in `transform.ts`, phase label in `EgfrChart.tsx:347`).
+3. Tier-1 badge is `aria-hidden="true"` so axe ignores it regardless, but its contrast has also been lifted from 3.39:1 to 5.48:1.
+4. Visx-internal SVG structures (axis ticks, grid lines, etc.) do not trip critical/serious rules in this suite — the earlier `.exclude("svg")` was a conservative overshoot per Harshit's LKID-67 first-half comment, now provably unneeded.
+
+**Recommendation:** open a ~3-line follow-up PR that removes the `.exclude("svg")` line (currently at `accessibility.spec.ts:133`) along with the explanatory comments immediately above it. This closes the last LKID-65 loophole and makes the a11y suite audit the full results page including chart internals. Suggested Jira: comment on LKID-65 or a new tiny card (`chore(a11y): remove svg exclusion now that LKID-67 landed`).
+
+## Verdict
+
+**PASS — MERGE-READY.**
+
+Inga delivered the second half of LKID-67 tightly scoped: 5 hex replacements across 2 source files, 1 design note, zero regressions. The WCAG AA 4.5:1 threshold is met by all five colors (lowest is amber at 5.02:1). Full a11y suite passes both with the conservative `.exclude("svg")` still in place AND without it — the latter is the true proof that LKID-67 has closed the color-contrast gap inside the chart SVG. LKID-65 a11y exclusion is now redundant and can be removed in a trivial follow-up PR.
+
+GitHub review URL: filed via `gh pr review 49` alongside this verdict.
+
+
