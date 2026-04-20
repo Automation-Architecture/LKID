@@ -1,20 +1,24 @@
 /**
- * LKID-63 — /internal/chart/[token] server component.
+ * LKID-63 / LKID-82 — /internal/chart/[token] server component.
  *
  * Playwright render target for the backend PDF pipeline. Validates the
  * shared `?secret=` query param against the server-only `PDF_SECRET`
  * env var, fetches the prediction from the FastAPI backend, and hands
- * the data to a client wrapper that renders the chart.
+ * the data to a client-rendered PdfReport that matches
+ * project/PDF Report.html.
  *
  * This page must remain a server component — `PDF_SECRET` is not
  * exposed as NEXT_PUBLIC and must never land in client bundles.
  *
  * There is no navigation chrome. A nested route layout clears away the
- * SkipNav from the root layout so the PDF render is chart-only.
+ * SkipNav from the root layout so the PDF render is chrome-free.
+ *
+ * Playwright waits for `#pdf-ready` before invoking `page.pdf()` — that
+ * id lives on the outer wrapper of `PdfReport`.
  */
 
 import { notFound } from "next/navigation";
-import ClientChart from "./ClientChart";
+import PdfReport from "@/components/results/PdfReport";
 import type { PredictResponse } from "@/components/chart";
 
 export const dynamic = "force-dynamic";
@@ -25,6 +29,7 @@ interface ResultsApiResponse {
   created_at: string;
   result: PredictResponse;
   inputs?: { bun?: number } | null;
+  lead?: { name?: string; email_captured_at?: string | null } | null;
 }
 
 async function fetchResult(token: string): Promise<ResultsApiResponse | null> {
@@ -65,11 +70,21 @@ export default async function InternalChartPage({
     notFound();
   }
 
-  // Input BUN is needed to decide whether to show the structural-floor
-  // callout. Backend persists inputs in predictions.inputs; /results/[token]
-  // does not currently return them but the field is forward-compatible.
-  const bun =
-    typeof data.inputs?.bun === "number" ? data.inputs.bun : null;
+  // Input BUN is needed to decide whether to show the structural-floor copy
+  // in the explanation block. Backend persists inputs in predictions.inputs.
+  const bun = typeof data.inputs?.bun === "number" ? data.inputs.bun : null;
 
-  return <ClientChart result={data.result} bun={bun} />;
+  // Lead name is returned by /results/{token} when captured=true (backend
+  // main.py lines 619-645). Fall back to an empty string for the rare
+  // pre-capture path — the PdfReport hides the name row when blank.
+  const patientName = data.lead?.name ?? "";
+
+  return (
+    <PdfReport
+      result={data.result}
+      patientName={patientName}
+      createdAt={data.created_at}
+      bun={bun}
+    />
+  );
 }
