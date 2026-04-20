@@ -43,7 +43,7 @@ const UPCOMING: Array<{
       "Shipped — Conversion analytics (PostHog funnel: labs / gate / results / PDF)",
       "Shipped — Results page visual parity with finalized design",
       "Shipped — Chart redesign to match design brand identity",
-      "In progress — Dashboard v2 for you (launch-metrics panels)",
+      "Shipped — Dashboard v2 for you (launch-metrics panels below)",
       "Up next — SEO basics (OG tags, sitemap, structured data)",
       "Up next — Security headers (CSP, HSTS, X-Frame-Options)",
     ],
@@ -107,7 +107,7 @@ export function Horizon() {
             April 20, 2026
           </p>
           <p className="mt-1 text-xs" style={{ color: "rgba(255,255,255,0.65)" }}>
-            Five Sprint 5 cards already shipped: error monitoring, analytics funnel, Results redesign, component refactor, and the chart update. Dashboard v2, SEO, and security headers up next.
+            Six Sprint 5 cards already shipped: error monitoring, analytics funnel, Results redesign, component refactor, chart update, and your dashboard v2. SEO and security headers up next.
           </p>
         </div>
       </div>
