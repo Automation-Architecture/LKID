@@ -7,7 +7,7 @@
 **Jira:** [SPEC Board](https://automationarchitecture.atlassian.net/jira/software/c/projects/SPEC/boards/329/backlog) | [LKID Board](https://automationarchitecture.atlassian.net/jira/software/c/projects/LKID/boards/363)
 **Repo:** [github.com/Automation-Architecture/LKID](https://github.com/Automation-Architecture/LKID)
 **Specs:** `/Users/brad/IDE/kidneyhood/` (3 docx files)
-**Status:** Sprint 5 IN PROGRESS (Launch Readiness theme). Sprint 4 COMPLETE (shipped Apr 20 — 13 days ahead of plan). App live at kidneyhood-automation-architecture.vercel.app with no-auth tokenized flow (`/labs` → `/gate/[token]` → `/results/[token]`). G1/G2/G3 guardrails active. LKID-72 Sentry (PR #55) merged; LKID-71 PostHog (PR #56) open.
+**Status:** Sprint 5 IN PROGRESS (Launch Readiness theme). Sprint 4 COMPLETE (shipped Apr 20 — 13 days ahead of plan). App live at kidneyhood-automation-architecture.vercel.app with no-auth tokenized flow (`/labs` → `/gate/[token]` → `/results/[token]`). G1/G2/G3 guardrails active. LKID-72 Sentry (#55), LKID-71 PostHog (#56), LKID-76 Results design parity (#57) all merged and deployed. LKID-73/74/75 not started.
 **Client Dashboard:** https://kidneyhood-automation-architecture.vercel.app/client/lee-a3f8b2 — auto-updated by `scripts/refresh-sprint-progress.py`.
 
 ## Sprint Plan
@@ -34,16 +34,24 @@ Theme A selected. Goal: flip from "works" to "launched" — measurement + safety
 | Card | Title | Owner | Status | PR |
 |------|-------|-------|--------|----|
 | LKID-72 | Sentry frontend + backend error monitoring | John + Harshit | **Merged** | #55 |
-| LKID-71 | PostHog conversion funnel analytics (labs/gate/results/pdf) | Harshit | **Open — PR #56** (QA pending) | #56 |
+| LKID-71 | PostHog conversion funnel analytics (labs/gate/results/pdf) | Harshit | **Merged** | #56 |
+| LKID-76 | Results page design parity + sitewide font regression | Harshit + Inga | **Merged** | #57 |
 | LKID-73 | SEO basics (OG tags, sitemap, robots, JSON-LD) | Harshit + Inga | Not started | — |
 | LKID-74 | CSP + security headers | John + Harshit | Not started | — |
 | LKID-75 | Lee dashboard v2 (funnel + leads + opt-in rate) | Harshit + Inga | Not started | — |
+
+**Sprint 5 backlog (filed during LKID-76 chain, not scheduled):**
+
+- LKID-77 — Engine edge case: `compute_dial_age` returns None when `trajectory[0] < 12` (Low, agent:john-donaldson)
+- LKID-78 — Audit discrepancy: UI audit baseline eGFR 32 vs engine 43.9 for same inputs (Medium, investigation)
 
 **Sprint 4 rollovers still Brad-gated:**
 
 - LKID-68 postmortem sign-off — 5 open questions in `lkid-68-postmortem-synthesis.md` §8
 - LKID-69 dup Postgres cleanup — deletion approval
 - LKID-47 Klaviyo Flow dashboard config
+- PostHog env vars on Vercel (`NEXT_PUBLIC_POSTHOG_KEY` + host) — until set, PostHog is a silent no-op per design
+- Sentry env vars on Vercel + Railway (5 vars, per Yuri's PR #55 verdict)
 
 ### Sprint 4 — No-Auth Tokenized Flow (DONE — shipped Apr 20, 2026)
 
@@ -213,7 +221,8 @@ CTO (Luca) opens one PR per Jira card. Each card gets a feature branch (`feat/LK
 | PR | Branch | Card | Owner | Status |
 |----|--------|------|-------|--------|
 | [#55](https://github.com/Automation-Architecture/LKID/pull/55) | `feat/LKID-72-sentry-integration` | LKID-72 | John + Harshit | Merged |
-| [#56](https://github.com/Automation-Architecture/LKID/pull/56) | `feat/LKID-71-posthog-analytics` | LKID-71 | Harshit | Open (QA pending) |
+| [#56](https://github.com/Automation-Architecture/LKID/pull/56) | `feat/LKID-71-posthog-analytics` | LKID-71 | Harshit | Merged |
+| [#57](https://github.com/Automation-Architecture/LKID/pull/57) | `feat/LKID-76-results-parity` | LKID-76 | Harshit + Inga | Merged |
 
 ## Team
 
@@ -351,7 +360,13 @@ agent-teams/
 | Lee Golden Vectors v2.0 | `agents/luca/drafts/lee-golden-vectors-v2.md` | Luca | Final | 3 golden vectors + gap analysis (2026-04-02) |
 | Engine Refactor Analysis | `agents/luca/drafts/engine-refactor-analysis.md` | Luca | Final | LKID-59 detailed analysis for John's dispatch |
 | Sprint 3 Commit Strategy | `agents/luca/drafts/sprint3-commit-strategy.md` | Luca | Final | 4-branch merge plan, conflict risk matrix |
+| Sprint 5 UI Design Audit | `agents/luca/drafts/ui-design-audit-sprint5.md` | Luca (subagent) | Final | Deployed vs `project/` designs — 8 P0 + 11 P1 + 7 P2, screenshots in `ui-audit-screenshots/` |
+| Sprint 5 Chart Palette Decision | `agents/inga/drafts/chart-palette-decision.md` | Inga | Final | Binding — Palette A+ hybrid (WCAG on chart lines, `--s-*` on pills/cards) |
+| Sprint 5 Scenario dial_age Sign-off | `agents/john_donaldson/drafts/scenario-dial-age-signoff.md` | John | Final | LKID-76 engine PASS — "Not projected" × 4 is correct for Stage 3a |
+| Sprint 5 Results-Parity Dispatch | `active/DISPATCH-sprint5-results-parity.md` | Luca | Final | LKID-76 implementation scope, AC, palette decision reference |
 | Sprint 5 PR #55 QA Verdict | `agents/yuri/drafts/sprint5-pr55-qa-verdict.md` | Yuri | Final | LKID-72 Sentry: PASS — 10/10 checks, 1 non-blocking nit on frontend scrubber coverage |
+| Sprint 5 PR #56 QA Verdict | `agents/yuri/drafts/sprint5-pr56-qa-verdict.md` | Yuri | Final | LKID-71 PostHog: PASS — PII fix verified (ckd_stage bucket), 3 non-blocking nits |
+| Sprint 5 PR #57 QA Verdict | `agents/yuri/drafts/sprint5-pr57-qa-verdict.md` | Yuri | Final | LKID-76 Results parity: PASS with 3 CodeRabbit nits addressed on same branch |
 | Sprint 3 QA Verdicts | `agents/yuri/drafts/sprint3-pr-qa-verdicts.md` | Yuri | Final | QA verdicts for PRs #22-#27 |
 | Sprint 2 Merge Postmortem | `agents/luca/drafts/sprint2-merge-postmortem.md` | Luca | Final | Corrective actions CA-1 through CA-5 |
 | Sprint 2 Board Sweep | `agents/husser/drafts/sprint2-close-board-sweep.md` | Husser | Final | Jira alignment + Sprint 3 follow-ups |
