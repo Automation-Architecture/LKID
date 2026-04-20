@@ -21,6 +21,7 @@ import {
   validateField,
 } from "@/lib/validation";
 import { apiUrl } from "@/lib/api";
+import { posthog } from "@/lib/posthog-provider";
 
 const manrope = Manrope({
   subsets: ["latin"],
@@ -465,6 +466,10 @@ export default function LabsPage() {
         setIsSubmitting(false);
         return;
       }
+      // LKID-71: funnel analytics. Only the prefix — full token is a bearer credential.
+      posthog.capture("labs_submitted", {
+        report_token_prefix: data.report_token.slice(0, 8),
+      });
       router.push(`/gate/${encodeURIComponent(data.report_token)}`);
     } catch (err: unknown) {
       clearTimeout(timeoutId);

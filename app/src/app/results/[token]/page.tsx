@@ -30,12 +30,42 @@ import {
   type StructuralFloor,
 } from "@/components/chart";
 import { API_BASE, apiUrl } from "@/lib/api";
+import { posthog } from "@/lib/posthog-provider";
+
+/**
+ * LKID-71 bun_tier derivation — mirrors `backend/services/klaviyo_service.py::_bun_tier`.
+ * Kept in sync so PostHog funnel properties align with Klaviyo segmentation.
+ * Non-PII: a 4-bucket label, never the raw value.
+ */
+function bunTier(bun: number | null): string {
+  if (bun === null || !Number.isFinite(bun)) return "unknown";
+  if (bun <= 12) return "<=12";
+  if (bun <= 17) return "13-17";
+  if (bun <= 24) return "18-24";
+  return ">24";
+}
+
+/**
+ * LKID-71 CKD stage bucketing — KDIGO boundaries.
+ * Emits a stage label (e.g. "stage_3a") instead of the raw eGFR number so
+ * PostHog never receives a lab value. Keep in sync with the provider docstring.
+ */
+function ckdStage(egfr: number | null | undefined): string {
+  if (egfr === null || egfr === undefined || !Number.isFinite(egfr)) return "unknown";
+  if (egfr >= 90) return "stage_1";
+  if (egfr >= 60) return "stage_2";
+  if (egfr >= 45) return "stage_3a";
+  if (egfr >= 30) return "stage_3b";
+  if (egfr >= 15) return "stage_4";
+  return "stage_5";
+}
 
 interface ResultsApiResponse {
   report_token: string;
   captured: boolean;
   created_at: string;
   result: PredictResponse;
+  inputs?: { bun?: number } | null;
   lead?: { name?: string; email_captured_at?: string | null } | null;
 }
 
@@ -112,6 +142,22 @@ export default function ResultsTokenPage({
   // we still need BUN; fetch it from the extended response if available.
   const [inputBun, setInputBun] = useState<number | null>(null);
 
+  // LKID-71: fire `results_viewed` exactly once per successful mount.
+  // Non-PII props only: prefix + bucketed stage + tier. No raw lab values,
+  // no token, no email.
+  useEffect(() => {
+    if (state.kind !== "ready") return;
+    posthog.capture("results_viewed", {
+      report_token_prefix: token.slice(0, 8),
+      ckd_stage: ckdStage(state.data.result.egfr_baseline),
+      bun_tier: bunTier(inputBun),
+    });
+    // Only want to fire once on transition to "ready". The subsequent
+    // `inputBun` state update is bundled into the same `ready` render, so
+    // we intentionally omit inputBun from deps to avoid a double fire.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [state.kind, token]);
+
   useEffect(() => {
     let cancelled = false;
     async function load() {
@@ -140,9 +186,7 @@ export default function ResultsTokenPage({
           return;
         }
         setInputBun(
-          typeof (data as unknown as { inputs?: { bun?: number } }).inputs?.bun === "number"
-            ? ((data as unknown as { inputs?: { bun?: number } }).inputs!.bun as number)
-            : null
+          typeof data.inputs?.bun === "number" ? data.inputs.bun : null,
         );
         setState({
           kind: "ready",
@@ -262,6 +306,12 @@ export default function ResultsTokenPage({
                 rel="noopener noreferrer"
                 data-testid="results-pdf-link"
                 className="inline-block"
+                onClick={() => {
+                  // LKID-71: funnel tail. Prefix-only, never the full token.
+                  posthog.capture("pdf_downloaded", {
+                    report_token_prefix: token.slice(0, 8),
+                  });
+                }}
               >
                 <Button
                   type="button"

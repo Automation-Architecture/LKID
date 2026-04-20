@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import { Inter } from "next/font/google";
 import { Analytics } from "@vercel/analytics/next";
 import { SkipNav } from "@/components/skip-nav";
+import { PostHogProviderWrapper } from "@/lib/posthog-provider";
 import "./globals.css";
 
 const inter = Inter({
@@ -30,7 +31,7 @@ export default function RootLayout({
     <html lang="en" className={`${inter.variable} h-full antialiased`}>
       <body className="min-h-full flex flex-col">
         <SkipNav />
-        {children}
+        <PostHogProviderWrapper>{children}</PostHogProviderWrapper>
         <Analytics />
       </body>
     </html>
