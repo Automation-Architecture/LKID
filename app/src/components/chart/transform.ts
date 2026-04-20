@@ -12,13 +12,18 @@ import type {
 // `satisfies` gives strict key checking against TrajectoryId while preserving
 // literal types for each entry (avoids the looseness of Record<string, ...>).
 //
-// Trajectory colors — LKID-67 (Inga, 2026-04-19):
-// All four values re-tokened to meet WCAG AA 4.5:1 on white. Semantic
-// ordering: emerald (best) → sky (neutral) → amber (caution) → charcoal
-// (muted/ignored). Charcoal (not red) for No Treatment to avoid clashing
-// with the #D32F2F dialysis-threshold line inside the chart. See
-// `agents/inga/drafts/lkid-67-chart-color-decision.md` for rationale +
-// contrast ratios.
+// Trajectory colors — "Palette A+" per Inga's chart-palette-decision.md
+// (2026-04-20, superseding the original LKID-67 spec):
+// All four values meet WCAG AA 4.5:1 on white. LKID-76 swaps the "Stable"
+// line sky-700 (#0369A1) → brand navy (#1F2577) so the chart's blue line
+// matches the --s-blue pill/card token on the Results page; brand navy
+// contrasts 13.26:1 on white, well above the AA bar it replaces (5.93:1).
+// Semantic ordering: emerald (best) → navy (neutral/brand) → amber
+// (caution) → charcoal (muted/ignored). Charcoal (not red) for No
+// Treatment avoids clashing with the #D32F2F dialysis-threshold line.
+// See `agents/inga/drafts/chart-palette-decision.md` §5a for rationale
+// and `agents/inga/drafts/lkid-67-chart-color-decision.md` for the
+// historical context on the other three values.
 export const TRAJECTORY_CONFIG = {
   bun_lte_12: {
     id: "bun_lte_12" as TrajectoryId,
@@ -29,7 +34,7 @@ export const TRAJECTORY_CONFIG = {
   bun_13_17: {
     id: "bun_13_17" as TrajectoryId,
     label: "BUN 13–17",
-    color: "#0369A1", // sky-700 — 5.93:1 on white — "neutral / brand blue"
+    color: "#1F2577", // brand navy — 13.26:1 on white — matches --s-blue pill token (LKID-76)
     strokeDasharray: "8,4",
     strokeWidth: 2.5,
   },
