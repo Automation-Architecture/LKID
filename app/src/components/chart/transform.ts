@@ -11,31 +11,39 @@ import type {
 
 // `satisfies` gives strict key checking against TrajectoryId while preserving
 // literal types for each entry (avoids the looseness of Record<string, ...>).
+//
+// Trajectory colors — LKID-67 (Inga, 2026-04-19):
+// All four values re-tokened to meet WCAG AA 4.5:1 on white. Semantic
+// ordering: emerald (best) → sky (neutral) → amber (caution) → charcoal
+// (muted/ignored). Charcoal (not red) for No Treatment to avoid clashing
+// with the #D32F2F dialysis-threshold line inside the chart. See
+// `agents/inga/drafts/lkid-67-chart-color-decision.md` for rationale +
+// contrast ratios.
 export const TRAJECTORY_CONFIG = {
   bun_lte_12: {
     id: "bun_lte_12" as TrajectoryId,
     label: "BUN ≤ 12",
-    color: "#1D9E75",
+    color: "#047857", // emerald-700 — 5.48:1 on white — "best path"
     strokeWidth: 2.5,
   },
   bun_13_17: {
     id: "bun_13_17" as TrajectoryId,
     label: "BUN 13–17",
-    color: "#378ADD",
+    color: "#0369A1", // sky-700 — 5.93:1 on white — "neutral / brand blue"
     strokeDasharray: "8,4",
     strokeWidth: 2.5,
   },
   bun_18_24: {
     id: "bun_18_24" as TrajectoryId,
     label: "BUN 18–24",
-    color: "#85B7EB",
+    color: "#B45309", // amber-700 — 5.02:1 on white — "caution"
     strokeDasharray: "4,4",
     strokeWidth: 2.0,
   },
   no_treatment: {
     id: "no_treatment" as TrajectoryId,
     label: "No Treatment",
-    color: "#AAAAAA",
+    color: "#374151", // slate-700 — 10.31:1 on white — "muted / ignored"
     strokeDasharray: "2,4",
     strokeWidth: 2.0,
   },
