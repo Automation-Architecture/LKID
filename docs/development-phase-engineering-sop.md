@@ -190,6 +190,27 @@ Any PR branch more than 2 days behind main must be rebased before QA review, not
 
 **Rationale:** PR #15 was branched from old main and would have regressed the `PredictRequest` model if merged without rebase. Only caught by QA, not by process.
 
+### Rule 7: Binding Deploy Runbooks + Runbook-Delta Review
+
+Runbooks that describe how prod is deployed are **binding**, not reference. Any PR that adds, removes, or changes a step in a binding runbook must include a **runbook-delta** line in the PR description that names the affected runbook and summarizes the change. Reviewers block merge if a deploy-touching PR is missing that line.
+
+**Currently binding runbooks:**
+
+- `agents/luca/drafts/railway-deployment-checklist.md` — backend deploy, DB migrations, env-var changes on Railway
+- (Add here as more are promoted from reference → binding)
+
+**Rationale:** LKID-68 root-caused an 8-day empty-DB state to a migration step that lived in prose in `railway-deployment-checklist.md` but was never codified. Prose runbooks decay; binding runbooks + a mandatory delta note in every deploy-touching PR force the update to happen in-band with the code change.
+
+### Rule 8: G1 preDeployCommand Is Fail-Closed, Permanent
+
+The Railway `preDeployCommand` migration guardrail (G1, added in PR #39) is **fail-closed and non-bypassable.** A deploy that cannot run `alembic upgrade head` to success does NOT proceed. This applies to all environments including emergency hotfixes — migrations run first, or nothing ships.
+
+- No `--skip-migrations` flag
+- No "deploy without G1" mode in Railway config
+- Hotfix protocol: if the bug is in a migration, write a fix-migration, don't bypass the guard
+
+**Rationale:** Any bypass renders the guardrail worthless. LKID-68 established that a single missed migration caused an 8-day silent-data-loss window; making G1 optional in any scenario reintroduces the exact failure mode it was built to prevent. Migrations are authored as reversible; if prod can't run them, prod can't take the code that depends on them.
+
 ---
 
 ## Development Phase Memory Checkpoints

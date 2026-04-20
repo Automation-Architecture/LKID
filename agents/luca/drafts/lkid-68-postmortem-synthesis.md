@@ -60,15 +60,17 @@ The backend had no automated migration step at deploy time. The Sprint 2 deploy 
 
 The three layers compose: G1 prevents the Sprint-4-style root cause, G2 catches it immediately if G1 is bypassed or misconfigured, and G3 catches drift that appears after a successful deploy.
 
-## 8. Action items still open
+## 8. Action items
 
-| # | Item | Owner | Status | Blocked on |
+All 5 Brad-gated items resolved 2026-04-20.
+
+| # | Item | Owner | Status | Resolution |
 |---|---|---|---|---|
-| AI-1 | Decide deletion timing for orphan `Postgres` service (LKID-69). Recommended: post-Sprint-4 retro to avoid any `DATABASE_URL` surprise. | Brad | Open | Brad approval per LKID-69 AC |
-| AI-2 | Confirm whether to backfill the ~8 successful `POST /predict` responses from Sprints 2–3 that did not persist. Luca recommends "no" — internal/QA traffic — but Brad should confirm no client-facing demo is owed a record. | Brad | Open | Brad review of retained logs |
-| AI-3 | PostHog instrumentation — clarify whether this is a Sprint 4 line item or Sprint 5. A "zero events in 72 hours" alert would have caught this condition in Sprint 2. | Brad | Open | Sprint-scope decision |
-| AI-4 | Tighten deploy-runbook governance — was `railway-deployment-checklist.md` ever communicated as binding vs. reference? Proposal: add runbook-delta review to the Development Phase SOP. | Brad | Open | Brad signoff on SOP change |
-| AI-5 | G1 feature-flag policy — should `preDeployCommand` be bypassable for emergency hotfix deploys, or is fail-closed permanent? Luca recommends fail-closed; flagging for Brad's call. | Brad | Open | Brad policy call |
+| AI-1 | Decide deletion timing for orphan `Postgres` service (LKID-69). | Brad | **Resolved** 2026-04-20 | **Delete now.** Pre-delete verification dispatched (`agents/luca/drafts/lkid-69-predelete-verification.md`); actual delete on Brad greenlight after memo. |
+| AI-2 | Backfill the ~8 successful `POST /predict` responses from Sprints 2–3 that did not persist. | Brad | **Resolved** 2026-04-20 | **No backfill.** Confirmed as internal/QA traffic; no client-facing demo is owed a record. Closed. |
+| AI-3 | PostHog instrumentation — Sprint 4 line item or Sprint 5? | Brad | **Resolved** 2026-04-20 | Shipped in Sprint 5 as LKID-71 (PR #56, merged 2026-04-20). "Zero events in N hours" alert is a Sprint 5+ follow-up. |
+| AI-4 | Tighten deploy-runbook governance — mark `railway-deployment-checklist.md` binding and add runbook-delta review to Development Phase SOP. | Brad | **Resolved** 2026-04-20 | **Approved.** `docs/development-phase-engineering-sop.md` updated; `railway-deployment-checklist.md` now classified "binding." |
+| AI-5 | G1 feature-flag policy — `preDeployCommand` fail-closed permanent vs. bypassable for hotfix? | Brad | **Resolved** 2026-04-20 | **Fail-closed permanent.** No bypass. Emergency hotfixes still run migrations. Policy documented in the SOP. |
 | AI-6 | Extend G2 smoke to exercise `POST /predict` + `GET /results/[token]` round-trip (currently health-only if kept minimal). | Luca | Open | None — scheduled for Sprint 5 |
 | AI-7 | Add `SELECT version_num FROM alembic_version` to G3 heartbeat output to lock revision against git `head`. | Luca | Open | None — scheduled for Sprint 5 |
 

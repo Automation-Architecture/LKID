@@ -1,10 +1,11 @@
 # Railway Backend Deployment Checklist
 
 **Author:** Luca (CTO)
-**Date:** 2026-03-26
-**Jira:** LKID-8 (In Progress)
+**Date:** 2026-03-26 (created) · 2026-04-20 (classified **BINDING**)
+**Jira:** LKID-8 (In Progress), LKID-68 (governance promotion)
 **Repo:** [Automation-Architecture/LKID](https://github.com/Automation-Architecture/LKID) -- `backend/` directory
 **Reference:** [infrastructure-setup.md](./infrastructure-setup.md)
+**Status:** **BINDING** per Development Phase SOP Rule 7. Any PR that adds/removes/changes a step here must include a runbook-delta line in its description.
 
 ---
 
