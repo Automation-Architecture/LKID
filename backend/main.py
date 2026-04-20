@@ -391,6 +391,11 @@ class ResultsResponse(BaseModel):
     captured: bool
     created_at: str  # ISO 8601
     result: dict[str, Any]
+    # LKID-63 IS-01: raw validated inputs (bun, creatinine, potassium, age,
+    # sex, hemoglobin, co2, albumin, glucose) — powers the BUN structural-
+    # floor callout on the frontend results page. Safe to expose: lab values
+    # and demographics only, no PII (name/email captured separately via /leads).
+    inputs: dict[str, Any]
     lead: Optional[dict[str, Any]] = None
 
 
@@ -607,6 +612,11 @@ async def get_results(token: str):
             created_at.isoformat() if created_at else ""
         ),
         "result": row["result"],
+        # LKID-63 IS-01: include stored inputs so the frontend structural-
+        # floor callout (BUN > 17) can render. `inputs` is always populated
+        # by POST /predict (non-null JSONB column), so an empty dict is a
+        # harmless fallback for any malformed legacy row.
+        "inputs": row["inputs"] or {},
         "lead": lead_block,
     }
 
