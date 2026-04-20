@@ -407,3 +407,19 @@ A single lead may have multiple predictions over time (user re-runs the funnel).
 ### Idempotency
 
 The migration uses `CREATE TABLE IF NOT EXISTS` + `CREATE INDEX IF NOT EXISTS` (raw SQL via `op.execute`) to satisfy the Jira AC "no errors if table already exists". This matches the existing pattern in migration 001 (`CREATE EXTENSION IF NOT EXISTS pgcrypto`).
+
+---
+
+## 13. Schema Regeneration Log (LKID-70)
+
+**2026-04-20 — Regenerated `db_schema.sql` from migrations 001–004.** This design doc is reference/rationale only; **`db_schema.sql` in this same folder is the authoritative snapshot of current DB state**. Whenever a new Alembic migration lands in `backend/alembic/versions/`, `db_schema.sql` is rebuilt from the full chain and the header's migration-history block is updated.
+
+Drift resolved in the 2026-04-20 pass:
+
+- `leads.creatinine` CHECK was still capped at 15.0; corrected to 20.0 (migration 003, Lee Q6).
+- `leads.clerk_user_id`, `leads.updated_at`, and the `uq_leads_email` UNIQUE constraint (migration 002) were missing; added.
+- `leads.age`, `leads.bun`, `leads.creatinine` were still declared `NOT NULL`; relaxed to nullable with `IS NULL OR (...)` CHECK guards (migration 002) so Clerk-webhook-sourced rows validate.
+- `idx_leads_clerk_user_id` (migration 002) was missing; added.
+- The `predictions` table (migration 004, LKID-61) was present but the header block did not list it in the migration history.
+
+No schema changes were made — migrations are the source of truth and were not touched.
