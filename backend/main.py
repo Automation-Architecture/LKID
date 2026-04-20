@@ -1209,3 +1209,309 @@ async def list_leads(x_admin_key: str = Header(alias="X-Admin-Key")):
         status_code=501,
         detail="Leads listing not yet implemented.",
     )
+
+
+# ---------------------------------------------------------------------------
+# 6. GET /client/{slug}/metrics — Lee dashboard v2 launch metrics (LKID-75)
+#
+# HIPAA note: this endpoint serves the Lee dashboard at
+# /client/lee-a3f8b2 — the slug itself is a shared-secret path token
+# (same pattern as VALID_SLUGS in app/src/app/client/[slug]/page.tsx).
+# We mirror that allowlist here rather than inventing a new auth layer.
+#
+# The response is HIPAA-cautious: email addresses are masked at the
+# backend (`j***@d****.com`), raw lab values are never included, and BUN
+# readings are bucketed into tier labels only.
+# ---------------------------------------------------------------------------
+
+# Slug allowlist — must stay in sync with app/src/app/client/[slug]/page.tsx.
+# Extend when additional client dashboards go live.
+CLIENT_DASHBOARD_SLUGS = frozenset({"lee-a3f8b2"})
+
+# Minimum prediction count required before we compute/display the opt-in
+# percentage. Below this, we surface an explicit "insufficient_data" state
+# so Lee doesn't read a wobbly percentage off a tiny denominator.
+OPT_IN_MIN_SAMPLE = 10
+
+
+def _bun_tier_label(bun: Optional[float]) -> str:
+    """Bucket a BUN value into one of five tier labels.
+
+    Mirrors `services.klaviyo_service._bun_tier` semantics:
+      - None / non-numeric -> "unknown"
+      - bun <= 12          -> "<=12"
+      - 12 <  bun <= 17    -> "13-17"
+      - 17 <  bun <= 24    -> "18-24"
+      - bun >  24          -> ">24"
+
+    The `13-17` and `18-24` labels are displayed inclusive for Lee's
+    consumption even though the upper boundary is half-open; this keeps
+    the labels human-readable without changing the underlying math.
+    """
+    if bun is None:
+        return "unknown"
+    try:
+        b = float(bun)
+    except (TypeError, ValueError):
+        return "unknown"
+    if b <= 12:
+        return "<=12"
+    if b <= 17:
+        return "13-17"
+    if b <= 24:
+        return "18-24"
+    return ">24"
+
+
+def _mask_email(email: Optional[str]) -> str:
+    """Return a HIPAA-cautious masked email suitable for `/client/*`.
+
+    Format: `<first-local-char>***@<first-domain-char>****.<tld>`.
+    Edge cases handled:
+      - None / empty / malformed (no `@`)     -> "***"
+      - Subdomains (`a.b.example.co.uk`)      -> preserve the final `.xxx`
+      - Single-char local/domain parts        -> still emit deterministic mask
+      - Missing TLD (`user@localhost`)        -> mask to "l****"
+
+    Never returns any raw character beyond the first of local + first of
+    domain + the actual TLD extension. Callers MUST NOT log or persist
+    the un-masked email after this function runs.
+    """
+    if not email or "@" not in email:
+        return "***"
+    try:
+        local, domain = email.rsplit("@", 1)
+    except ValueError:
+        return "***"
+    if not local or not domain:
+        return "***"
+
+    local_mask = f"{local[0]}***"
+
+    # TLD is the last dot-segment; strip it off for the domain mask so the
+    # extension stays visible (`j***@d****.com`). If there's no dot, the
+    # whole domain collapses to the masked-first-char form.
+    if "." in domain:
+        domain_base, tld = domain.rsplit(".", 1)
+        base_first = domain_base[0] if domain_base else ""
+        domain_mask = f"{base_first}****.{tld}"
+    else:
+        domain_mask = f"{domain[0]}****"
+
+    return f"{local_mask}@{domain_mask}"
+
+
+def _name_initial(name: Optional[str]) -> str:
+    """Return the first character of `name` uppercased, or "?" if empty."""
+    if not name:
+        return "?"
+    first = name.strip()[:1]
+    return first.upper() if first else "?"
+
+
+@app.get(
+    "/client/{slug}/metrics",
+    tags=["Client Dashboard"],
+    responses={
+        404: {"model": ErrorResponse, "description": "Unknown client slug"},
+        503: {"model": ErrorResponse, "description": "Database not configured"},
+    },
+)
+async def client_dashboard_metrics(slug: str):
+    """LKID-75 — launch-metrics panels for the Lee dashboard.
+
+    DB-driven metrics only. PostHog / Klaviyo / PDF metrics are stubbed on
+    the frontend until the env vars land (Brad-hands backlog).
+
+    Auth: the slug itself is the shared secret (same as the existing
+    dashboard page). Unknown slugs 404.
+    """
+    if slug not in CLIENT_DASHBOARD_SLUGS:
+        raise HTTPException(status_code=404, detail="Unknown client dashboard")
+    if async_session is None:
+        raise HTTPException(status_code=503, detail="Database not configured")
+
+    async with async_session() as session:
+        # --- Prediction counts (total / 7d / 24h) -----------------------------
+        pred_counts_row = (
+            await session.execute(
+                text(
+                    """
+                    SELECT
+                        COUNT(*)                                                     AS total,
+                        COUNT(*) FILTER (WHERE created_at >= now() - interval '7 days')  AS last_7d,
+                        COUNT(*) FILTER (WHERE created_at >= now() - interval '24 hours') AS last_24h
+                    FROM predictions
+                    """
+                )
+            )
+        ).mappings().first() or {}
+
+        # --- Lead counts (total / 7d / 24h) -----------------------------------
+        lead_counts_row = (
+            await session.execute(
+                text(
+                    """
+                    SELECT
+                        COUNT(*)                                                     AS total,
+                        COUNT(*) FILTER (WHERE created_at >= now() - interval '7 days')  AS last_7d,
+                        COUNT(*) FILTER (WHERE created_at >= now() - interval '24 hours') AS last_24h
+                    FROM leads
+                    """
+                )
+            )
+        ).mappings().first() or {}
+
+        # --- BUN tier distribution (all predictions) -------------------------
+        # Bucket in Python for clarity; at Lee's scale (low-thousands) the
+        # whole-table scan is trivially cheap and we avoid a finicky CASE
+        # expression against JSONB.
+        bun_rows = (
+            await session.execute(
+                text(
+                    """
+                    SELECT inputs ->> 'bun' AS bun_raw
+                    FROM predictions
+                    """
+                )
+            )
+        ).mappings().all()
+
+        bun_distribution: dict[str, int] = {
+            "<=12": 0,
+            "13-17": 0,
+            "18-24": 0,
+            ">24": 0,
+            "unknown": 0,
+        }
+        for r in bun_rows:
+            raw = r.get("bun_raw")
+            try:
+                tier = _bun_tier_label(float(raw)) if raw is not None else "unknown"
+            except (TypeError, ValueError):
+                tier = "unknown"
+            bun_distribution[tier] = bun_distribution.get(tier, 0) + 1
+
+        # --- Predictions per day — last 7 days (for sparkline) ----------------
+        # generate_series gives us a zero-filled calendar so the frontend
+        # doesn't have to patch holes.
+        pred_daily_rows = (
+            await session.execute(
+                text(
+                    """
+                    SELECT
+                        to_char(d.day, 'YYYY-MM-DD')                         AS day,
+                        COUNT(p.id)                                          AS n
+                    FROM generate_series(
+                        date_trunc('day', now()) - interval '6 days',
+                        date_trunc('day', now()),
+                        interval '1 day'
+                    ) AS d(day)
+                    LEFT JOIN predictions p
+                           ON date_trunc('day', p.created_at) = d.day
+                    GROUP BY d.day
+                    ORDER BY d.day
+                    """
+                )
+            )
+        ).mappings().all()
+        predictions_per_day = [
+            {"day": row["day"], "count": int(row["n"] or 0)}
+            for row in pred_daily_rows
+        ]
+
+        # --- Recent leads (latest 10) ----------------------------------------
+        # DISTINCT ON (l.id) guards against the re-submit case where a
+        # single lead links multiple predictions (the upsert in POST /leads
+        # is keyed on email). We pick the most recent linked prediction's
+        # inputs to derive the tier; Clerk-webhook leads with no prediction
+        # fall through with NULL -> "unknown".
+        recent_leads_rows = (
+            await session.execute(
+                text(
+                    """
+                    WITH latest_pred AS (
+                        SELECT DISTINCT ON (p.lead_id)
+                            p.lead_id,
+                            p.inputs ->> 'bun' AS bun_raw
+                        FROM predictions p
+                        WHERE p.lead_id IS NOT NULL
+                        ORDER BY p.lead_id, p.created_at DESC
+                    )
+                    SELECT
+                        l.created_at,
+                        l.name,
+                        l.email,
+                        lp.bun_raw
+                    FROM leads l
+                    LEFT JOIN latest_pred lp ON lp.lead_id = l.id
+                    ORDER BY l.created_at DESC
+                    LIMIT 10
+                    """
+                )
+            )
+        ).mappings().all()
+
+    # ----- Build JSON response ------------------------------------------------
+    predictions_total = int(pred_counts_row.get("total") or 0)
+    predictions_7d = int(pred_counts_row.get("last_7d") or 0)
+    predictions_24h = int(pred_counts_row.get("last_24h") or 0)
+
+    leads_total = int(lead_counts_row.get("total") or 0)
+    leads_7d = int(lead_counts_row.get("last_7d") or 0)
+    leads_24h = int(lead_counts_row.get("last_24h") or 0)
+
+    # Opt-in rate gated on OPT_IN_MIN_SAMPLE; below the gate we return an
+    # explicit `visible: false` with a machine-readable reason so the
+    # frontend can render a friendly "insufficient data" message without
+    # guessing at the numeric state.
+    if predictions_total < OPT_IN_MIN_SAMPLE:
+        opt_in_rate = {
+            "percent": None,
+            "visible": False,
+            "reason": "insufficient_data",
+            "min_sample": OPT_IN_MIN_SAMPLE,
+        }
+    else:
+        # Guarded above — `predictions_total >= OPT_IN_MIN_SAMPLE >= 10`.
+        percent = round((leads_total / predictions_total) * 100, 1)
+        opt_in_rate = {
+            "percent": percent,
+            "visible": True,
+            "reason": None,
+            "min_sample": OPT_IN_MIN_SAMPLE,
+        }
+
+    recent_leads = []
+    for row in recent_leads_rows:
+        created_at = row.get("created_at")
+        recent_leads.append(
+            {
+                "created_at": (
+                    created_at.isoformat() if created_at else None
+                ),
+                "name_initial": _name_initial(row.get("name")),
+                "email_masked": _mask_email(row.get("email")),
+                "bun_tier": _bun_tier_label(row.get("bun_raw")),
+            }
+        )
+
+    from datetime import datetime as _dt, timezone as _tz
+
+    return {
+        "generated_at": _dt.now(_tz.utc).isoformat(),
+        "predictions": {
+            "total": predictions_total,
+            "last_7d": predictions_7d,
+            "last_24h": predictions_24h,
+        },
+        "leads": {
+            "total": leads_total,
+            "last_7d": leads_7d,
+            "last_24h": leads_24h,
+        },
+        "opt_in_rate": opt_in_rate,
+        "bun_tier_distribution": bun_distribution,
+        "predictions_per_day": predictions_per_day,
+        "recent_leads": recent_leads,
+    }
