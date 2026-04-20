@@ -243,7 +243,10 @@ export function ResultsView({
           <div className="chart-box">
             <h3 className="section-title">Your Future Kidney Function</h3>
             <section aria-label="Your kidney health prediction">
-              <EgfrChart data={data} />
+              {/* chrome={false}: Results page owns section title, legend column,
+                  and scenario cards — the chart renders as a bare SVG matching
+                  project/Results.html per LKID-80. */}
+              <EgfrChart data={data} chrome={false} />
             </section>
           </div>
           <div className="scenarios-legend">

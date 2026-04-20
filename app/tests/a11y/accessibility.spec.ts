@@ -117,12 +117,16 @@ test.describe("Accessibility — axe-core audit", () => {
 
     const results = await new AxeBuilder({ page })
       .withTags(WCAG_TAGS)
-      // LKID-67 complete: Harshit re-tokened stat-card text (PR #48) and Inga
-      // re-tokened SVG trajectory/label colors to AA-compliant values (PR #49).
-      // The previous `.exclude("svg")` guard is no longer needed — Yuri's PR #49
-      // verification confirmed the a11y suite passes with full SVG in scope.
-      // Full chart audit is now on; any future SVG contrast regression will
-      // fail this test immediately.
+      // LKID-80 (2026-04-20): SVG exclusion re-added per Brad's reversal of
+      // the chart-line palette to design hues. The yellow trajectory line
+      // (#D4A017) fails WCAG AA at 2.38:1 on white — an intentional
+      // regression on chart SVG only, in exchange for brand-identity
+      // alignment with project/Results.html. Scenario pills, cards, heart
+      // icons, and page chrome (nav/buttons/text) remain in scope and AA-
+      // compliant via the --s-*-text tokens from PR #57.
+      // See agents/inga/drafts/chart-palette-decision.md (top supersession
+      // block) for the reversed decision and contrast math.
+      .exclude("svg")
       .analyze();
 
     const critical = results.violations.filter(
