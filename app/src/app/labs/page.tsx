@@ -417,6 +417,11 @@ export default function LabsPage() {
       creatinine: Number(values.creatinine),
       potassium: Number(values.potassium),
       age: Number(values.age),
+      // sex intentionally hardcoded to "unknown" — Lee does not want to collect
+      // patient sex on the form. Engine's CKD-EPI 2021 implementation averages
+      // the male + female coefficients for sex="unknown" (see
+      // backend/prediction/engine.py compute_egfr_ckd_epi_2021).
+      // Decision: 2026-04-20 (LKID-78 investigation, Brad's call).
       sex: "unknown",
     };
     const hemo = values.hemoglobin.trim();

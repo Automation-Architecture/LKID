@@ -84,7 +84,13 @@ def compute_egfr_ckd_epi_2021(
     age: int,
     sex: Literal["male", "female", "unknown"] = "unknown",
 ) -> float:
-    """CKD-EPI 2021 race-free eGFR. For sex=unknown, averages male+female."""
+    """CKD-EPI 2021 race-free eGFR. For sex=unknown, averages male+female.
+
+    Note: the patient-facing /labs form hardcodes sex="unknown" (Lee's
+    decision — he does not want to collect patient sex). Production traffic
+    therefore always hits the sex-averaged branch. See LKID-78 investigation
+    memo for the full decision record (2026-04-20).
+    """
     if sex == "unknown":
         male_egfr = _compute_egfr_for_sex(creatinine, age, "male")
         female_egfr = _compute_egfr_for_sex(creatinine, age, "female")
