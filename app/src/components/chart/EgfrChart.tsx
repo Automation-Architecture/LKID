@@ -34,7 +34,7 @@ const Y_TICKS = [0, 15, 30, 45, 60, 75, 90];
 const X_TICKS = [0, 12, 24, 36, 48, 60, 72, 84, 96, 108, 120];
 const X_TICK_LABELS = ["0", "1yr", "2yr", "3yr", "4yr", "5yr", "6yr", "7yr", "8yr", "9yr", "10yr"];
 
-// Responsive margins by breakpoint
+// Responsive margins by breakpoint (legacy "chrome" mode — used by PDF).
 const MARGIN_DESKTOP = { top: 20, right: 80, bottom: 48, left: 56 };
 const MARGIN_TABLET = { top: 16, right: 64, bottom: 40, left: 48 };
 const MARGIN_MOBILE = { top: 16, right: 48, bottom: 40, left: 40 };
@@ -42,6 +42,14 @@ const MARGIN_MOBILE = { top: 16, right: 48, bottom: 40, left: 40 };
 const HEIGHT_DESKTOP = 340;
 const HEIGHT_TABLET = 280;
 const HEIGHT_MOBILE = 200;
+
+// Design-mode margins (LKID-80 — matches project/Results.html line 396 viewBox).
+// Inner axis labels (30/20/10/5/0 and 1-10 yr) live inside the chart area,
+// so margins can be much tighter than chrome-mode.
+const DESIGN_MARGIN = { top: 8, right: 28, bottom: 20, left: 36 };
+const DESIGN_MARGIN_MOBILE = { top: 6, right: 22, bottom: 18, left: 30 };
+const DESIGN_HEIGHT_DESKTOP = 300;
+const DESIGN_HEIGHT_MOBILE = 180;
 
 /* -------------------------------------------------------------------------- */
 /*  Types                                                                     */
@@ -64,17 +72,41 @@ function getBreakpoint(width: number): "mobile" | "tablet" | "desktop" {
   return "desktop";
 }
 
-function getChartDimensions(width: number): {
+function getChartDimensions(
+  width: number,
+  designMode = false
+): {
   height: number;
   margin: Margin;
   bp: "mobile" | "tablet" | "desktop";
 } {
   const bp = getBreakpoint(width);
+  if (designMode) {
+    // Breakpoint at 880px matches project/Results.html:339 mobile rule.
+    const mobile = width < 880;
+    return {
+      height: mobile ? DESIGN_HEIGHT_MOBILE : DESIGN_HEIGHT_DESKTOP,
+      margin: mobile ? DESIGN_MARGIN_MOBILE : DESIGN_MARGIN,
+      bp: mobile ? "mobile" : "desktop",
+    };
+  }
   return {
     height: bp === "mobile" ? HEIGHT_MOBILE : bp === "tablet" ? HEIGHT_TABLET : HEIGHT_DESKTOP,
     margin: bp === "mobile" ? MARGIN_MOBILE : bp === "tablet" ? MARGIN_TABLET : MARGIN_DESKTOP,
     bp,
   };
+}
+
+/** Compute 5 y-axis tick values for design mode, Keep 0 at bottom + top
+ *  anchored to actual yMax so trajectories never clip. Shape: [top, 2/3, 1/3, 1/6, 0]. */
+function designYTicks(yMax: number): number[] {
+  return [
+    Math.round(yMax),
+    Math.round((yMax * 2) / 3),
+    Math.round(yMax / 3),
+    Math.round(yMax / 6),
+    0,
+  ];
 }
 
 /** Resolve end-of-line label positions with 15px minimum separation. */
@@ -133,21 +165,40 @@ interface InnerChartProps {
   width: number;
   data: ChartData;
   selectedTrajectoryId: string | null;
+  /** When true, render LKID-80 design-parity chart (no bands, no gridlines,
+   *  inside axes, healthy gradient fill, tinted dialysis band, end-point
+   *  callouts). Default false preserves existing chrome layout used by PDF. */
+  designMode?: boolean;
 }
 
-function InnerChart({ width, data, selectedTrajectoryId }: InnerChartProps) {
-  const { height, margin, bp } = getChartDimensions(width);
+function InnerChart({
+  width,
+  data,
+  selectedTrajectoryId,
+  designMode = false,
+}: InnerChartProps) {
+  const { height, margin, bp } = getChartDimensions(width, designMode);
 
   const innerWidth = Math.max(0, width - margin.left - margin.right);
   const innerHeight = Math.max(0, height - margin.top - margin.bottom);
 
   const isMobile = bp === "mobile";
 
-  // Compute y domain: max(90, maxEgfr + 10)
+  // Compute y domain.
+  //   chrome mode (PDF): max(90, maxEgfr + 10) — legacy behavior.
+  //   design mode: snap yMax to the next "nice" ceiling among [30, 45, 60, 75, 90, 105]
+  //   so y-axis labels stay readable integers (matches project/Results.html
+  //   sample showing 30/20/10/5/0).
   const maxEgfr = Math.max(
     ...data.trajectories.flatMap((t) => t.points.map((p) => p.egfr))
   );
-  const yMax = Math.max(90, maxEgfr + 10);
+  const yMax = designMode
+    ? (() => {
+        const steps = [30, 45, 60, 75, 90, 105, 120];
+        for (const s of steps) if (maxEgfr <= s) return s;
+        return Math.ceil(maxEgfr / 15) * 15;
+      })()
+    : Math.max(90, maxEgfr + 10);
 
   // Scales
   const xScale = useMemo(
@@ -313,11 +364,26 @@ function InnerChart({ width, data, selectedTrajectoryId }: InnerChartProps) {
           {`Chart shows predicted eGFR values for four BUN management scenarios. Best outcome (BUN \u2264 12) maintains eGFR at ${bestFinal}. Worst outcome (no treatment) declines to ${worstFinal}.`}
         </desc>
 
+        {/* Design-mode gradient definitions (LKID-80).
+            Hex values mirror project/Results.html:398-405 exactly. */}
+        {designMode && (
+          <defs>
+            <linearGradient id="kh-chart-green-fill" x1="0" y1="0" x2="0" y2="1">
+              <stop offset="0%" stopColor="#6CC24A" stopOpacity={0.22} />
+              <stop offset="100%" stopColor="#6CC24A" stopOpacity={0} />
+            </linearGradient>
+            <linearGradient id="kh-chart-dialysis-fill" x1="0" y1="0" x2="0" y2="1">
+              <stop offset="0%" stopColor="#E08B8B" stopOpacity={0.12} />
+              <stop offset="100%" stopColor="#E08B8B" stopOpacity={0} />
+            </linearGradient>
+          </defs>
+        )}
+
         <Group left={margin.left} top={margin.top}>
           {/* ---------------------------------------------------------------- */}
-          {/*  Phase bands (z-order: bottommost)                               */}
+          {/*  Phase bands (chrome mode only — PDF)                            */}
           {/* ---------------------------------------------------------------- */}
-          <Group aria-hidden="true">
+          {!designMode && <Group aria-hidden="true">
             {data.phases.map((phase) => {
               const yTop = yScale(Math.min(yMax, phase.yStart === 90 ? yMax : phase.yStart));
               const yBottom = yScale(phase.yEnd);
@@ -352,44 +418,133 @@ function InnerChart({ width, data, selectedTrajectoryId }: InnerChartProps) {
                 </g>
               );
             })}
-          </Group>
+          </Group>}
 
           {/* ---------------------------------------------------------------- */}
-          {/*  Horizontal grid rows                                            */}
+          {/*  Horizontal grid rows (chrome mode only — design has none)       */}
           {/* ---------------------------------------------------------------- */}
-          <GridRows
-            scale={yScale}
-            width={innerWidth}
-            tickValues={Y_TICKS}
-            stroke="rgba(0,0,0,0.12)"
-            strokeWidth={1}
-            aria-hidden="true"
-          />
-
-          {/* ---------------------------------------------------------------- */}
-          {/*  Dialysis threshold line (above bands, below trajectories)       */}
-          {/* ---------------------------------------------------------------- */}
-          <Group aria-hidden="true">
-            <Line
-              from={{ x: 0, y: yScale(data.dialysisThreshold) }}
-              to={{ x: innerWidth, y: yScale(data.dialysisThreshold) }}
-              stroke="#D32F2F"
-              strokeWidth={2}
-              strokeDasharray="6,3"
-              data-testid="dialysis-threshold-line"
+          {!designMode && (
+            <GridRows
+              scale={yScale}
+              width={innerWidth}
+              tickValues={Y_TICKS}
+              stroke="rgba(0,0,0,0.12)"
+              strokeWidth={1}
+              aria-hidden="true"
             />
-            <Text
-              x={innerWidth - 4}
-              y={yScale(data.dialysisThreshold) - 4}
-              textAnchor="end"
-              verticalAnchor="end"
-              fontSize={11}
-              fontWeight={600}
-              fill="#D32F2F"
+          )}
+
+          {/* ---------------------------------------------------------------- */}
+          {/*  Y-axis labels inside the plot area (design mode only — LKID-80) */}
+          {/*  Matches project/Results.html:409-415 styling.                   */}
+          {/* ---------------------------------------------------------------- */}
+          {designMode && (
+            <g
+              aria-hidden="true"
+              fontFamily="Nunito Sans, system-ui, sans-serif"
+              fontSize="10"
+              fill="#8A8D96"
             >
-              Dialysis threshold
-            </Text>
-          </Group>
+              {designYTicks(yMax).map((tick) => (
+                <text key={`y-${tick}`} x={-margin.left + 4} y={yScale(tick) + 3}>
+                  {tick}
+                </text>
+              ))}
+            </g>
+          )}
+
+          {/* ---------------------------------------------------------------- */}
+          {/*  Healthy-range gradient fill under BUN ≤12 line (design mode).    */}
+          {/*  Builds a closed path: green-line points → bottom-left corner.    */}
+          {/* ---------------------------------------------------------------- */}
+          {designMode && (() => {
+            const green = data.trajectories.find((t) => t.id === "bun_lte_12");
+            if (!green || green.points.length === 0) return null;
+            const baselineY = yScale(0);
+            // Walk the green line, then close down to the baseline and back.
+            const first = green.points[0];
+            let d = `M ${xScale(first.monthsFromBaseline)} ${yScale(first.egfr)}`;
+            for (let i = 1; i < green.points.length; i++) {
+              const pt = green.points[i];
+              d += ` L ${xScale(pt.monthsFromBaseline)} ${yScale(pt.egfr)}`;
+            }
+            const last = green.points[green.points.length - 1];
+            d += ` L ${xScale(last.monthsFromBaseline)} ${baselineY}`;
+            d += ` L ${xScale(first.monthsFromBaseline)} ${baselineY} Z`;
+            return (
+              <path
+                d={d}
+                fill="url(#kh-chart-green-fill)"
+                aria-hidden="true"
+                data-testid="chart-healthy-fill"
+              />
+            );
+          })()}
+
+          {/* ---------------------------------------------------------------- */}
+          {/*  Dialysis threshold (chrome mode: red 2px dashed + "Dialysis      */}
+          {/*  threshold" label;   design mode: pink tinted band + dashed       */}
+          {/*  #E0A0A0 line + "Level where dialysis may be needed" label).     */}
+          {/* ---------------------------------------------------------------- */}
+          {!designMode && (
+            <Group aria-hidden="true">
+              <Line
+                from={{ x: 0, y: yScale(data.dialysisThreshold) }}
+                to={{ x: innerWidth, y: yScale(data.dialysisThreshold) }}
+                stroke="#D32F2F"
+                strokeWidth={2}
+                strokeDasharray="6,3"
+                data-testid="dialysis-threshold-line"
+              />
+              <Text
+                x={innerWidth - 4}
+                y={yScale(data.dialysisThreshold) - 4}
+                textAnchor="end"
+                verticalAnchor="end"
+                fontSize={11}
+                fontWeight={600}
+                fill="#D32F2F"
+              >
+                Dialysis threshold
+              </Text>
+            </Group>
+          )}
+
+          {designMode && (() => {
+            const thresholdY = yScale(data.dialysisThreshold);
+            const bandHeight = 25;
+            return (
+              <g aria-hidden="true" data-testid="dialysis-threshold-band">
+                <rect
+                  x={0}
+                  y={thresholdY}
+                  width={innerWidth}
+                  height={bandHeight}
+                  fill="url(#kh-chart-dialysis-fill)"
+                />
+                <line
+                  x1={0}
+                  y1={thresholdY}
+                  x2={innerWidth}
+                  y2={thresholdY}
+                  stroke="#E0A0A0"
+                  strokeWidth={1}
+                  strokeDasharray="3 3"
+                  data-testid="dialysis-threshold-line"
+                />
+                <text
+                  x={14}
+                  y={thresholdY - 6}
+                  fontFamily="Nunito Sans, system-ui, sans-serif"
+                  fontSize="10"
+                  fill="#C54B4B"
+                  fontWeight={500}
+                >
+                  Level where dialysis may be needed
+                </text>
+              </g>
+            );
+          })()}
 
           {/* ---------------------------------------------------------------- */}
           {/*  Crosshair (desktop only, behind trajectories)                  */}
@@ -459,74 +614,168 @@ function InnerChart({ width, data, selectedTrajectoryId }: InnerChartProps) {
           </Group>
 
           {/* ---------------------------------------------------------------- */}
-          {/*  End-of-line labels                                              */}
+          {/*  End-of-line labels (chrome mode only — design uses callouts).   */}
           {/* ---------------------------------------------------------------- */}
-          <Group aria-hidden="true">
-            {data.trajectories.map((traj) => {
-              const lastPoint = traj.points[traj.points.length - 1];
-              if (!lastPoint) return null;
-              const x = xScale(lastPoint.monthsFromBaseline) + 8;
-              const y = labelPositions[traj.id] ?? yScale(traj.finalEgfr);
+          {!designMode && (
+            <Group aria-hidden="true">
+              {data.trajectories.map((traj) => {
+                const lastPoint = traj.points[traj.points.length - 1];
+                if (!lastPoint) return null;
+                const x = xScale(lastPoint.monthsFromBaseline) + 8;
+                const y = labelPositions[traj.id] ?? yScale(traj.finalEgfr);
 
-              return (
-                <Text
-                  key={traj.id}
-                  x={x}
-                  y={y}
-                  verticalAnchor="middle"
-                  fontSize={12}
-                  fontWeight={600}
-                  fill={traj.color}
-                >
-                  {Math.round(traj.finalEgfr)}
-                </Text>
-              );
-            })}
-          </Group>
+                return (
+                  <Text
+                    key={traj.id}
+                    x={x}
+                    y={y}
+                    verticalAnchor="middle"
+                    fontSize={12}
+                    fontWeight={600}
+                    fill={traj.color}
+                  >
+                    {Math.round(traj.finalEgfr)}
+                  </Text>
+                );
+              })}
+            </Group>
+          )}
 
           {/* ---------------------------------------------------------------- */}
-          {/*  Axes                                                            */}
+          {/*  End-point callouts (design mode — LKID-80).                     */}
+          {/*  Per dispatch §4, render only BUN ≤12 (green) and No Treatment   */}
+          {/*  (gray) at the right edge to avoid crowding. Values come from    */}
+          {/*  the engine's computed final eGFR, NOT hardcoded 17/4.           */}
           {/* ---------------------------------------------------------------- */}
-          <AxisBottom
-            scale={xScale}
-            top={innerHeight}
-            tickValues={xTickValues}
-            tickFormat={xTickFormat}
-            stroke="#E0E0E0"
-            tickStroke="#E0E0E0"
-            tickLabelProps={{
-              fontSize: 11,
-              fill: "#666666",
-              textAnchor: "middle",
-            }}
-            label="Years"
-            labelProps={{
-              fontSize: 12,
-              fontWeight: 500,
-              fill: "#666666",
-              textAnchor: "middle",
-            }}
-          />
-          <AxisLeft
-            scale={yScale}
-            tickValues={Y_TICKS}
-            stroke="#E0E0E0"
-            tickStroke="#E0E0E0"
-            tickLabelProps={{
-              fontSize: 11,
-              fill: "#666666",
-              textAnchor: "end",
-              dx: "-0.25em",
-              dy: "0.3em",
-            }}
-            label={isMobile ? "" : "eGFR (mL/min/1.73m\u00B2)"}
-            labelProps={{
-              fontSize: 12,
-              fontWeight: 500,
-              fill: "#666666",
-              textAnchor: "middle",
-            }}
-          />
+          {designMode && (() => {
+            const green = data.trajectories.find((t) => t.id === "bun_lte_12");
+            const noTx = data.trajectories.find((t) => t.id === "no_treatment");
+            const callouts = [green, noTx].filter(
+              (t): t is TrajectoryData => !!t && t.points.length > 0
+            );
+            if (callouts.length === 0) return null;
+
+            // Compute y positions and push-apart if the two circles (r=16,
+            // diameter 32) would overlap vertically.
+            const rawYs = callouts.map((t) => {
+              const last = t.points[t.points.length - 1];
+              return { id: t.id, color: t.color, value: last.egfr, y: yScale(last.egfr) };
+            });
+            // Sort by y ascending (top of chart first).
+            rawYs.sort((a, b) => a.y - b.y);
+            const minSep = 34;
+            for (let i = 1; i < rawYs.length; i++) {
+              if (rawYs[i].y - rawYs[i - 1].y < minSep) {
+                rawYs[i].y = rawYs[i - 1].y + minSep;
+              }
+            }
+            const cx = innerWidth - 16;
+
+            return (
+              <g aria-hidden="true" data-testid="chart-endpoint-callouts">
+                {rawYs.map((c) => (
+                  <g key={c.id}>
+                    <circle
+                      cx={cx}
+                      cy={c.y}
+                      r={16}
+                      fill="#fff"
+                      stroke={c.color}
+                      strokeWidth={1.5}
+                    />
+                    <text
+                      x={cx}
+                      y={c.y + 4}
+                      textAnchor="middle"
+                      fontFamily="Manrope, system-ui, sans-serif"
+                      fontWeight={700}
+                      fontSize={13}
+                      fill={c.color}
+                      data-testid={`chart-endpoint-value-${c.id}`}
+                    >
+                      {Math.round(c.value)}
+                    </text>
+                  </g>
+                ))}
+              </g>
+            );
+          })()}
+
+          {/* ---------------------------------------------------------------- */}
+          {/*  X-axis labels inside the chart (design mode — LKID-80).         */}
+          {/*  Matches project/Results.html:443-453 styling. 1yr/2yr/.../10yr. */}
+          {/* ---------------------------------------------------------------- */}
+          {designMode && (
+            <g
+              aria-hidden="true"
+              fontFamily="Nunito Sans, system-ui, sans-serif"
+              fontSize="10"
+              fill="#8A8D96"
+            >
+              {[12, 24, 36, 48, 60, 72, 84, 96, 108, 120].map((m, idx) => {
+                if (isMobile && idx % 2 === 1) return null; // thin on mobile
+                const yr = m / 12;
+                return (
+                  <text
+                    key={`x-${m}`}
+                    x={xScale(m)}
+                    y={innerHeight + 14}
+                    textAnchor="middle"
+                  >
+                    {yr} yr
+                  </text>
+                );
+              })}
+            </g>
+          )}
+
+          {/* ---------------------------------------------------------------- */}
+          {/*  Axes (chrome mode only — design mode uses inline axis text).    */}
+          {/* ---------------------------------------------------------------- */}
+          {!designMode && (
+            <>
+              <AxisBottom
+                scale={xScale}
+                top={innerHeight}
+                tickValues={xTickValues}
+                tickFormat={xTickFormat}
+                stroke="#E0E0E0"
+                tickStroke="#E0E0E0"
+                tickLabelProps={{
+                  fontSize: 11,
+                  fill: "#666666",
+                  textAnchor: "middle",
+                }}
+                label="Years"
+                labelProps={{
+                  fontSize: 12,
+                  fontWeight: 500,
+                  fill: "#666666",
+                  textAnchor: "middle",
+                }}
+              />
+              <AxisLeft
+                scale={yScale}
+                tickValues={Y_TICKS}
+                stroke="#E0E0E0"
+                tickStroke="#E0E0E0"
+                tickLabelProps={{
+                  fontSize: 11,
+                  fill: "#666666",
+                  textAnchor: "end",
+                  dx: "-0.25em",
+                  dy: "0.3em",
+                }}
+                label={isMobile ? "" : "eGFR (mL/min/1.73m\u00B2)"}
+                labelProps={{
+                  fontSize: 12,
+                  fontWeight: 500,
+                  fill: "#666666",
+                  textAnchor: "middle",
+                }}
+              />
+            </>
+          )}
 
           {/* ---------------------------------------------------------------- */}
           {/*  Invisible overlay for mouse/touch events                        */}
@@ -546,34 +795,36 @@ function InnerChart({ width, data, selectedTrajectoryId }: InnerChartProps) {
           />
         </Group>
 
-        {/* Confidence tier badge — top right.
+        {/* Confidence tier badge — top right (chrome mode only — design omits).
             LKID-67 (Inga): Tier-1 stroke/text migrated from #1D9E75 (3.39:1 on
             white; 3.02:1 on #E8F5F0 pill) → #047857 emerald-700 (5.48:1 on
             white; 4.90:1 on pill). Matches new BUN ≤12 trajectory so the
             semantic link "Tier 1 = rigorous BUN control = best path" reads
             through color. Tier-2 amber #92400E already meets AA (7.09:1). */}
-        <g aria-hidden="true">
-          <rect
-            x={width - margin.right - 60}
-            y={6}
-            width={56}
-            height={20}
-            rx={4}
-            fill={data.confidenceTier === 1 ? "#E8F5F0" : "#FFF8E1"}
-            stroke={data.confidenceTier === 1 ? "#047857" : "#F59E0B"}
-            strokeWidth={1}
-          />
-          <text
-            x={width - margin.right - 32}
-            y={20}
-            textAnchor="middle"
-            fontSize={10}
-            fontWeight={600}
-            fill={data.confidenceTier === 1 ? "#047857" : "#92400E"}
-          >
-            Tier {data.confidenceTier}
-          </text>
-        </g>
+        {!designMode && (
+          <g aria-hidden="true">
+            <rect
+              x={width - margin.right - 60}
+              y={6}
+              width={56}
+              height={20}
+              rx={4}
+              fill={data.confidenceTier === 1 ? "#E8F5F0" : "#FFF8E1"}
+              stroke={data.confidenceTier === 1 ? "#047857" : "#F59E0B"}
+              strokeWidth={1}
+            />
+            <text
+              x={width - margin.right - 32}
+              y={20}
+              textAnchor="middle"
+              fontSize={10}
+              fontWeight={600}
+              fill={data.confidenceTier === 1 ? "#047857" : "#92400E"}
+            >
+              Tier {data.confidenceTier}
+            </text>
+          </g>
+        )}
       </svg>
 
       {/* ---------------------------------------------------------------------- */}
@@ -755,10 +1006,45 @@ function StatCards({ trajectories, selectedId, onSelect }: StatCardsProps) {
 
 interface EgfrChartProps {
   data: ChartData;
+  /**
+   * Controls whether the chart renders its own card chrome (header, footnote,
+   * StatCards) around the SVG. Default `true` preserves the legacy layout used
+   * by the PDF pipeline (`/internal/chart/[token]`). Pass `false` on the
+   * `/results/[token]` Results page so the chart renders as a bare SVG matching
+   * `project/Results.html` (LKID-80) — the Results page owns the section title,
+   * legend column, and scenario cards itself.
+   */
+  chrome?: boolean;
 }
 
-export function EgfrChart({ data }: EgfrChartProps) {
+export function EgfrChart({ data, chrome = true }: EgfrChartProps) {
   const [selectedTrajectoryId, setSelectedTrajectoryId] = useState<string | null>(null);
+
+  // Design mode is the inverse of "chrome" — when the Results page removes its
+  // outer chrome, it wants the inner SVG in design-parity mode (LKID-80).
+  const designMode = !chrome;
+
+  if (designMode) {
+    return (
+      <div
+        style={{ position: "relative", width: "100%" }}
+        data-testid="egfr-chart-wrapper"
+      >
+        <ParentSize>
+          {({ width }) =>
+            width > 0 ? (
+              <InnerChart
+                width={width}
+                data={data}
+                selectedTrajectoryId={selectedTrajectoryId}
+                designMode
+              />
+            ) : null
+          }
+        </ParentSize>
+      </div>
+    );
+  }
 
   return (
     <div
