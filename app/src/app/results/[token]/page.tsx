@@ -3,24 +3,19 @@
 /**
  * LKID-63 — /results/[token] — Results view (no auth, tokenized).
  * LKID-76 — Design parity rebuild per project/Results.html.
+ * LKID-79 — Page shell only; all visible content lives in `<ResultsView />`
+ *           (app/src/components/results/ResultsView.tsx). This file owns:
+ *           - The tokenized `GET /results/[token]` fetch
+ *           - The `captured=false` → `/gate/[token]` redirect
+ *           - The 404/410 "invalid or expired" and generic error states
+ *           - The `.kh-results` chrome (navy nav + brand footer + RESULTS_CSS
+ *             injection that the ResultsView child consumes via scoped selectors)
+ *           - PostHog `results_viewed` (mount) and `pdf_downloaded` (click) events
+ *           - Loading skeleton
  *
- * On mount GETs /results/[token]:
- *   • 404/410 → "invalid or expired" card.
- *   • 200 + captured=false → router.replace to /gate/[token] (force the
- *     user through the email gate — direct access attempts fall back to
- *     the gate).
- *   • 200 + captured=true → render the full Results surface:
- *       - Navy nav + brand footer (shared chrome matching Landing/Labs)
- *       - "Kidney Health Overview" H1 (Manrope 700) + top Download pill
- *       - Chart card with visx trajectory + scenarios legend
- *       - Scenario Overview (4 pills + 4 tinted cards with 5yr/10yr + dialysis)
- *       - "What Your Results Mean" block with blue kidney visual + second
- *         Download pill + fine-print disclaimer
- *       - Edit CTA as a full navy pill (not a text link)
- *
- * The layout is locally scoped via `.kh-results` to mirror the pattern used
- * on `/` and `/labs` (inlined CSS + `next/font/google` variables) so one
- * bad selector cannot bleed into the client dashboard.
+ * The layout is locally scoped via `.kh-results` to mirror the pattern used on
+ * `/` and `/labs` (inlined CSS + `next/font/google` variables) so one bad
+ * selector cannot bleed into the client dashboard.
  */
 
 import Link from "next/link";
@@ -28,12 +23,11 @@ import { useRouter } from "next/navigation";
 import { Manrope, Nunito_Sans } from "next/font/google";
 import { use, useEffect, useState } from "react";
 import {
-  EgfrChart,
   transformPredictResponse,
   type ChartData,
   type PredictResponse,
-  type TrajectoryData,
 } from "@/components/chart";
+import { ResultsView } from "@/components/results/ResultsView";
 import { API_BASE, apiUrl } from "@/lib/api";
 import { posthog } from "@/lib/posthog-provider";
 
@@ -533,154 +527,8 @@ const RESULTS_CSS = `
 `;
 
 /* -------------------------------------------------------------------------- */
-/*  Small helpers                                                             */
+/*  Loading skeleton (page-local — ResultsView only renders the ready state)  */
 /* -------------------------------------------------------------------------- */
-
-/**
- * Find the index of a target month in time_points_months with a small
- * tolerance. Used to extract the 5yr (60 months) and 10yr (120 months)
- * eGFR values from each trajectory without assuming a fixed array shape.
- */
-function valueAtMonth(trajectory: TrajectoryData, targetMonths: number): number | null {
-  const match = trajectory.points.find(
-    (p) => Math.abs(p.monthsFromBaseline - targetMonths) < 0.5,
-  );
-  return match ? match.egfr : null;
-}
-
-function formatEgfr(value: number | null): string {
-  if (value === null || !Number.isFinite(value)) return "—";
-  return String(Math.max(0, Math.round(value)));
-}
-
-function formatDialysisFooter(dialysisAge: number | null): string {
-  if (dialysisAge === null || !Number.isFinite(dialysisAge)) return "Dialysis: Not projected";
-  return `Dialysis: ~age ${Math.round(dialysisAge)} yr`;
-}
-
-const SCENARIO_META = [
-  { id: "bun_lte_12" as const, label: "BUN ≤ 12", tone: "green" as const },
-  { id: "bun_13_17" as const, label: "BUN 13-17", tone: "blue" as const },
-  { id: "bun_18_24" as const, label: "BUN 18-24", tone: "yellow" as const },
-  { id: "no_treatment" as const, label: "No Treatment", tone: "gray" as const },
-];
-
-/* -------------------------------------------------------------------------- */
-/*  Sub-components                                                            */
-/* -------------------------------------------------------------------------- */
-
-function PdfIcon() {
-  return (
-    <span className="pdf-ico" aria-hidden="true">
-      <svg
-        viewBox="0 0 24 24"
-        fill="none"
-        stroke="currentColor"
-        strokeWidth={2.2}
-        strokeLinecap="round"
-        strokeLinejoin="round"
-      >
-        <path d="M12 3v12" />
-        <path d="M7 10l5 5 5-5" />
-        <path d="M5 21h14" />
-      </svg>
-    </span>
-  );
-}
-
-function DownloadPill({
-  href,
-  onClick,
-  className,
-  id,
-  label = "Download Your Results",
-}: {
-  href: string;
-  onClick?: () => void;
-  className?: string;
-  id?: string;
-  label?: string;
-}) {
-  return (
-    <a
-      href={href}
-      target="_blank"
-      rel="noopener noreferrer"
-      id={id}
-      onClick={onClick}
-      className={`dl-pill ${className ?? ""}`.trim()}
-      data-testid={id === "download-top" ? "results-pdf-link" : undefined}
-    >
-      {label}
-      <PdfIcon />
-    </a>
-  );
-}
-
-function Heart({ fill }: { fill: string }) {
-  return (
-    <svg className="heart" viewBox="0 0 24 24" fill={fill} aria-hidden="true">
-      <path d="M12 21s-7-4.5-9.5-9.2C.8 8.3 2.9 4.4 6.7 4.4c2 0 3.5 1 4.3 2.3.8-1.3 2.3-2.3 4.3-2.3 3.8 0 5.9 3.9 4.2 7.4C19 16.5 12 21 12 21z" />
-    </svg>
-  );
-}
-
-function KidneyVisual() {
-  return (
-    <div className="kidney-visual" aria-hidden="true">
-      <svg viewBox="0 0 160 160" xmlns="http://www.w3.org/2000/svg">
-        <defs>
-          <radialGradient id="kh-results-kidney-grad" cx="50%" cy="40%" r="70%">
-            <stop offset="0%" stopColor="#9ED6F5" />
-            <stop offset="50%" stopColor="#3A90C6" />
-            <stop offset="100%" stopColor="#1E5C8A" />
-          </radialGradient>
-        </defs>
-        <path
-          fill="url(#kh-results-kidney-grad)"
-          d="M56 20c-22 0-40 24-40 54s16 62 36 74c14 8 30 2 34-16 2-14-4-22-8-32-6-16 4-22 14-32 12-12 14-26 6-36-8-10-20-12-42-12zM108 20c22 0 40 24 40 54s-16 62-36 74c-14 8-30 2-34-16-2-14 4-22 8-32 6-16-4-22-14-32-12-12-14-26-6-36 8-10 20-12 42-12z"
-        />
-        <g fill="#fff" opacity={0.45}>
-          <ellipse cx="40" cy="56" rx="8" ry="16" transform="rotate(-18 40 56)" />
-          <ellipse cx="120" cy="56" rx="8" ry="16" transform="rotate(18 120 56)" />
-        </g>
-      </svg>
-    </div>
-  );
-}
-
-function StructuralFloorCallout({
-  egfrBaseline,
-  bun,
-  suppressionPoints,
-  structuralEgfr,
-}: {
-  egfrBaseline: number;
-  bun: number;
-  suppressionPoints: number;
-  structuralEgfr: number;
-}) {
-  const reported = Math.round(egfrBaseline);
-  const suppression = Math.round(suppressionPoints);
-  const structural = Math.round(structuralEgfr);
-  const bunValue = Math.round(bun);
-
-  return (
-    <aside
-      aria-label="BUN structural floor estimate"
-      className="structural-callout"
-      data-testid="structural-floor-callout"
-    >
-      <p>
-        Your reported eGFR is <strong>{reported}</strong>. At your current BUN of{" "}
-        <strong>{bunValue}</strong>, approximately <strong>{suppression}</strong>{" "}
-        {suppression === 1 ? "point" : "points"} of that reading reflect BUN workload
-        suppression, not permanent damage. Your estimated structural capacity is eGFR{" "}
-        <strong>{structural}</strong>.
-      </p>
-    </aside>
-  );
-}
 
 function LoadingSkeleton() {
   return (
@@ -817,150 +665,16 @@ export default function ResultsTokenPage({
 
     // ---------- Ready ----------
     const { chart, data } = state;
-    const trajectoryById = new Map(chart.trajectories.map((t) => [t.id, t]));
-
-    const scenarios = SCENARIO_META.map((meta) => {
-      const traj = trajectoryById.get(meta.id);
-      const fiveYear = traj ? valueAtMonth(traj, 60) : null;
-      const tenYear = traj ? valueAtMonth(traj, 120) : null;
-      const dialysisAge = traj ? traj.dialysisAge : null;
-      const heartColor = traj ? traj.color : "#000";
-      return { ...meta, traj, fiveYear, tenYear, dialysisAge, heartColor };
-    });
-
-    const structural = data.result.structural_floor;
-    const showStructural =
-      structural !== undefined &&
-      structural.suppression_points >= 0.5 &&
-      inputBun !== null;
-
     return (
-      <div className="wrap">
-        <div className="page-head">
-          <h1 className="title" data-testid="results-heading">
-            Kidney Health Overview
-          </h1>
-          <DownloadPill
-            href={pdfHref}
-            onClick={handlePdfClick}
-            className="top-pill"
-            id="download-top"
-          />
-        </div>
-
-        {/* Chart + scenarios legend */}
-        <div className="card">
-          <div className="chart-card">
-            <div className="chart-box">
-              <h3 className="section-title">Your Future Kidney Function</h3>
-              <section aria-label="Your kidney health prediction">
-                <EgfrChart data={chart} />
-              </section>
-            </div>
-            <div className="scenarios-legend">
-              <h3 className="section-title">Scenarios</h3>
-              {scenarios.map((s) => (
-                <div key={s.id} className="legend-row">
-                  <Heart fill={s.heartColor} />
-                  {s.tone === "green" && "Healthy range"}
-                  {s.tone === "blue" && "Stable range"}
-                  {s.tone === "yellow" && "Higher risk"}
-                  {s.tone === "gray" && "No treatment"}
-                </div>
-              ))}
-            </div>
-          </div>
-          {showStructural && (
-            <StructuralFloorCallout
-              egfrBaseline={data.result.egfr_baseline}
-              bun={inputBun}
-              suppressionPoints={structural.suppression_points}
-              structuralEgfr={structural.structural_floor_egfr}
-            />
-          )}
-        </div>
-
-        {/* Scenario Overview: pills + tinted cards */}
-        <section className="overview" aria-labelledby="overview-heading">
-          <h3 id="overview-heading" className="section-title overview-head">
-            Scenario Overview
-          </h3>
-
-          <div className="scenario-pills" role="list">
-            {scenarios.map((s) => (
-              <div key={s.id} role="listitem" className={`sc-pill ${s.tone}`}>
-                {s.label}
-              </div>
-            ))}
-          </div>
-
-          <div className="scenario-cards">
-            {scenarios.map((s) => (
-              <div
-                key={s.id}
-                className={`sc-card ${s.tone}`}
-                data-testid={`scenario-card-${s.id}`}
-              >
-                <div className="row">
-                  <div className="cell">
-                    <div className="lbl">5 yr eGFR</div>
-                    <div className="val">{formatEgfr(s.fiveYear)}</div>
-                  </div>
-                  <div className="cell">
-                    <div className="lbl">10yr eGFR</div>
-                    <div className="val">{formatEgfr(s.tenYear)}</div>
-                  </div>
-                </div>
-                <div className="foot">{formatDialysisFooter(s.dialysisAge)}</div>
-              </div>
-            ))}
-          </div>
-        </section>
-
-        {/* Explanation + kidney visual */}
-        <div className="explain-grid">
-          <KidneyVisual />
-          <div className="card explain-card">
-            <h3 className="section-title">What Your Results Mean</h3>
-            {showStructural ? (
-              <p>
-                Your reported eGFR is{" "}
-                <strong>{Math.round(data.result.egfr_baseline)}</strong>. At your current BUN
-                of <strong>{Math.round(inputBun ?? 0)}</strong>, approximately{" "}
-                <strong>{Math.round(structural.suppression_points)}</strong>{" "}
-                {Math.round(structural.suppression_points) === 1 ? "point" : "points"} of that
-                reading reflect BUN workload suppression, not permanent damage. Your estimated
-                structural capacity is eGFR{" "}
-                <strong>{Math.round(structural.structural_floor_egfr)}</strong>.
-              </p>
-            ) : (
-              <p>
-                Your reported eGFR is{" "}
-                <strong>{Math.round(data.result.egfr_baseline)}</strong>. This chart shows how
-                your kidney function may change over the next 10 years under four possible BUN
-                scenarios — use the scenario cards below to compare outcomes.
-              </p>
-            )}
-            <div className="explain-cta">
-              <DownloadPill href={pdfHref} onClick={handlePdfClick} id="download-bottom" />
-            </div>
-            <p className="fine" data-testid="disclaimer-full-panel-desktop">
-              This tool is for informational purposes only and does not constitute medical
-              advice.
-              <br />
-              Consult your healthcare provider before making any decisions about your kidney
-              health.
-            </p>
-          </div>
-        </div>
-
-        {/* Edit CTA */}
-        <div className="edit-row">
-          <Link href="/labs" className="edit-pill" data-testid="results-edit-link">
-            &larr; Edit your information
-          </Link>
-        </div>
-      </div>
+      <ResultsView
+        data={chart}
+        patientName={data.lead?.name}
+        egfrBaseline={data.result.egfr_baseline}
+        structuralFloor={data.result.structural_floor}
+        inputBun={inputBun}
+        pdfHref={pdfHref}
+        onPdfClick={handlePdfClick}
+      />
     );
   };
 
