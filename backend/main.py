@@ -41,8 +41,48 @@ from svix.webhooks import Webhook, WebhookVerificationError
 
 from email_renderer import render_report_email
 from prediction.engine import predict_for_endpoint
+from sentry_scrubber import scrub_report_token
 from services.klaviyo_service import track_prediction_completed
 from services.resend_service import send_report_email
+
+# ---------------------------------------------------------------------------
+# Sentry — LKID-72
+#
+# Initialise before the FastAPI app is constructed so the FastApi /
+# Sqlalchemy / Asyncio integrations can hook the framework at import time.
+# The `logging` integration ships by default, which means every existing
+# `logger.exception(...)` call in main.py and services/*.py auto-routes to
+# Sentry — we MUST NOT add redundant `sentry_sdk.capture_exception()` calls.
+#
+# `before_send=scrub_report_token` redacts every occurrence of a bearer
+# token path (`/results/<tok>`, `/gate/<tok>`, `/reports/<tok>`) from the
+# outgoing event. Required for MED-01 compliance (tokens are bearer
+# credentials; they must never land in Sentry logs).
+# ---------------------------------------------------------------------------
+_SENTRY_DSN = os.environ.get("SENTRY_DSN", "").strip()
+if _SENTRY_DSN:
+    import sentry_sdk
+    from sentry_sdk.integrations.asyncio import AsyncioIntegration
+    from sentry_sdk.integrations.fastapi import FastApiIntegration
+    from sentry_sdk.integrations.sqlalchemy import SqlalchemyIntegration
+
+    sentry_sdk.init(
+        dsn=_SENTRY_DSN,
+        integrations=[
+            FastApiIntegration(),
+            SqlalchemyIntegration(),
+            AsyncioIntegration(),
+        ],
+        traces_sample_rate=0.1,  # 10% — MVP sampling per LKID-72 techspec
+        environment=os.environ.get("RAILWAY_ENVIRONMENT", "production"),
+        release=os.environ.get("RAILWAY_GIT_COMMIT_SHA", "unknown"),
+        before_send=scrub_report_token,
+        # Do not attach request bodies by default — PredictRequest contains
+        # lab values (not strictly PII, but conservative default for a
+        # health app). Re-enable per-transaction with `set_context()` if
+        # debugging requires it.
+        send_default_pii=False,
+    )
 
 # Playwright's own TimeoutError is NOT a subclass of asyncio.TimeoutError
 # (HIGH-01 in PR #35 QA). Import it so the /reports/{token}/pdf handler can
