@@ -16,3 +16,6 @@ node_modules/
 
 # Legacy QA visual artifacts — not for commit
 agents/**/drafts/qa-*.png
+
+# Client meeting transcripts (Fireflies / Granola) — confidential, local-only
+docs/client-comms/
