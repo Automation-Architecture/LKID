@@ -29,14 +29,16 @@ const UPCOMING = [
   },
   {
     name: "Sprint 5 — Launch Readiness",
-    dates: "TBD — awaiting scope confirmation",
-    status: "planned" as const,
+    dates: "Apr 20 – (in progress)",
+    status: "in_progress" as const,
     deliverables: [
-      "Conversion analytics (landing → labs → gate → results → PDF funnel)",
-      "Error monitoring across backend + frontend",
-      "SEO basics (meta tags, structured data, sitemap)",
-      "Security headers hardening",
-      "Dashboard v2 for you (funnel view, recent leads, email-sent counts)",
+      "Shipped — Error monitoring (Sentry) on backend + frontend",
+      "Shipped — Conversion analytics (PostHog funnel: labs / gate / results / PDF)",
+      "Shipped — Results page visual parity with finalized design",
+      "Shipped — Chart redesign to match design brand identity",
+      "In progress — Dashboard v2 for you (launch-metrics panels)",
+      "Up next — SEO basics (OG tags, sitemap, structured data)",
+      "Up next — Security headers (CSP, HSTS, X-Frame-Options)",
     ],
   },
 ];
@@ -92,13 +94,13 @@ export function Horizon() {
         <div style={{ width: "4px", height: "32px", backgroundColor: "#E6FF2B", borderRadius: "2px", flexShrink: 0 }} />
         <div>
           <p className="text-sm" style={{ color: "rgba(255,255,255,0.8)" }}>
-            Shipped — application live
+            Application live — Sprint 5 in progress
           </p>
           <p className="mt-1 text-lg font-bold text-white">
             April 20, 2026
           </p>
           <p className="mt-1 text-xs" style={{ color: "rgba(255,255,255,0.65)" }}>
-            Sprint 4 delivered the no-auth tokenized flow 13 days ahead of plan.
+            Five Sprint 5 cards already shipped: error monitoring, analytics funnel, Results redesign, component refactor, and the chart update. Dashboard v2, SEO, and security headers up next.
           </p>
         </div>
       </div>
