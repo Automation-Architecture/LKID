@@ -733,6 +733,232 @@ class TestPdfEndpoint:
         r = client.get("/reports/tok-pdf-revoked/pdf")
         assert r.status_code == 410
 
+    def test_pdf_endpoint_timeout_returns_504(
+        self, client: TestClient, store: FakeStore, monkeypatch
+    ):
+        """HIGH-01 (PR #35 QA): Playwright's own TimeoutError is NOT a
+        subclass of asyncio.TimeoutError, so a real 30s render timeout
+        previously landed in the generic `except Exception` and returned
+        500 instead of the AC-required 504.
+
+        Regression test: monkeypatch the render helper to raise
+        PlaywrightTimeoutError (pulled from `main` so the fallback
+        definition is exercised when playwright isn't installed) and
+        assert the endpoint maps it to 504.
+        """
+        # Use the same class main caught — that's the whole point of the
+        # regression. If playwright is installed, this is the real
+        # Playwright class; if not, it's main's fallback.
+        PwTimeoutError = main.PlaywrightTimeoutError
+
+        store.seed_prediction(
+            token="tok-pdf-timeout",
+            result={"egfr_baseline": 33.0, "confidence_tier": 1},
+        )
+        monkeypatch.setattr(
+            "main._render_pdf_for_token",
+            AsyncMock(
+                side_effect=PwTimeoutError("Timeout 30000ms exceeded.")
+            ),
+        )
+
+        r = client.get("/reports/tok-pdf-timeout/pdf")
+        assert r.status_code == 504
+        # Error envelope should surface the timeout detail.
+        body = r.json()
+        detail = body.get("detail") or body.get("error", {}).get("message", "")
+        assert "timed out" in detail.lower() or "timeout" in detail.lower()
+
+    def test_pdf_endpoint_generic_failure_returns_500(
+        self, client: TestClient, store: FakeStore, monkeypatch
+    ):
+        """Paired with the 504 test: a non-timeout render failure still
+        returns 500 (not 504). Guards against over-broad timeout catching
+        from the HIGH-01 fix."""
+        store.seed_prediction(
+            token="tok-pdf-generic-fail",
+            result={"egfr_baseline": 33.0, "confidence_tier": 1},
+        )
+        monkeypatch.setattr(
+            "main._render_pdf_for_token",
+            AsyncMock(side_effect=RuntimeError("chromium crashed")),
+        )
+        r = client.get("/reports/tok-pdf-generic-fail/pdf")
+        assert r.status_code == 500
+
+
+# ---------------------------------------------------------------------------
+# MED-02 (PR #35 QA): Klaviyo fires regardless of Resend-pipeline failures.
+# ---------------------------------------------------------------------------
+
+
+class TestKlaviyoIndependentOfResend:
+    @pytest.mark.anyio
+    async def test_klaviyo_fires_even_when_resend_fails(
+        self, store: FakeStore, monkeypatch
+    ):
+        """If Resend raises outright (network, SDK error), Klaviyo must
+        still fire. The fire-and-forget pipeline restructures so the two
+        integrations are independent try/except blocks."""
+        send_mock = AsyncMock(side_effect=RuntimeError("resend down"))
+        klav_mock = AsyncMock(return_value=True)
+        monkeypatch.setattr("main.send_report_email", send_mock)
+        monkeypatch.setattr("main.track_prediction_completed", klav_mock)
+        monkeypatch.setattr(
+            "main._render_pdf_for_token",
+            AsyncMock(return_value=b"%PDF-1.4 stub"),
+        )
+
+        store.seed_prediction(
+            token="tok-klav-indep-padded-to-meet-32-char-min",
+            result={"egfr_baseline": 28.5, "confidence_tier": 2},
+        )
+
+        with TestClient(main.app) as c:
+            r = c.post(
+                "/leads",
+                json={
+                    "report_token": "tok-klav-indep-padded-to-meet-32-char-min",
+                    "name": "Dana",
+                    "email": "dana@example.com",
+                },
+            )
+        assert r.status_code == 200
+        await _drain_background_tasks()
+
+        # Resend was attempted and raised.
+        assert send_mock.await_count == 1
+        # Klaviyo fires regardless — the warm-campaign event must not be
+        # gated on transactional email success.
+        assert klav_mock.await_count == 1
+        # email_sent_at remains unset because Resend never returned True.
+        assert (
+            store.predictions[
+                "tok-klav-indep-padded-to-meet-32-char-min"
+            ]["email_sent_at"]
+            is None
+        )
+
+    @pytest.mark.anyio
+    async def test_klaviyo_fires_even_when_template_render_fails(
+        self, store: FakeStore, monkeypatch
+    ):
+        """Template render failure used to short-circuit Klaviyo (MED-02).
+        Now the Klaviyo call is in its own try block and fires regardless."""
+        send_mock = AsyncMock(return_value=True)
+        klav_mock = AsyncMock(return_value=True)
+        monkeypatch.setattr("main.send_report_email", send_mock)
+        monkeypatch.setattr("main.track_prediction_completed", klav_mock)
+        monkeypatch.setattr(
+            "main._render_pdf_for_token",
+            AsyncMock(return_value=b"%PDF-1.4 stub"),
+        )
+        # Force the template renderer to blow up.
+        monkeypatch.setattr(
+            "main.render_report_email",
+            lambda **_: (_ for _ in ()).throw(
+                ValueError("template boom")
+            ),
+        )
+
+        store.seed_prediction(
+            token="tok-tmpl-fail-padded-to-meet-32-char-min",
+            result={"egfr_baseline": 25.0, "confidence_tier": 1},
+        )
+
+        with TestClient(main.app) as c:
+            r = c.post(
+                "/leads",
+                json={
+                    "report_token": "tok-tmpl-fail-padded-to-meet-32-char-min",
+                    "name": "Eve",
+                    "email": "eve@example.com",
+                },
+            )
+        assert r.status_code == 200
+        await _drain_background_tasks()
+
+        # Resend was never called (template render crashed before send).
+        assert send_mock.await_count == 0
+        # Klaviyo still fires — this is the MED-02 invariant.
+        assert klav_mock.await_count == 1
+
+
+# ---------------------------------------------------------------------------
+# MED-03 (PR #35 QA): Resend attachment payload is base64, not list[int].
+# ---------------------------------------------------------------------------
+
+
+class TestResendAttachmentEncoding:
+    def test_resend_attachment_is_base64(self, monkeypatch):
+        """The Resend SDK's Attachment TypedDict accepts
+        Union[List[int], str], where the string form is base64. The previous
+        list(pdf_bytes) form inflated payload JSON ~4-5x for real PDFs.
+
+        Calls the synchronous internal `_send_sync` helper directly (which
+        the async `send_report_email` dispatches via asyncio.to_thread),
+        stubs the Resend SDK's Emails.send at the call site, and asserts
+        the captured `content` is a base64 string that decodes to the
+        original bytes. Bypasses the autouse _silence_fire_and_forget
+        fixture which replaces the async wrapper.
+        """
+        import base64 as _b64
+        from services.resend_service import _send_sync
+        import resend as _resend_sdk
+
+        captured: dict = {}
+
+        def fake_send(params):
+            captured["params"] = params
+
+        monkeypatch.setattr(_resend_sdk.Emails, "send", fake_send)
+
+        pdf = b"%PDF-1.4\n%\xe2\xe3\xcf\xd3\nbinary body \x00\x01\x02"
+        _send_sync(
+            to_email="user@example.com",
+            subject="Your Kidney Health Report",
+            html="<p>hi</p>",
+            from_email="reports@kidneyhood.org",
+            pdf_bytes=pdf,
+        )
+
+        attachments = captured["params"]["attachments"]
+        assert len(attachments) == 1
+        content = attachments[0]["content"]
+
+        # Must be a base64-encoded string, NOT a list[int].
+        assert isinstance(content, str), (
+            f"attachment content must be a base64 str, got {type(content).__name__}"
+        )
+        # And it must decode back to the original bytes.
+        assert _b64.b64decode(content) == pdf
+        # Sanity: content_type + filename preserved.
+        assert attachments[0]["content_type"] == "application/pdf"
+        assert attachments[0]["filename"] == "kidney-health-report.pdf"
+
+    def test_resend_no_attachment_when_pdf_bytes_none(self, monkeypatch):
+        """Fallback path: when pdf_bytes is None, no attachments key is
+        added to the Resend params (template handles the /results link)."""
+        from services.resend_service import _send_sync
+        import resend as _resend_sdk
+
+        captured: dict = {}
+
+        def fake_send(params):
+            captured["params"] = params
+
+        monkeypatch.setattr(_resend_sdk.Emails, "send", fake_send)
+
+        _send_sync(
+            to_email="user@example.com",
+            subject="Your Kidney Health Report",
+            html="<p>fallback</p>",
+            from_email="reports@kidneyhood.org",
+            pdf_bytes=None,
+        )
+
+        assert "attachments" not in captured["params"]
+
 
 # ---------------------------------------------------------------------------
 # Async runner for @pytest.mark.anyio tests.

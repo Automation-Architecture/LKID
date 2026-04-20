@@ -44,6 +44,18 @@ from prediction.engine import predict_for_endpoint
 from services.klaviyo_service import track_prediction_completed
 from services.resend_service import send_report_email
 
+# Playwright's own TimeoutError is NOT a subclass of asyncio.TimeoutError
+# (HIGH-01 in PR #35 QA). Import it so the /reports/{token}/pdf handler can
+# map Playwright render timeouts to the AC-required 504. Guarded to tolerate
+# environments without playwright installed (unit-test runners, some CI
+# images) — if the import fails we fall back to a sentinel class that will
+# never match a real raise, so the generic `except Exception` handles it.
+try:
+    from playwright.async_api import TimeoutError as PlaywrightTimeoutError
+except ImportError:  # pragma: no cover — only hit in playwright-less envs
+    class PlaywrightTimeoutError(Exception):  # type: ignore[no-redef]
+        """Fallback — playwright not installed in this environment."""
+
 logger = logging.getLogger(__name__)
 
 # ---------------------------------------------------------------------------
@@ -735,7 +747,8 @@ async def _mark_email_sent(report_token: str) -> None:
             await session.commit()
     except Exception:
         logger.exception(
-            "Failed to set email_sent_at for token %s", report_token
+            "Failed to set email_sent_at for token_prefix=%s",
+            report_token[:8],
         )
 
 
@@ -762,7 +775,14 @@ async def _send_report_email_task(
 
     Never raises — a failure here cannot block POST /leads which has
     already returned 200 to the client.
+
+    MED-02 fix (PR #35 QA): the Resend pipeline and the Klaviyo fire are
+    independent. Klaviyo MUST fire regardless of whether PDF render,
+    template render, or Resend itself fail — the warm campaign is
+    lead-capture business data and cannot be gated on transactional email
+    success. Each integration gets its own try/except below.
     """
+    # --- Resend pipeline (render PDF -> render template -> send -> mark sent) ---
     try:
         pdf_bytes: Optional[bytes]
         pdf_failed = False
@@ -770,8 +790,8 @@ async def _send_report_email_task(
             pdf_bytes = await _render_pdf_for_token(report_token)
         except Exception:
             logger.exception(
-                "PDF render failed for token %s — using fallback email",
-                report_token,
+                "PDF render failed for prediction %s — using fallback email",
+                prediction_id,
             )
             pdf_bytes = None
             pdf_failed = True
@@ -782,20 +802,13 @@ async def _send_report_email_task(
             None if confidence_tier is None else str(confidence_tier)
         )
 
-        try:
-            html_body = render_report_email(
-                name=lead_name,
-                egfr_baseline=egfr_baseline,
-                confidence_tier=tier_str,
-                token=report_token,
-                pdf_failed=pdf_failed,
-            )
-        except Exception:
-            logger.exception(
-                "Email template render failed for token %s; aborting send",
-                report_token,
-            )
-            return
+        html_body = render_report_email(
+            name=lead_name,
+            egfr_baseline=egfr_baseline,
+            confidence_tier=tier_str,
+            token=report_token,
+            pdf_failed=pdf_failed,
+        )
 
         sent_ok = await send_report_email(
             to_email=lead_email,
@@ -806,11 +819,21 @@ async def _send_report_email_task(
         if sent_ok:
             # Per techspec §4.2: even when PDF failed, if the email went out
             # we still set email_sent_at — the outbound side succeeded.
+            # Invariant: email_sent_at is gated on Resend success. A template
+            # render failure or Resend failure must NOT set this column.
             await _mark_email_sent(report_token)
+    except Exception:
+        # Any failure in the Resend pipeline (template render, send, etc.)
+        # is logged and swallowed — we still need to fire Klaviyo below.
+        logger.exception(
+            "Resend pipeline failed for prediction %s", prediction_id
+        )
 
-        # Klaviyo event — independent of Resend outcome (the warm campaign
-        # should fire regardless, so the user enters the funnel even if the
-        # transactional email failed).
+    # --- Klaviyo event — independent of Resend outcome ---
+    # Fires regardless of PDF/template/Resend success so the warm campaign
+    # triggers for every captured lead. Its own try/except so a Klaviyo
+    # hiccup cannot escape the fire-and-forget boundary.
+    try:
         report_url = f"{PUBLIC_APP_URL}/results/{report_token}"
         await track_prediction_completed(
             email=lead_email,
@@ -821,11 +844,8 @@ async def _send_report_email_task(
             report_url=report_url,
         )
     except Exception:
-        # Any unhandled exception in a fire-and-forget task becomes an
-        # "exception was never retrieved" warning and gets swallowed; the
-        # explicit logger.exception makes it visible in Railway logs.
         logger.exception(
-            "_send_report_email_task crashed for token %s", report_token
+            "Klaviyo fire failed for prediction %s", prediction_id
         )
 
 
@@ -907,14 +927,22 @@ async def get_report_pdf(token: str):
 
     try:
         pdf_bytes = await _render_pdf_for_token(token)
-    except asyncio.TimeoutError:
-        logger.exception("PDF render timed out for token %s", token)
+    except (asyncio.TimeoutError, PlaywrightTimeoutError):
+        # Playwright's own TimeoutError is NOT a subclass of asyncio.TimeoutError,
+        # so both must be caught explicitly to map 30s renders to the AC-required
+        # 504. A generic `except Exception` below would have swallowed the
+        # Playwright timeout as a 500.
+        logger.warning(
+            "PDF render timed out for token_prefix=%s", token[:8]
+        )
         raise HTTPException(
             status_code=504,
             detail="PDF rendering timed out. Please try again.",
         )
     except Exception:
-        logger.exception("PDF render failed for token %s", token)
+        logger.exception(
+            "PDF render failed for token_prefix=%s", token[:8]
+        )
         raise HTTPException(
             status_code=500,
             detail="PDF rendering failed. Please try again.",

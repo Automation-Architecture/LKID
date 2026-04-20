@@ -24,6 +24,7 @@ lab values.
 from __future__ import annotations
 
 import asyncio
+import base64
 import logging
 import os
 from typing import Optional
@@ -71,12 +72,16 @@ def _send_sync(
     }
 
     if pdf_bytes is not None:
-        # Resend accepts `content` as either a base64 string or a list[int].
-        # `list(pdf_bytes)` is the safest cross-SDK shape.
+        # Resend's Attachment TypedDict accepts `content: Union[List[int], str]`
+        # where the string form is base64 (per Resend REST API). MED-03 fix
+        # (PR #35 QA): the previous `list(pdf_bytes)` form inflated every byte
+        # into a 3-4 char Python int in the serialized JSON payload — for a
+        # real 50KB PDF that balloons the request body ~4-5x. Base64 keeps
+        # the encoded payload at ~4/3 the raw size.
         params["attachments"] = [
             {
                 "filename": "kidney-health-report.pdf",
-                "content": list(pdf_bytes),
+                "content": base64.b64encode(pdf_bytes).decode("ascii"),
                 "content_type": "application/pdf",
             }
         ]
