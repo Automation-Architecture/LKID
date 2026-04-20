@@ -672,6 +672,43 @@ const LANDING_CSS = `
 }
 `;
 
+/**
+ * LKID-73 — MedicalWebPage JSON-LD structured data.
+ *
+ * Emitted as an inline <script type="application/ld+json"> on the landing
+ * page so search engines can surface KidneyHood as a patient-facing health
+ * tool. We intentionally keep the schema small and avoid claiming medical
+ * advice — the landing copy already carries the "educational, not medical
+ * advice" framing, and the disclaimer block reinforces it.
+ */
+const SITE_URL =
+  process.env.NEXT_PUBLIC_APP_URL ??
+  "https://kidneyhood-automation-architecture.vercel.app";
+
+const JSON_LD = {
+  "@context": "https://schema.org",
+  "@type": "MedicalWebPage",
+  name: "KidneyHood — Understand your kidney health",
+  description:
+    "See what your lab results mean and how your kidney health may change over time. Plain-language kidney health check — no account needed, takes less than a minute.",
+  url: SITE_URL,
+  inLanguage: "en",
+  isAccessibleForFree: true,
+  audience: {
+    "@type": "PeopleAudience",
+    audienceType: "Adults with kidney-function concerns",
+  },
+  publisher: {
+    "@type": "Organization",
+    name: "KidneyHood",
+    url: SITE_URL,
+  },
+  about: {
+    "@type": "MedicalCondition",
+    name: "Chronic kidney disease",
+  },
+};
+
 export default function LandingPage() {
   const [menuOpen, setMenuOpen] = useState(false);
 
@@ -691,6 +728,11 @@ export default function LandingPage() {
   return (
     <div className={`kh-landing ${manrope.variable} ${nunito.variable}`}>
       <style dangerouslySetInnerHTML={{ __html: LANDING_CSS }} />
+      {/* LKID-73 — MedicalWebPage JSON-LD for search engines. */}
+      <script
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{ __html: JSON.stringify(JSON_LD) }}
+      />
 
       <nav className="nav" aria-label="Main navigation">
         <div className="nav-inner">

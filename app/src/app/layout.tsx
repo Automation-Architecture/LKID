@@ -34,9 +34,59 @@ const nunito = Nunito_Sans({
   display: "swap",
 });
 
+/**
+ * LKID-73 — SEO basics.
+ *
+ * `metadataBase` is required for relative OG image paths (e.g. `/opengraph-image`
+ * produced by `app/opengraph-image.tsx`) to resolve to absolute URLs. Defaults
+ * to the Vercel preview domain; Brad can swap to https://kidneyhood.org once
+ * DNS lands (Sprint 4 Brad-hands backlog).
+ *
+ * Tokenized routes (`/results/[token]`, `/gate/[token]`, `/internal/chart/[token]`)
+ * carry `robots: { index: false, follow: false }` via their own route-level
+ * metadata so search engines never index a report URL. robots.txt
+ * (`app/robots.ts`) adds a belt-and-braces disallow and covers the FastAPI
+ * `/reports/{token}/pdf` endpoint, which is served from the backend and
+ * cannot carry HTML meta tags.
+ */
+const SITE_URL =
+  process.env.NEXT_PUBLIC_APP_URL ??
+  "https://kidneyhood-automation-architecture.vercel.app";
+
+const SITE_TITLE = "KidneyHood — Understand your kidney health";
+const SITE_DESCRIPTION =
+  "See what your lab results mean and how your kidney health may change over time. Plain-language kidney health check — no account needed, takes less than a minute.";
+
 export const metadata: Metadata = {
-  title: "KidneyHood",
-  description: "Track your kidney health with eGFR trajectory predictions",
+  metadataBase: new URL(SITE_URL),
+  title: {
+    default: SITE_TITLE,
+    template: "%s — KidneyHood",
+  },
+  description: SITE_DESCRIPTION,
+  applicationName: "KidneyHood",
+  openGraph: {
+    type: "website",
+    locale: "en_US",
+    url: SITE_URL,
+    siteName: "KidneyHood",
+    title: SITE_TITLE,
+    description: SITE_DESCRIPTION,
+    images: [
+      {
+        url: "/opengraph-image",
+        width: 1200,
+        height: 630,
+        alt: "KidneyHood — Understand your kidney health",
+      },
+    ],
+  },
+  twitter: {
+    card: "summary_large_image",
+    title: SITE_TITLE,
+    description: SITE_DESCRIPTION,
+    images: ["/opengraph-image"],
+  },
 };
 
 /**
