@@ -45,11 +45,27 @@ function bunTier(bun: number | null): string {
   return ">24";
 }
 
+/**
+ * LKID-71 CKD stage bucketing — KDIGO boundaries.
+ * Emits a stage label (e.g. "stage_3a") instead of the raw eGFR number so
+ * PostHog never receives a lab value. Keep in sync with the provider docstring.
+ */
+function ckdStage(egfr: number | null | undefined): string {
+  if (egfr === null || egfr === undefined || !Number.isFinite(egfr)) return "unknown";
+  if (egfr >= 90) return "stage_1";
+  if (egfr >= 60) return "stage_2";
+  if (egfr >= 45) return "stage_3a";
+  if (egfr >= 30) return "stage_3b";
+  if (egfr >= 15) return "stage_4";
+  return "stage_5";
+}
+
 interface ResultsApiResponse {
   report_token: string;
   captured: boolean;
   created_at: string;
   result: PredictResponse;
+  inputs?: { bun?: number } | null;
   lead?: { name?: string; email_captured_at?: string | null } | null;
 }
 
@@ -127,12 +143,13 @@ export default function ResultsTokenPage({
   const [inputBun, setInputBun] = useState<number | null>(null);
 
   // LKID-71: fire `results_viewed` exactly once per successful mount.
-  // Non-PII props only: prefix + baseline + tier. No raw BUN, no token, no email.
+  // Non-PII props only: prefix + bucketed stage + tier. No raw lab values,
+  // no token, no email.
   useEffect(() => {
     if (state.kind !== "ready") return;
     posthog.capture("results_viewed", {
       report_token_prefix: token.slice(0, 8),
-      egfr_baseline: state.data.result.egfr_baseline,
+      ckd_stage: ckdStage(state.data.result.egfr_baseline),
       bun_tier: bunTier(inputBun),
     });
     // Only want to fire once on transition to "ready". The subsequent
@@ -169,9 +186,7 @@ export default function ResultsTokenPage({
           return;
         }
         setInputBun(
-          typeof (data as unknown as { inputs?: { bun?: number } }).inputs?.bun === "number"
-            ? ((data as unknown as { inputs?: { bun?: number } }).inputs!.bun as number)
-            : null
+          typeof data.inputs?.bun === "number" ? data.inputs.bun : null,
         );
         setState({
           kind: "ready",

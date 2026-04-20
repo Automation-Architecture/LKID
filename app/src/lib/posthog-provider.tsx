@@ -18,9 +18,10 @@
  * PII posture (MED-01 — `report_token` is a bearer credential, LKID-62):
  *   - `person_profiles: "identified_only"` — only create profiles if we call
  *     `posthog.identify()`. We never call it. Result: zero PII profiles.
- *   - No email, name, lab values, or full report_token is ever sent as a
- *     property. Only `report_token_prefix` (first 8 chars) for funnel
- *     correlation.
+ *   - No email, name, or full report_token is ever sent as a property.
+ *     Only `report_token_prefix` (first 8 chars) for funnel correlation.
+ *     Lab values are never sent raw — we emit bucketed tier labels only
+ *     (e.g. `ckd_stage: "stage_3a"`, `bun_tier: "13-17"`).
  *   - `autocapture.dom_event_allowlist: ["click", "submit"]` — explicitly
  *     excludes `change`/`input` events, so form-field values are never
  *     sent to PostHog.
@@ -72,7 +73,10 @@ function initPostHog(): void {
     cross_subdomain_cookie: false,
     persistence: "localStorage+cookie",
 
-    // Silence PostHog's "Debug mode" console banner in production.
+    // Explicitly disable PostHog's "Debug mode" console banner in
+    // development (it's off by default in production). Without this,
+    // posthog-js auto-enables debug logging on localhost which spams
+    // the console.
     loaded: (ph) => {
       if (process.env.NODE_ENV === "development") {
         ph.debug(false);
