@@ -770,6 +770,7 @@ async def _send_report_email_task(
     lead_name: str,
     egfr_baseline: float,
     confidence_tier: Any,
+    bun: Optional[float] = None,
 ) -> None:
     """Fire-and-forget pipeline invoked from POST /leads.
 
@@ -852,6 +853,7 @@ async def _send_report_email_task(
             egfr_baseline=egfr_baseline,
             confidence_tier=confidence_tier,
             report_url=report_url,
+            bun=bun,
         )
     except Exception:
         logger.exception(
@@ -895,6 +897,16 @@ async def capture_lead(request: Request, body: LeadCaptureRequest):
     egfr_baseline = float(result_json.get("egfr_baseline", 0.0))
     confidence_tier = result_json.get("confidence_tier")
 
+    # BUN lives on the stored `inputs` JSON; coerce defensively since
+    # JSON drivers can round-trip numerics as Decimal/str.
+    inputs_json = pred_row["inputs"] or {}
+    bun_raw = inputs_json.get("bun")
+    bun: Optional[float]
+    try:
+        bun = float(bun_raw) if bun_raw is not None else None
+    except (TypeError, ValueError):
+        bun = None
+
     asyncio.create_task(
         _send_report_email_task(
             report_token=body.report_token,
@@ -903,6 +915,7 @@ async def capture_lead(request: Request, body: LeadCaptureRequest):
             lead_name=body.name,
             egfr_baseline=egfr_baseline,
             confidence_tier=confidence_tier,
+            bun=bun,
         )
     )
 
