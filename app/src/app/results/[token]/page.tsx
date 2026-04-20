@@ -281,10 +281,12 @@ const RESULTS_CSS = `
   border: 1px solid transparent;
   min-height: auto;
 }
-.kh-results .sc-pill.green  { background: var(--s-green-bg);  color: var(--s-green);  border-color: var(--s-green-border); }
-.kh-results .sc-pill.blue   { background: var(--s-blue-bg);   color: var(--s-blue);   border-color: var(--s-blue-border); }
-.kh-results .sc-pill.yellow { background: var(--s-yellow-bg); color: var(--s-yellow); border-color: var(--s-yellow-border); }
-.kh-results .sc-pill.gray   { background: var(--s-gray-bg);   color: var(--s-gray);   border-color: var(--s-gray-border); }
+/* Pills + scenario card numerics use the -text tokens (AA-safe on the
+ * tinted backgrounds); chart dots / icons keep the brighter --s-{color}. */
+.kh-results .sc-pill.green  { background: var(--s-green-bg);  color: var(--s-green-text);  border-color: var(--s-green-border); }
+.kh-results .sc-pill.blue   { background: var(--s-blue-bg);   color: var(--s-blue-text);   border-color: var(--s-blue-border); }
+.kh-results .sc-pill.yellow { background: var(--s-yellow-bg); color: var(--s-yellow-text); border-color: var(--s-yellow-border); }
+.kh-results .sc-pill.gray   { background: var(--s-gray-bg);   color: var(--s-gray-text);   border-color: var(--s-gray-border); }
 
 .kh-results .scenario-cards {
   display: grid;
@@ -323,10 +325,10 @@ const RESULTS_CSS = `
   line-height: 1;
   letter-spacing: -0.01em;
 }
-.kh-results .sc-card.green .val  { color: var(--s-green); }
-.kh-results .sc-card.blue .val   { color: var(--s-blue); }
-.kh-results .sc-card.yellow .val { color: var(--s-yellow); }
-.kh-results .sc-card.gray .val   { color: var(--s-gray); }
+.kh-results .sc-card.green .val  { color: var(--s-green-text); }
+.kh-results .sc-card.blue .val   { color: var(--s-blue-text); }
+.kh-results .sc-card.yellow .val { color: var(--s-yellow-text); }
+.kh-results .sc-card.gray .val   { color: var(--s-gray-text); }
 .kh-results .sc-card .foot {
   font-size: 12px;
   color: var(--muted);

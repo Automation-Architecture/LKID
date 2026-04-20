@@ -71,19 +71,32 @@
   --kh-bg: #F4F5F7;
   --kh-border: #E4E6EB;
 
-  /* Scenario palette — pills, scenario cards, legend heart icons, PDF. */
+  /* Scenario palette — pills, scenario cards, legend heart icons, PDF.
+   *
+   * --s-{color}      → solid hue, used for chart dots, icons, and surfaces
+   *                    rendered against white (≥ AA on white at large text).
+   * --s-{color}-bg   → 6–14% tint, used as the card/pill background.
+   * --s-{color}-text → AA-safe text color when laid over the matching tint.
+   *                    Required because the brand greens/yellows fail WCAG
+   *                    1.4.3 ≥ 3.0:1 once composited onto white. CodeRabbit
+   *                    flagged this on PR #57; math is in the commit body.
+   */
   --s-green: #3FA35B;
   --s-green-bg: rgba(108, 194, 74, 0.12);
   --s-green-border: rgba(108, 194, 74, 0.35);
+  --s-green-text: #2F7F45;        /* 4.53:1 on #EDF8E9 vs #3FA35B 2.91:1 */
   --s-blue: #1F2577;
   --s-blue-bg: rgba(31, 37, 119, 0.07);
   --s-blue-border: rgba(31, 37, 119, 0.22);
+  --s-blue-text: #1F2577;         /* 12.14:1 on #F4F5FA — already passes */
   --s-yellow: #B68810;
   --s-yellow-bg: rgba(235, 190, 40, 0.14);
   --s-yellow-border: rgba(235, 190, 40, 0.45);
+  --s-yellow-text: #92650C;       /* 4.75:1 on #FCF6E1 vs #B68810 2.98:1 */
   --s-gray: #6B6E78;
   --s-gray-bg: rgba(90, 95, 110, 0.06);
   --s-gray-border: rgba(90, 95, 110, 0.2);
+  --s-gray-text: #6B6E78;         /* 4.66:1 on #F4F5F7 — already passes */
 
   /* Dashboard brand palette */
   --brand-teal: #004D43;
