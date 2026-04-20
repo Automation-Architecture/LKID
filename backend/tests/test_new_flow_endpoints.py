@@ -62,6 +62,24 @@ class _FakeResult:
         return self._row
 
 
+class _FakeAllResult:
+    """Like `_FakeResult` but for `.mappings().all()` — multi-row queries
+    (BUN distribution, predictions_per_day, recent_leads)."""
+
+    def __init__(self, rows: list[dict[str, Any]]):
+        self._rows = rows
+
+    def mappings(self) -> "_FakeAllResult":
+        return self
+
+    def all(self) -> list[dict[str, Any]]:
+        return list(self._rows)
+
+    # Some callers also request .first(); return the first row for safety.
+    def first(self) -> Optional[dict[str, Any]]:
+        return self._rows[0] if self._rows else None
+
+
 class _TxCtx:
     """Async context manager for `session.begin()`."""
 
@@ -217,6 +235,87 @@ class FakeStore:
             # lead_id may be a UUID object or string
             row = self.leads_by_id.get(str(lead_id))
             return _FakeResult(copy.copy(row) if row else None)
+
+        # --- LKID-75 metrics endpoint dispatch ----------------------------
+        # COUNT predictions (total / last_7d / last_24h)
+        if (
+            "from predictions" in sql_lower
+            and "count(*)" in sql_lower
+            and "last_7d" in sql_lower
+        ):
+            total = len(self.predictions)
+            return _FakeResult(
+                {"total": total, "last_7d": total, "last_24h": total}
+            )
+
+        # COUNT leads (total / last_7d / last_24h)
+        if (
+            "from leads" in sql_lower
+            and "count(*)" in sql_lower
+            and "last_7d" in sql_lower
+        ):
+            total = len(self.leads_by_email)
+            return _FakeResult(
+                {"total": total, "last_7d": total, "last_24h": total}
+            )
+
+        # SELECT inputs ->> 'bun' FROM predictions (BUN tier distribution)
+        if "inputs ->> 'bun'" in sql_lower and "from predictions" in sql_lower and "lead_id" not in sql_lower:
+            rows = []
+            for pred in self.predictions.values():
+                bun = (pred.get("inputs") or {}).get("bun")
+                rows.append({"bun_raw": str(bun) if bun is not None else None})
+            return _FakeAllResult(rows)
+
+        # generate_series daily rollup (predictions_per_day)
+        if "generate_series" in sql_lower:
+            # Return 7 zero-filled days; tests don't assert on exact counts.
+            from datetime import date, timedelta as _td
+
+            today = date.today()
+            rows = [
+                {
+                    "day": (today - _td(days=6 - i)).isoformat(),
+                    "n": 0,
+                }
+                for i in range(7)
+            ]
+            return _FakeAllResult(rows)
+
+        # Recent leads: WITH latest_pred ... JOIN leads
+        if "latest_pred" in sql_lower:
+            rows = []
+            # Most recent leads first, bounded to 10.
+            sorted_leads = sorted(
+                self.leads_by_email.values(),
+                key=lambda r: r.get("created_at") or datetime.min.replace(tzinfo=timezone.utc),
+                reverse=True,
+            )[:10]
+            for lead in sorted_leads:
+                # Find most recent prediction linked to this lead.
+                linked_preds = [
+                    p
+                    for p in self.predictions.values()
+                    if p.get("lead_id") is not None
+                    and str(p.get("lead_id")) == str(lead["id"])
+                ]
+                bun_raw: Optional[str] = None
+                if linked_preds:
+                    linked_preds.sort(
+                        key=lambda p: p.get("created_at") or datetime.min.replace(tzinfo=timezone.utc),
+                        reverse=True,
+                    )
+                    bun = (linked_preds[0].get("inputs") or {}).get("bun")
+                    bun_raw = str(bun) if bun is not None else None
+                rows.append(
+                    {
+                        "created_at": lead.get("created_at"),
+                        "name": lead.get("name"),
+                        "email": lead.get("email"),
+                        "bun_raw": bun_raw,
+                    }
+                )
+            return _FakeAllResult(rows)
 
         return _FakeResult(None)
 
@@ -1061,6 +1160,176 @@ class TestKlaviyoBunTier:
         assert (
             body["data"]["attributes"]["properties"]["bun_tier"] == "unknown"
         )
+
+
+# ---------------------------------------------------------------------------
+# LKID-75: GET /client/{slug}/metrics — Lee dashboard launch-metrics panel.
+# ---------------------------------------------------------------------------
+
+
+class TestClientDashboardMetricsEndpoint:
+    def test_unknown_slug_returns_404(self, client: TestClient):
+        """Slug allowlist — any slug not in CLIENT_DASHBOARD_SLUGS 404s."""
+        r = client.get("/client/not-a-real-slug/metrics")
+        assert r.status_code == 404
+
+    def test_metrics_shape_with_empty_db(self, client: TestClient):
+        """Empty DB: counts are 0 and the opt-in gate fires with a
+        machine-readable `insufficient_data` reason."""
+        r = client.get("/client/lee-a3f8b2/metrics")
+        assert r.status_code == 200, r.text
+        body = r.json()
+
+        # Top-level keys — locked for frontend consumption.
+        assert set(body.keys()) == {
+            "generated_at",
+            "predictions",
+            "leads",
+            "opt_in_rate",
+            "bun_tier_distribution",
+            "predictions_per_day",
+            "recent_leads",
+        }
+
+        # Prediction / lead shapes.
+        assert body["predictions"] == {"total": 0, "last_7d": 0, "last_24h": 0}
+        assert body["leads"] == {"total": 0, "last_7d": 0, "last_24h": 0}
+
+        # Opt-in-rate gate triggered (0 < 10 min sample).
+        assert body["opt_in_rate"]["visible"] is False
+        assert body["opt_in_rate"]["percent"] is None
+        assert body["opt_in_rate"]["reason"] == "insufficient_data"
+        assert body["opt_in_rate"]["min_sample"] == 10
+
+        # BUN distribution present with all five buckets zero-filled.
+        assert body["bun_tier_distribution"] == {
+            "<=12": 0,
+            "13-17": 0,
+            "18-24": 0,
+            ">24": 0,
+            "unknown": 0,
+        }
+
+        # Sparkline has 7 day entries.
+        assert len(body["predictions_per_day"]) == 7
+        for day_entry in body["predictions_per_day"]:
+            assert set(day_entry.keys()) == {"day", "count"}
+
+        # No leads yet.
+        assert body["recent_leads"] == []
+
+    def test_metrics_opt_in_visible_above_min_sample(
+        self, client: TestClient, store: FakeStore
+    ):
+        """>=10 predictions with linked leads surfaces a real percentage."""
+        # Seed 12 predictions, 3 of which link to a lead (25.0%).
+        for i in range(12):
+            token = f"tok-metrics-{i:03d}-padded-to-meet-32-char-min"
+            store.seed_prediction(
+                token=token,
+                result={"egfr_baseline": 40.0 + i, "confidence_tier": 1},
+                inputs={"bun": 15.0 + i, "age": 55, "sex": "male"},
+            )
+        # Link the first 3 predictions to leads.
+        for i in range(3):
+            token = f"tok-metrics-{i:03d}-padded-to-meet-32-char-min"
+            lead = store.seed_lead(
+                email=f"lead{i}@example.com", name=f"Lead {i}"
+            )
+            store.predictions[token]["lead_id"] = lead["id"]
+
+        r = client.get("/client/lee-a3f8b2/metrics")
+        assert r.status_code == 200, r.text
+        body = r.json()
+
+        # Opt-in rate is visible and matches 3/12 = 25.0%.
+        assert body["opt_in_rate"]["visible"] is True
+        assert body["opt_in_rate"]["reason"] is None
+        assert body["opt_in_rate"]["percent"] == 25.0
+
+        # Predictions total picked up all 12 rows.
+        assert body["predictions"]["total"] == 12
+        # Leads total matches the 3 seeded rows.
+        assert body["leads"]["total"] == 3
+
+    def test_metrics_masks_emails_and_bucket_buns(
+        self, client: TestClient, store: FakeStore
+    ):
+        """HIPAA: recent_leads must mask emails + tier BUN, never leak raw."""
+        # Seed a prediction with BUN=20 (tier 18-24) and link it to a lead.
+        token = "tok-metrics-hipaa-padded-to-meet-32-char-min"
+        store.seed_prediction(
+            token=token,
+            result={"egfr_baseline": 35.0, "confidence_tier": 2},
+            inputs={"bun": 20.0, "age": 60, "sex": "female"},
+        )
+        lead = store.seed_lead(email="alice@example.com", name="Alice Smith")
+        store.predictions[token]["lead_id"] = lead["id"]
+
+        r = client.get("/client/lee-a3f8b2/metrics")
+        assert r.status_code == 200, r.text
+        body = r.json()
+
+        assert len(body["recent_leads"]) == 1
+        entry = body["recent_leads"][0]
+        # Email masked per the spec: first char of local + *** + @ +
+        # first char of domain + **** + .TLD.
+        assert entry["email_masked"] == "a***@e****.com"
+        assert entry["name_initial"] == "A"
+        # BUN=20 lands in the 18-24 bucket.
+        assert entry["bun_tier"] == "18-24"
+        # Never leak raw PII.
+        assert "email" not in entry
+        assert "name" not in entry
+        assert "bun" not in entry
+
+
+class TestClientMetricsHelpers:
+    """Direct unit coverage for _mask_email / _bun_tier_label / _name_initial.
+
+    Supplements the integration tests above — cheap to run, catches edge
+    cases (subdomains, single-char emails, no-TLD, None) that the fake-DB
+    path can't reach without convoluted seeding.
+    """
+
+    def test_bun_tier_label_boundaries(self):
+        from main import _bun_tier_label
+
+        assert _bun_tier_label(None) == "unknown"
+        assert _bun_tier_label("not-a-number") == "unknown"
+        assert _bun_tier_label(5.0) == "<=12"
+        assert _bun_tier_label(12.0) == "<=12"
+        assert _bun_tier_label(12.5) == "13-17"
+        assert _bun_tier_label(17.0) == "13-17"
+        assert _bun_tier_label(17.5) == "18-24"
+        assert _bun_tier_label(24.0) == "18-24"
+        assert _bun_tier_label(24.5) == ">24"
+        assert _bun_tier_label(120.0) == ">24"
+
+    def test_mask_email_edge_cases(self):
+        from main import _mask_email
+
+        # Standard form.
+        assert _mask_email("alice@example.com") == "a***@e****.com"
+        # Co-TLD — only the final dot-segment is the "TLD" for masking.
+        assert _mask_email("bob@example.co.uk") == "b***@e****.uk"
+        # Single-char local.
+        assert _mask_email("j@example.com") == "j***@e****.com"
+        # Empty / malformed.
+        assert _mask_email(None) == "***"
+        assert _mask_email("") == "***"
+        assert _mask_email("no-at-sign") == "***"
+        # No TLD.
+        assert _mask_email("user@localhost") == "u***@l****"
+
+    def test_name_initial(self):
+        from main import _name_initial
+
+        assert _name_initial("Alice") == "A"
+        assert _name_initial("  bob") == "B"
+        assert _name_initial("") == "?"
+        assert _name_initial(None) == "?"
+        assert _name_initial("   ") == "?"
 
 
 # ---------------------------------------------------------------------------
