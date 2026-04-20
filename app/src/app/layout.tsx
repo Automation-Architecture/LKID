@@ -1,6 +1,5 @@
 import type { Metadata } from "next";
 import { Inter } from "next/font/google";
-import { ClerkProvider } from "@clerk/nextjs";
 import { Analytics } from "@vercel/analytics/next";
 import { SkipNav } from "@/components/skip-nav";
 import "./globals.css";
@@ -16,6 +15,14 @@ export const metadata: Metadata = {
   description: "Track your kidney health with eGFR trajectory predictions",
 };
 
+/**
+ * LKID-63: ClerkProvider moved out of the root layout into the
+ * `client/[slug]` subtree. The patient funnel (`/labs`, `/gate/[token]`,
+ * `/results/[token]`, `/internal/chart/[token]`) no longer requires auth.
+ * The existing `/auth` and `/predict` pages still import Clerk hooks and
+ * will fail at runtime until LKID-66 deletes them — this is expected and
+ * tracked.
+ */
 export default function RootLayout({
   children,
 }: Readonly<{
@@ -24,21 +31,9 @@ export default function RootLayout({
   return (
     <html lang="en" className={`${inter.variable} h-full antialiased`}>
       <body className="min-h-full flex flex-col">
-        <ClerkProvider
-          signInFallbackRedirectUrl="/predict"
-          signUpFallbackRedirectUrl="/predict"
-          appearance={{
-            variables: {
-              colorPrimary: "#004D43",
-              borderRadius: "0.5rem",
-              fontSize: "1rem",
-            },
-          }}
-        >
-          <SkipNav />
-          {children}
-          <Analytics />
-        </ClerkProvider>
+        <SkipNav />
+        {children}
+        <Analytics />
       </body>
     </html>
   );

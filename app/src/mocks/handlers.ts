@@ -1,16 +1,15 @@
 import { http, HttpResponse } from "msw";
 
-/**
- * Time points array from Lee's calc spec (Section 1).
- * 15 unevenly spaced values in months.
- */
+// LKID-63 — MSW handlers for the tokenized flow.
+//
+// Patterns use wildcard prefixes so the handler matches both the legacy
+// relative "/api/predict" used by the old page AND the absolute
+// "${NEXT_PUBLIC_API_URL}/predict" the new pages issue against the
+// FastAPI backend origin. See note below about module-level state.
+
 const TIME_POINTS_MONTHS = [0, 1, 3, 6, 12, 18, 24, 36, 48, 60, 72, 84, 96, 108, 120];
 
-/**
- * Mock prediction response using Test Vector 1 from calc spec (Section 4):
- * BUN 35, eGFR 33, Age 58
- */
-const MOCK_RESPONSE = {
+const MOCK_RESULT = {
   egfr_baseline: 33.0,
   confidence_tier: 1,
   trajectories: {
@@ -34,11 +33,81 @@ const MOCK_RESPONSE = {
     potential_gain_10yr: 30.5,
     bun_suppression_estimate: 7.8,
   },
+  bun_suppression_estimate: 7.8,
 };
 
+const MOCK_TOKEN = "mock-token-abc123-xyz7890-yeet-1111-2222-3333-4444";
+const MOCK_INPUTS = { bun: 35, creatinine: 2.1, potassium: 4.5, age: 58, sex: "unknown" };
+
+// Module-level state tracks whether the mock user has completed the gate.
+// Reset by invoking /predict again (starts a fresh prediction).
+let mockCaptured = false;
+
 export const handlers = [
-  http.post("/api/predict", async () => {
-    await new Promise((resolve) => setTimeout(resolve, 800));
-    return HttpResponse.json(MOCK_RESPONSE);
+  // Legacy relative path (predict page uses /api/predict). Kept for parity.
+  http.post("*/api/predict", async () => {
+    await new Promise((r) => setTimeout(r, 600));
+    return HttpResponse.json(MOCK_RESULT);
+  }),
+
+  // POST /predict — new tokenized flow
+  http.post("*/predict", async () => {
+    await new Promise((r) => setTimeout(r, 600));
+    mockCaptured = false;
+    return HttpResponse.json({ report_token: MOCK_TOKEN, ...MOCK_RESULT });
+  }),
+
+  // GET /results/[token]
+  http.get("*/results/:token", ({ params }) => {
+    // In dev, any token returns the mock. E2E tests can pass MOCK_TOKEN
+    // explicitly via the URL and this handler will answer.
+    return HttpResponse.json({
+      report_token: params.token,
+      captured: mockCaptured,
+      created_at: new Date().toISOString(),
+      result: MOCK_RESULT,
+      inputs: MOCK_INPUTS,
+      lead: mockCaptured
+        ? { name: "Mock User", email_captured_at: new Date().toISOString() }
+        : null,
+    });
+  }),
+
+  // POST /leads — flip captured -> true
+  http.post("*/leads", async ({ request }) => {
+    const body = (await request.json().catch(() => null)) as
+      | { report_token?: string; name?: string; email?: string }
+      | null;
+    if (!body?.report_token || !body.name || !body.email) {
+      return HttpResponse.json(
+        {
+          error: {
+            code: "VALIDATION_ERROR",
+            message: "Missing required fields",
+            details: [{ message: "report_token, name, and email are all required" }],
+          },
+        },
+        { status: 422 }
+      );
+    }
+    mockCaptured = true;
+    return HttpResponse.json({ ok: true, captured: true, token: body.report_token });
+  }),
+
+  // GET /reports/[token]/pdf — tiny stub body so the test doesn't need a real PDF.
+  http.get("*/reports/:token/pdf", () => {
+    // 4-byte "%PDF" magic only; enough to satisfy content-type sniffers.
+    return new HttpResponse(new Uint8Array([0x25, 0x50, 0x44, 0x46]), {
+      status: 200,
+      headers: {
+        "Content-Type": "application/pdf",
+        "Content-Disposition": 'inline; filename="kidney-health-report.pdf"',
+      },
+    });
   }),
 ];
+
+/** Test-only helper: reset the captured flag before each test. */
+export function resetMockGateState() {
+  mockCaptured = false;
+}

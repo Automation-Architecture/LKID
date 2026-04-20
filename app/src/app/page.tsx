@@ -735,7 +735,7 @@ export default function LandingPage() {
           <a href="#contact" onClick={() => setMenuOpen(false)}>Contact</a>
         </nav>
         <div className="m-menu-cta">
-          <Link href="/auth" className="cta-pill on-tint" onClick={() => setMenuOpen(false)}>
+          <Link href="/labs" className="cta-pill on-tint" onClick={() => setMenuOpen(false)}>
             Start your check
           </Link>
         </div>
@@ -765,7 +765,7 @@ export default function LandingPage() {
             <p className="lede">
               See what your lab results mean and how your kidney health may change over time.
             </p>
-            <Link href="/auth" className="cta-pill on-tint">
+            <Link href="/labs" className="cta-pill on-tint">
               Start your check
             </Link>
 
@@ -932,7 +932,7 @@ export default function LandingPage() {
               <h2 className="display">
                 More than numbers —<br />real understanding
               </h2>
-              <Link href="/auth" className="cta-pill light">
+              <Link href="/labs" className="cta-pill light">
                 Get your prediction
               </Link>
             </div>
@@ -1027,7 +1027,7 @@ export default function LandingPage() {
                 Health Report
               </h2>
               <p className="sub">Based on your lab results</p>
-              <Link href="/auth" className="cta-pill">
+              <Link href="/labs" className="cta-pill">
                 Get your prediction
               </Link>
             </div>
