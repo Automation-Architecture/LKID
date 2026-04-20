@@ -361,12 +361,12 @@
         {
           "id": "LKID-73",
           "title": "SEO basics — OG tags, sitemap, robots, JSON-LD",
-          "status": "upcoming"
+          "status": "done"
         },
         {
           "id": "LKID-74",
           "title": "CSP + security headers",
-          "status": "upcoming"
+          "status": "done"
         }
       ]
     }
