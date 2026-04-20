@@ -16,29 +16,50 @@
 |--------|-------|-------|-------|
 | Sprint 1 — Design Sprint | Mar 20 – Mar 26 (DONE) | 9 (LKID-30–38) | Hi-fi mockup + prototype, Inga sign-off |
 | Sprint 2 — Core Flow | Mar 26 – Apr 2 (DONE) | 17 (LKID-1–3, 6–19) | Auth, DB, API, form, chart — e2e prediction |
-| Sprint 3 — PDF, Polish & QA | Mar 30 – Apr 9 | 12 (LKID-4–5, 20–29) | Interactivity, PDF, disclaimers, tests, QA gate |
+| Sprint 3 — PDF, Polish & QA | Mar 30 – Apr 9 (DONE) | 12 (LKID-4–5, 20–29) | Interactivity, PDF, disclaimers, tests, QA gate |
+| Sprint 4 — No-Auth Tokenized Flow | Apr 19 – May 3 *(proposed — confirm with Brad)* | 6 (LKID-61–66) | Replace Clerk-gated predict/results with `/labs` → `/gate/[token]` → `/results/[token]` + Resend transactional email |
 
-**Ship date:** April 9, 2026
-**Remaining:** LKID-47 (Klaviyo lead capture) — API key received, needs design sprint for welcome email template + flow before implementation.
+**Ship date:** April 9, 2026 (shipped). Sprint 4 ship target: May 3, 2026 (proposed).
+**Remaining:** LKID-47 (Klaviyo lead capture) — `create_event()` call subsumed into LKID-62 (TICKET-B). Klaviyo Flow dashboard configuration remains as a manual operational task tracked on LKID-47.
 
 ## What's Next
 
-### Next Sprint — Klaviyo Email Campaign + Polish
+### Sprint 4 — No-Auth Tokenized Flow (Apr 19 – May 3, proposed)
 
-**Requires a planning session before starting.** Two workstreams:
+**Goal:** Replace the Clerk-gated patient funnel (`/predict` → `/results`) with a no-auth tokenized flow (`/labs` → `/gate/[token]` → `/results/[token]`). Results are stored server-side keyed by an opaque `report_token`; email capture happens after prediction via a separate gate page; Clerk is scoped to `/client/[slug]` only; the PDF report is attached to a Resend transactional email. Engine (`backend/prediction/engine.py`) is frozen — not touched.
 
-1. **Klaviyo Welcome Email Flow** (LKID-47)
-   - Design the welcome email template (personalized prediction results summary)
-   - Configure the Klaviyo Flow in Klaviyo dashboard (trigger: "Prediction Completed" event)
-   - Implement backend integration: `create_event()` call with profile upsert + prediction context
-   - Klaviyo API key already configured on Railway (`KLAVIYO_API_KEY`)
-   - Reference: `Resources/klaviyo-docs-summary.md`
+**Techspec (approved):** `agents/luca/drafts/techspec-new-flow.md` — §12 has the ticket breakdown, §13 has the resolved decisions from Brad (OQ-1 through OQ-5).
 
-2. **Post-Ship Polish** (from QA gate conditions + Copilot findings)
-   - Treatment decline rates for CKD Stages 3a, 3b, 5 — need Lee confirmation (only Stage 4 confirmed)
-   - Additional golden vectors for non-Stage-4 patients
-   - Extract shared mock data fixture between E2E and a11y tests
-   - Connect GitHub repo to Railway service for auto-deploy on push (currently CLI deploy)
+**Sprint dates:** Apr 19 – May 3, 2026 (2 weeks, proposed — confirm with Brad).
+
+#### Sprint 4 Cards
+
+| Card | Ticket | Title | Owner | Priority | Dependencies |
+|------|--------|-------|-------|----------|--------------|
+| [LKID-61](https://automationarchitecture.atlassian.net/browse/LKID-61) | A | DB: add predictions table + report_token column | Gay Mark | Medium | — |
+| [LKID-62](https://automationarchitecture.atlassian.net/browse/LKID-62) | B | Backend: rewire POST /predict + new tokenized endpoints (/results, /leads, /reports PDF) | John Donaldson | High | Blocked by LKID-61 |
+| [LKID-63](https://automationarchitecture.atlassian.net/browse/LKID-63) | C | Frontend: new patient funnel pages (/labs, /gate/[token], /results/[token], /internal/chart) + Clerk layout migration | Harshit (+ Inga review) | High | Blocked by LKID-62 |
+| [LKID-64](https://automationarchitecture.atlassian.net/browse/LKID-64) | D | Backend: Resend transactional email template (PDF attached) | John Donaldson (+ Inga sign-off) | Medium | Parallel with LKID-62 |
+| [LKID-65](https://automationarchitecture.atlassian.net/browse/LKID-65) | E | QA: update E2E + a11y tests for new tokenized flow | Yuri | Medium | Blocked by LKID-63 |
+| [LKID-66](https://automationarchitecture.atlassian.net/browse/LKID-66) | F | Frontend cleanup: delete legacy /predict and /results pages after prod smoke test | Harshit | Medium | Blocked by LKID-63, LKID-65 |
+
+**PR chain (per techspec §10):** PR A → PR B → PR C → PR D-equivalent (TICKET-F cleanup). No staging environment (OQ-2) — PRs A+B deploy to prod before PR C's Vercel preview can be fully smoke-tested end-to-end. Wait ≥24h after TICKET-C merges before TICKET-F deletes the old pages.
+
+**Stakeholder prerequisites (before TICKET-B merges):**
+- Resend sending domain DNS provisioned (per OQ-1: `reports@kidneyhood.org` or confirmed variant)
+- Klaviyo dedicated subdomain DNS provisioned (e.g. `kl.kidneyhood.org`)
+- `RESEND_API_KEY` set in Railway
+
+#### Existing-card impact
+
+- **LKID-47 (Klaviyo lead capture)** — the `create_event()` backend call is subsumed into LKID-62. The Klaviyo **Flow configuration** (template + trigger in the Klaviyo dashboard) remains a manual operational step tracked on LKID-47 as originally scoped. LKID-47 is not modified by Sprint 4 planning.
+
+#### Deferred post-ship polish (not in Sprint 4)
+
+- Treatment decline rates for CKD Stages 3a, 3b, 5 — need Lee confirmation (only Stage 4 confirmed)
+- Additional golden vectors for non-Stage-4 patients
+- Extract shared mock data fixture between E2E and a11y tests
+- Connect GitHub repo to Railway service for auto-deploy on push (currently CLI deploy)
 
 ### Sprint 3 Retrospective (Done)
 
