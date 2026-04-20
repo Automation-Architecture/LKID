@@ -308,6 +308,73 @@ app.add_middleware(
     max_age=3600,
 )
 
+
+# ---------------------------------------------------------------------------
+# Security headers — LKID-74
+#
+# Mirror of the seven-header set applied on the Next.js frontend (see
+# `app/next.config.ts`). Backend CSP is tighter since the API only serves
+# JSON / PDF streams: `default-src 'none'` with only `frame-ancestors`
+# allowing nothing. No script/style/font/connect allowances are needed
+# because the backend never renders HTML.
+#
+# HSTS is conditional on the X-Forwarded-Proto header so localhost dev
+# (http://localhost:8000) does not get the preload directive. In Railway
+# production, the edge always sets X-Forwarded-Proto=https.
+# ---------------------------------------------------------------------------
+
+_BACKEND_CSP = (
+    "default-src 'none'; "
+    "frame-ancestors 'none'; "
+    "base-uri 'none'; "
+    "form-action 'none'"
+)
+
+
+@app.middleware("http")
+async def security_headers_middleware(request: Request, call_next):
+    """Apply the LKID-74 security header set to every response.
+
+    Headers mirror `app/next.config.ts`:
+      - Content-Security-Policy-Report-Only — tight `default-src 'none'`
+        policy; nothing but JSON/PDF flows through here.
+      - Strict-Transport-Security — only when the edge advertises HTTPS
+        via X-Forwarded-Proto, so localhost dev is unaffected.
+      - X-Frame-Options: DENY (redundant with frame-ancestors, kept for
+        legacy browsers).
+      - X-Content-Type-Options: nosniff.
+      - Referrer-Policy: strict-origin-when-cross-origin.
+      - Permissions-Policy: disables camera/mic/geo/payment/usb/sensors.
+      - X-DNS-Prefetch-Control: on.
+    """
+    response = await call_next(request)
+
+    response.headers.setdefault(
+        "Content-Security-Policy-Report-Only", _BACKEND_CSP
+    )
+    response.headers.setdefault("X-Frame-Options", "DENY")
+    response.headers.setdefault("X-Content-Type-Options", "nosniff")
+    response.headers.setdefault(
+        "Referrer-Policy", "strict-origin-when-cross-origin"
+    )
+    response.headers.setdefault(
+        "Permissions-Policy",
+        "camera=(), microphone=(), geolocation=(), payment=(), "
+        "usb=(), magnetometer=(), accelerometer=(), gyroscope=()",
+    )
+    response.headers.setdefault("X-DNS-Prefetch-Control", "on")
+
+    # HSTS only when the edge indicates HTTPS. Railway + Vercel both set
+    # X-Forwarded-Proto; localhost does not, so dev curl -I shows no HSTS
+    # but production traffic always does.
+    if request.headers.get("x-forwarded-proto", "").lower() == "https":
+        response.headers.setdefault(
+            "Strict-Transport-Security",
+            "max-age=31536000; includeSubDomains; preload",
+        )
+
+    return response
+
 # ---------------------------------------------------------------------------
 # Schemas (Pydantic) — LKID-15 enhanced request/response models
 # ---------------------------------------------------------------------------
