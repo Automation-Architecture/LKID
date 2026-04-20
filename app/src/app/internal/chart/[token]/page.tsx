@@ -13,11 +13,28 @@
  * SkipNav from the root layout so the PDF render is chart-only.
  */
 
+import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 import ClientChart from "./ClientChart";
 import type { PredictResponse } from "@/components/chart";
 
 export const dynamic = "force-dynamic";
+
+/**
+ * LKID-73 — Internal PDF render target must never be indexed. Belt-and-braces
+ * alongside the `/internal/` disallow in `app/robots.ts`.
+ */
+export const metadata: Metadata = {
+  title: "Internal chart render",
+  robots: {
+    index: false,
+    follow: false,
+    googleBot: {
+      index: false,
+      follow: false,
+    },
+  },
+};
 
 interface ResultsApiResponse {
   report_token: string;
