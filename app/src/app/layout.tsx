@@ -8,7 +8,7 @@ import "./globals.css";
 // Inter kept for the client dashboard surface (brand-teal/brand-lime) and any
 // page that doesn't opt into the patient-funnel `.kh-*` styling wrappers.
 const inter = Inter({
-  variable: "--font-sans",
+  variable: "--font-inter",
   subsets: ["latin"],
   weight: ["400", "500", "600", "700"],
 });
