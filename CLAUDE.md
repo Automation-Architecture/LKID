@@ -7,7 +7,7 @@
 **Jira:** [SPEC Board](https://automationarchitecture.atlassian.net/jira/software/c/projects/SPEC/boards/329/backlog) | [LKID Board](https://automationarchitecture.atlassian.net/jira/software/c/projects/LKID/boards/363)
 **Repo:** [github.com/Automation-Architecture/LKID](https://github.com/Automation-Architecture/LKID)
 **Specs:** `/Users/brad/IDE/kidneyhood/` (3 docx files)
-**Status:** Sprint 5 IN PROGRESS (Launch Readiness theme). Sprint 4 COMPLETE (shipped Apr 20 — 13 days ahead of plan). App live at kidneyhood-automation-architecture.vercel.app with no-auth tokenized flow (`/labs` → `/gate/[token]` → `/results/[token]`). G1/G2/G3 guardrails active. LKID-72 Sentry (#55), LKID-71 PostHog (#56), LKID-76 Results design parity (#57), LKID-79 ResultsView extract (#58), LKID-80 chart redesign (#59) all merged and deployed. LKID-73/74/75 not started.
+**Status:** Sprint 5 COMPLETE (Launch Readiness theme, 8/8 engineering cards + 1 bonus card, all shipped Apr 20). Sprint 4 COMPLETE (shipped Apr 20 — 13 days ahead of plan). App live at kidneyhood-automation-architecture.vercel.app with no-auth tokenized flow (`/labs` → `/gate/[token]` → `/results/[token]`). G1/G2/G3 guardrails active. CSP Report-Only live on both frontend + backend (72-hour verification window before enforcing flip).
 **Client Dashboard:** https://kidneyhood-automation-architecture.vercel.app/client/lee-a3f8b2 — auto-updated by `scripts/refresh-sprint-progress.py`.
 
 ## Sprint Plan
@@ -18,7 +18,7 @@
 | Sprint 2 — Core Flow | Mar 26 – Apr 2 (DONE) | 17 (LKID-1–3, 6–19) | Auth, DB, API, form, chart — e2e prediction |
 | Sprint 3 — PDF, Polish & QA | Mar 30 – Apr 9 (DONE) | 12 (LKID-4–5, 20–29) | Interactivity, PDF, disclaimers, tests, QA gate |
 | Sprint 4 — No-Auth Tokenized Flow | Apr 19 – Apr 20 (DONE) | 7 engineering cards + follow-ups (LKID-61–70) | Replace Clerk-gated flow with `/labs` → `/gate/[token]` → `/results/[token]` + Resend + Klaviyo. Shipped 13 days ahead of plan. |
-| Sprint 5 — Launch Readiness | Apr 20 – (IN PROGRESS) | LKID-71–75 + Sprint 4 rollovers | PostHog analytics, Sentry error monitoring, SEO basics, CSP headers, Lee dashboard v2 |
+| Sprint 5 — Launch Readiness | Apr 20 (DONE) | 9 cards (LKID-71–76, -79, -80, -82) + Sprint 4 rollovers closed | PostHog analytics, Sentry error monitoring, Results + chart redesign, ResultsView refactor, PDF design parity, Lee dashboard v2, SEO basics, CSP + security headers. Shipped in a single day. |
 
 **Ship date:** April 9, 2026 (Sprint 3). **Sprint 4 shipped:** April 20, 2026.
 **Retrospective:** `agents/husser/drafts/sprint4-retrospective.md` — 18 PRs merged, G1/G2/G3 guardrails added, 4 incidents resolved.
@@ -27,33 +27,41 @@
 
 ## What's Next
 
-### Sprint 5 — Launch Readiness (IN PROGRESS)
+### Sprint 5 — Launch Readiness (DONE — shipped Apr 20, 2026)
 
-Theme A selected. Goal: flip from "works" to "launched" — measurement + safety + discoverability layer needed before public announcement.
+Theme A delivered end-to-end in a single day. 9 engineering cards merged + deployed (8 planned + LKID-82 PDF added mid-sprint when Brad pointed at `project/PDF Report.html`). Sprint 4 rollovers (LKID-68 postmortem, LKID-69 dup Postgres) also closed during the sprint.
 
 | Card | Title | Owner | Status | PR |
 |------|-------|-------|--------|----|
-| LKID-72 | Sentry frontend + backend error monitoring | John + Harshit | **Merged** | #55 |
-| LKID-71 | PostHog conversion funnel analytics (labs/gate/results/pdf) | Harshit | **Merged** | #56 |
-| LKID-76 | Results page design parity + sitewide font regression | Harshit + Inga | **Merged** | #57 |
-| LKID-79 | Extract Results page into ResultsView component | Harshit | **Merged** | #58 |
-| LKID-80 | Chart redesign — pixel-for-pixel match to project/Results.html (design hues, AA override on chart SVG) | Harshit + Inga | **Merged** | #59 |
-| LKID-73 | SEO basics (OG tags, sitemap, robots, JSON-LD) | Harshit + Inga | Not started | — |
-| LKID-74 | CSP + security headers | John + Harshit | Not started | — |
-| LKID-75 | Lee dashboard v2 (funnel + leads + opt-in rate) | Harshit + Inga | Not started | — |
+| LKID-72 | Sentry frontend + backend error monitoring | John + Harshit | **Done** | #55 |
+| LKID-71 | PostHog conversion funnel analytics (labs/gate/results/pdf) | Harshit | **Done** | #56 |
+| LKID-76 | Results page design parity + sitewide font regression | Harshit + Inga | **Done** | #57 |
+| LKID-79 | Extract Results page into ResultsView component | Harshit | **Done** | #58 |
+| LKID-80 | Chart redesign — pixel-for-pixel match to project/Results.html (design hues, AA override on chart SVG) | Harshit + Inga | **Done** | #59 |
+| LKID-75 | Lee dashboard v2 — launch-metrics panels | Harshit + Inga | **Done** | #60 |
+| LKID-82 | PDF report design parity to project/PDF Report.html | Harshit + Inga | **Done** | #62 |
+| LKID-74 | CSP + 6 security headers (Report-Only mode) | John + Harshit | **Done** | #63 |
+| LKID-73 | SEO basics (OG tags, sitemap, robots, JSON-LD, MedicalWebPage) | Harshit + Inga | **Done** | #64 |
 
-**Sprint 5 backlog (filed during this sprint, not scheduled):**
+**Sprint 4 rollovers closed during Sprint 5:**
+
+- LKID-68 postmortem — 5 Brad-gated items resolved (AI-1/2/4/5 decisions, AI-3 superseded by LKID-71 shipping). SOP Rules 7 (binding runbooks + delta review) and 8 (G1 fail-closed permanent) added.
+- LKID-69 dup Postgres service — verified empty and deleted via Railway GraphQL. Live DB unchanged.
+- LKID-78 audit discrepancy — closed as working-as-intended. `sex="unknown"` hardcode at `/labs` form locked in per Lee's preference; decision recorded in three places (form comment, engine docstring, investigation memo).
+
+**Backlog (filed, not scheduled):**
 
 - LKID-77 — Engine edge case: `compute_dial_age` returns None when `trajectory[0] < 12` (Low, agent:john-donaldson)
-- LKID-78 — Audit discrepancy: UI audit baseline eGFR 32 vs engine 43.9 for same inputs (Medium, investigation)
+- LKID-81 — Wire up visual-regression tests (install Playwright, rewrite spec for tokenized flow, add CI job) (Medium, Harshit + Yuri pairing)
 
-**Sprint 4 rollovers still Brad-gated:**
+**Still Brad-hands (agents can't do these):**
 
-- LKID-68 postmortem sign-off — 5 open questions in `lkid-68-postmortem-synthesis.md` §8
-- LKID-69 dup Postgres cleanup — deletion approval
-- LKID-47 Klaviyo Flow dashboard config
-- PostHog env vars on Vercel (`NEXT_PUBLIC_POSTHOG_KEY` + host) — until set, PostHog is a silent no-op per design
-- Sentry env vars on Vercel + Railway (5 vars, per Yuri's PR #55 verdict)
+- **PostHog env vars** on Vercel (`NEXT_PUBLIC_POSTHOG_KEY` + host) — until set, PostHog is a silent no-op per design
+- **Sentry env vars** (5 total) on Vercel + Railway — until set, no error capture in prod
+- **Resend DNS + Klaviyo Flow** (LKID-47 Klaviyo dashboard config)
+- **Lee email** — Sprint 5 update draft at `agents/husser/drafts/email-to-lee-sprint5-update.md` ready to send
+- **CSP enforcing-mode flip** — requires 72-hour clean verification window per LKID-74 post-merge checklist
+- **DNS flip to kidneyhood.org** — once live, set `NEXT_PUBLIC_APP_URL=https://kidneyhood.org` on Vercel (auto-propagates to sitemap/robots/OG/JSON-LD)
 
 ### Sprint 4 — No-Auth Tokenized Flow (DONE — shipped Apr 20, 2026)
 
@@ -227,6 +235,11 @@ CTO (Luca) opens one PR per Jira card. Each card gets a feature branch (`feat/LK
 | [#57](https://github.com/Automation-Architecture/LKID/pull/57) | `feat/LKID-76-results-parity` | LKID-76 | Harshit + Inga | Merged |
 | [#58](https://github.com/Automation-Architecture/LKID/pull/58) | `feat/LKID-79-resultsview-component-extract` | LKID-79 | Harshit | Merged |
 | [#59](https://github.com/Automation-Architecture/LKID/pull/59) | `feat/LKID-80-chart-redesign` | LKID-80 | Harshit + Inga | Merged |
+| [#60](https://github.com/Automation-Architecture/LKID/pull/60) | `feat/LKID-75-lee-dashboard-v2` | LKID-75 | Harshit + Inga | Merged |
+| [#61](https://github.com/Automation-Architecture/LKID/pull/61) | `fix/sprint-progress-sprint5-refresh` | — | Luca | Merged |
+| [#62](https://github.com/Automation-Architecture/LKID/pull/62) | `feat/LKID-82-pdf-design-parity` | LKID-82 | Harshit + Inga | Merged |
+| [#63](https://github.com/Automation-Architecture/LKID/pull/63) | `feat/LKID-74-security-headers` | LKID-74 | John + Harshit | Merged |
+| [#64](https://github.com/Automation-Architecture/LKID/pull/64) | `feat/LKID-73-seo-basics` | LKID-73 | Harshit + Inga | Merged |
 
 ## Team
 
@@ -373,6 +386,11 @@ agent-teams/
 | Sprint 5 PR #57 QA Verdict | `agents/yuri/drafts/sprint5-pr57-qa-verdict.md` | Yuri | Final | LKID-76 Results parity: PASS with 3 CodeRabbit nits addressed on same branch |
 | Sprint 5 PR #58 QA Verdict | `agents/yuri/drafts/sprint5-pr58-qa-verdict.md` | Yuri | Final | LKID-79 ResultsView extract: PASS — 13/13 checks, pure-presentational contract preserved |
 | Sprint 5 PR #59 QA Verdict | `agents/yuri/drafts/sprint5-pr59-qa-verdict.md` | Yuri | Final | LKID-80 chart redesign: PASS — 18/18 checks, AA override intentional per Brad |
+| Sprint 5 PR #60 QA Verdict | `agents/yuri/drafts/sprint5-pr60-qa-verdict.md` | Yuri | Final | LKID-75 dashboard v2: PASS — HIPAA posture clean, 3 non-blocking nits (opt-in denominator, limiter, UTC buckets) |
+| Sprint 5 PR #62 QA Verdict | `agents/yuri/drafts/sprint5-pr62-qa-verdict.md` | Yuri | Final | LKID-82 PDF parity: PASS — 15/15 checks + rendered PDF screenshots |
+| Sprint 5 PR #63 QA Verdict | `agents/yuri/drafts/sprint5-pr63-qa-verdict.md` | Yuri | Final | LKID-74 CSP + headers: PASS — 13/13 checks; Report-Only; 6-step post-merge verification for enforcing-mode flip |
+| Sprint 5 PR #64 QA Verdict | `agents/yuri/drafts/sprint5-pr64-qa-verdict.md` | Yuri | Final | LKID-73 SEO basics: PASS — 13/13 checks; base URL env-driven for DNS flip |
+| LKID-78 Audit Investigation | `agents/john_donaldson/drafts/lkid-78-audit-discrepancy-investigation.md` | John | Final | WAI — "32" was mockup copy; `sex="unknown"` locked in by Lee's preference |
 | Scenario dial_age Sign-off | `agents/john_donaldson/drafts/scenario-dial-age-signoff.md` | John | Final | LKID-76 engine PASS — "Not projected" output correct for Stage 3a baseline |
 | LKID-69 Pre/Post-Delete Memo | `agents/luca/drafts/lkid-69-predelete-verification.md` | Luca (subagent) | Final | Orphan Postgres verified empty, deleted 2026-04-20, post-delete checks all PASS |
 | Sprint 3 QA Verdicts | `agents/yuri/drafts/sprint3-pr-qa-verdicts.md` | Yuri | Final | QA verdicts for PRs #22-#27 |
