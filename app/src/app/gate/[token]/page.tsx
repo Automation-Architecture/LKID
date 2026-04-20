@@ -18,6 +18,7 @@ import { useRouter } from "next/navigation";
 import { Manrope, Nunito_Sans } from "next/font/google";
 import { use, useCallback, useEffect, useMemo, useState } from "react";
 import { apiUrl } from "@/lib/api";
+import { posthog } from "@/lib/posthog-provider";
 
 const manrope = Manrope({
   subsets: ["latin"],
@@ -463,6 +464,10 @@ export default function GatePage({
         return;
       }
 
+      // LKID-71: funnel analytics. Prefix-only — never log the full token (MED-01).
+      posthog.capture("gate_captured", {
+        report_token_prefix: token.slice(0, 8),
+      });
       router.push(`/results/${encodeURIComponent(token)}`);
     } catch {
       setApiError("Unable to reach the service. Please try again.");

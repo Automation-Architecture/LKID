@@ -30,6 +30,20 @@ import {
   type StructuralFloor,
 } from "@/components/chart";
 import { API_BASE, apiUrl } from "@/lib/api";
+import { posthog } from "@/lib/posthog-provider";
+
+/**
+ * LKID-71 bun_tier derivation — mirrors `backend/services/klaviyo_service.py::_bun_tier`.
+ * Kept in sync so PostHog funnel properties align with Klaviyo segmentation.
+ * Non-PII: a 4-bucket label, never the raw value.
+ */
+function bunTier(bun: number | null): string {
+  if (bun === null || !Number.isFinite(bun)) return "unknown";
+  if (bun <= 12) return "<=12";
+  if (bun <= 17) return "13-17";
+  if (bun <= 24) return "18-24";
+  return ">24";
+}
 
 interface ResultsApiResponse {
   report_token: string;
@@ -111,6 +125,21 @@ export default function ResultsTokenPage({
   // callout without that number. To preserve parity with the legacy page,
   // we still need BUN; fetch it from the extended response if available.
   const [inputBun, setInputBun] = useState<number | null>(null);
+
+  // LKID-71: fire `results_viewed` exactly once per successful mount.
+  // Non-PII props only: prefix + baseline + tier. No raw BUN, no token, no email.
+  useEffect(() => {
+    if (state.kind !== "ready") return;
+    posthog.capture("results_viewed", {
+      report_token_prefix: token.slice(0, 8),
+      egfr_baseline: state.data.result.egfr_baseline,
+      bun_tier: bunTier(inputBun),
+    });
+    // Only want to fire once on transition to "ready". The subsequent
+    // `inputBun` state update is bundled into the same `ready` render, so
+    // we intentionally omit inputBun from deps to avoid a double fire.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [state.kind, token]);
 
   useEffect(() => {
     let cancelled = false;
@@ -262,6 +291,12 @@ export default function ResultsTokenPage({
                 rel="noopener noreferrer"
                 data-testid="results-pdf-link"
                 className="inline-block"
+                onClick={() => {
+                  // LKID-71: funnel tail. Prefix-only, never the full token.
+                  posthog.capture("pdf_downloaded", {
+                    report_token_prefix: token.slice(0, 8),
+                  });
+                }}
               >
                 <Button
                   type="button"
