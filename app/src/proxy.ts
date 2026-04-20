@@ -16,6 +16,10 @@ const isPublicRoute = createRouteMatcher([
   // LKID-63 new tokenized funnel — no-auth by design (token IS the credential)
   "/labs(.*)",
   "/gate(.*)",
+  // LKID-73 SEO surfaces must be reachable by unauthenticated crawlers.
+  "/robots.txt",
+  "/sitemap.xml",
+  "/opengraph-image(.*)",
 ]);
 
 export default clerkMiddleware(async (auth, request) => {
