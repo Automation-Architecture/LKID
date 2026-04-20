@@ -602,6 +602,13 @@ class TestLeadsEndpoint:
         store.seed_prediction(
             token="tok-send-padded-to-meet-32-char-minimum-xxx",
             result={"egfr_baseline": 28.5, "confidence_tier": 2},
+            inputs={
+                "bun": 18.0,
+                "creatinine": 1.5,
+                "potassium": 4.2,
+                "age": 55,
+                "sex": "male",
+            },
         )
 
         with TestClient(main.app) as c:
@@ -635,6 +642,10 @@ class TestLeadsEndpoint:
         assert kkw["report_url"].endswith(
             "/results/tok-send-padded-to-meet-32-char-minimum-xxx"
         )
+        # LKID-47: bun is plumbed through from stored inputs so the Klaviyo
+        # service can tag the event with `bun_tier` for Flow segmentation.
+        # BUN=18.0 falls in the "18-24" bucket (see services.klaviyo_service._bun_tier).
+        assert kkw["bun"] == 18.0
         # prediction_id is a UUID string, not the report_token.
         assert uuid.UUID(kkw["prediction_id"])
 
@@ -987,6 +998,69 @@ class TestResendAttachmentEncoding:
         )
 
         assert "attachments" not in captured["params"]
+
+
+# ---------------------------------------------------------------------------
+# klaviyo_service direct unit coverage — bucket + payload shape.
+# ---------------------------------------------------------------------------
+
+
+class TestKlaviyoBunTier:
+    """Direct coverage of `_bun_tier` and its placement in the event body.
+
+    The integration test above stubs `main.track_prediction_completed` so
+    the `bun_tier` bucket itself never flows through the real builder.
+    These tests exercise `services.klaviyo_service` directly.
+    """
+
+    def test_bun_tier_buckets(self):
+        from services.klaviyo_service import _bun_tier
+
+        assert _bun_tier(None) == "unknown"
+        assert _bun_tier(8.0) == "<=12"
+        assert _bun_tier(12.0) == "<=12"
+        assert _bun_tier(13.0) == "13-17"
+        assert _bun_tier(17.0) == "13-17"
+        assert _bun_tier(17.5) == "18-24"  # (17, 24] -> 18-24
+        assert _bun_tier(18.0) == "18-24"
+        assert _bun_tier(24.0) == "18-24"
+        assert _bun_tier(24.5) == ">24"
+        assert _bun_tier(99.9) == ">24"
+
+    def test_event_body_includes_bun_tier(self):
+        from services.klaviyo_service import _build_event_body
+
+        body = _build_event_body(
+            email="user@example.com",
+            name="Test User",
+            prediction_id="11111111-2222-3333-4444-555555555555",
+            egfr_baseline=28.5,
+            confidence_tier=2,
+            report_url="https://example.com/results/abc",
+            bun=18.0,
+        )
+        props = body["data"]["attributes"]["properties"]
+        assert props["bun_tier"] == "18-24"
+        # The existing event properties are still present — no regressions.
+        assert props["eGFR_value"] == 28.5
+        assert props["report_url"].endswith("/results/abc")
+        assert props["confidence_tier"] == 2
+
+    def test_event_body_bun_tier_unknown_when_missing(self):
+        from services.klaviyo_service import _build_event_body
+
+        body = _build_event_body(
+            email="user@example.com",
+            name=None,
+            prediction_id="11111111-2222-3333-4444-555555555555",
+            egfr_baseline=28.5,
+            confidence_tier=None,
+            report_url="https://example.com/results/abc",
+            # bun omitted
+        )
+        assert (
+            body["data"]["attributes"]["properties"]["bun_tier"] == "unknown"
+        )
 
 
 # ---------------------------------------------------------------------------

@@ -37,6 +37,25 @@ LEAD_SOURCE = "kidneyhood_app"
 _client_cache: dict[str, Any] = {}
 
 
+def _bun_tier(bun: float | None) -> str:
+    """Klaviyo segmentation category for BUN level.
+
+    Mirrors the 4 scenarios shown in the results chart (<=12 best ->
+    >24 worst). ASCII-only labels so they match the rest of this
+    service's string conventions (no non-ASCII values live elsewhere
+    in the event payload).
+    """
+    if bun is None:
+        return "unknown"
+    if bun <= 12:
+        return "<=12"
+    if bun <= 17:
+        return "13-17"
+    if bun <= 24:
+        return "18-24"
+    return ">24"
+
+
 def _get_client(api_key: str) -> Any:
     """Return a cached KlaviyoAPI client for the given api_key.
 
@@ -61,6 +80,7 @@ def _build_event_body(
     egfr_baseline: float,
     confidence_tier: Optional[Any],
     report_url: str,
+    bun: Optional[float] = None,
 ) -> dict:
     """Construct the JSON:API body for Klaviyo Events.create_event."""
     # Split name into first/last for Klaviyo's standard profile fields.
@@ -91,6 +111,7 @@ def _build_event_body(
     # {{ event.eGFR_value }} in Flow templates.
     event_properties: dict = {
         "eGFR_value": egfr_baseline,
+        "bun_tier": _bun_tier(bun),
         "report_url": report_url,
     }
     if confidence_tier is not None:
@@ -135,6 +156,7 @@ async def track_prediction_completed(
     egfr_baseline: float,
     confidence_tier: Optional[Any] = None,
     report_url: str,
+    bun: Optional[float] = None,
 ) -> bool:
     """Fire the "Prediction Completed" Klaviyo event. Never raises.
 
@@ -150,6 +172,9 @@ async def track_prediction_completed(
                           as Any to handle int or str callers gracefully.
         report_url:       Full https URL to /results/{token}; included in
                           event properties for use in Flow email templates.
+        bun:              Optional BUN value from prediction inputs. Bucketed
+                          into `bun_tier` (<=12 / 13-17 / 18-24 / >24) for
+                          Klaviyo Flow segmentation. Missing -> "unknown".
     """
     api_key = os.environ.get("KLAVIYO_PRIVATE_API_KEY", "").strip()
     if not api_key:
@@ -165,6 +190,7 @@ async def track_prediction_completed(
         egfr_baseline=egfr_baseline,
         confidence_tier=confidence_tier,
         report_url=report_url,
+        bun=bun,
     )
 
     try:
