@@ -12,45 +12,50 @@ import type {
 // `satisfies` gives strict key checking against TrajectoryId while preserving
 // literal types for each entry (avoids the looseness of Record<string, ...>).
 //
-// Trajectory colors — "Palette A+" per Inga's chart-palette-decision.md
-// (2026-04-20, superseding the original LKID-67 spec):
-// All four values meet WCAG AA 4.5:1 on white. LKID-76 swaps the "Stable"
-// line sky-700 (#0369A1) → brand navy (#1F2577) so the chart's blue line
-// matches the --s-blue pill/card token on the Results page; brand navy
-// contrasts 13.26:1 on white, well above the AA bar it replaces (5.93:1).
-// Semantic ordering: emerald (best) → navy (neutral/brand) → amber
-// (caution) → charcoal (muted/ignored). Charcoal (not red) for No
-// Treatment avoids clashing with the #D32F2F dialysis-threshold line.
-// See `agents/inga/drafts/chart-palette-decision.md` §5a for rationale
-// and `agents/inga/drafts/lkid-67-chart-color-decision.md` for the
-// historical context on the other three values.
+// Trajectory colors — design-source palette per `project/Results.html:23-35`
+// and lines 426-432 (LKID-80, 2026-04-20).
+//
+// *** LKID-67 / Palette A+ REVERSED for chart trajectory lines only ***
+// Brad explicitly chose the brighter design hues to align the chart with the
+// rest of the brand identity in the Results mock. This accepts a WCAG AA
+// contrast regression on the yellow line (`#D4A017` = 2.38:1 vs. white, fails
+// both 3:1 graphical and 4.5:1 text thresholds). The `.exclude("svg")` guard
+// is re-added to the axe test suite for the Results page (chart SVG only —
+// page chrome, nav, buttons, and text remain audited).
+//
+// Scenario pills, cards, icons, and stat-card text on the Results page are
+// **not** reversed — those surfaces keep the WCAG-compliant `--s-*-text`
+// tokens introduced in PR #57. Semantic meaning still flows pill ↔ line
+// through hue family (green ↔ green, navy ↔ navy, gold ↔ gold, gray ↔ gray).
+//
+// See `agents/inga/drafts/chart-palette-decision.md` (LKID-80 supersession
+// section at the top) for the reversed decision and full contrast math.
+// Stroke pattern: solid 2.5px with round linecap on all four lines. No
+// dash patterns on lines — design brief was explicit.
 export const TRAJECTORY_CONFIG = {
   bun_lte_12: {
     id: "bun_lte_12" as TrajectoryId,
     label: "BUN ≤ 12",
-    color: "#047857", // emerald-700 — 5.48:1 on white — "best path"
+    color: "#3FA35B", // design --s-green — 3.14:1 on white (FAILS AA 4.5:1 text; barely passes 3:1 graphical) — LKID-80
     strokeWidth: 2.5,
   },
   bun_13_17: {
     id: "bun_13_17" as TrajectoryId,
     label: "BUN 13–17",
-    color: "#1F2577", // brand navy — 13.26:1 on white — matches --s-blue pill token (LKID-76)
-    strokeDasharray: "8,4",
+    color: "#1F2577", // design --s-blue (brand navy) — 13.26:1 on white (PASS AAA)
     strokeWidth: 2.5,
   },
   bun_18_24: {
     id: "bun_18_24" as TrajectoryId,
     label: "BUN 18–24",
-    color: "#B45309", // amber-700 — 5.02:1 on white — "caution"
-    strokeDasharray: "4,4",
-    strokeWidth: 2.0,
+    color: "#D4A017", // design source (Results.html:430) — 2.38:1 on white (FAILS AA, intentional per LKID-80)
+    strokeWidth: 2.5,
   },
   no_treatment: {
     id: "no_treatment" as TrajectoryId,
     label: "No Treatment",
-    color: "#374151", // slate-700 — 10.31:1 on white — "muted / ignored"
-    strokeDasharray: "2,4",
-    strokeWidth: 2.0,
+    color: "#6B6E78", // design --s-gray — 5.08:1 on white (PASS AA text)
+    strokeWidth: 2.5,
   },
 } satisfies Record<
   TrajectoryId,
