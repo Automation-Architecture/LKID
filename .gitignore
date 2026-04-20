@@ -5,3 +5,14 @@ node_modules/
 .env
 .env.local
 .vercel
+
+# Claude Code agent runtime artifacts
+.claude/
+
+# Playwright / test runner output
+**/test-results/
+**/playwright-report/
+**/.playwright/
+
+# Legacy QA visual artifacts — not for commit
+agents/**/drafts/qa-*.png
