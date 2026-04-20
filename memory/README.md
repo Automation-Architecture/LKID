@@ -4,8 +4,8 @@ Project-scoped learning system. See `docs/memory-system-reference.md` for entry 
 
 ## Status
 
-**Phase:** Development Phase (Sprint 2 in progress)
-**Last updated:** 2026-03-26
+**Phase:** Sprint 5 complete — post-launch-readiness
+**Last updated:** 2026-04-20
 
 ## Contents
 
@@ -13,10 +13,12 @@ Project-scoped learning system. See `docs/memory-system-reference.md` for entry 
 |------|---------|-------------|
 | `patterns.json` | 31 | What works well — architecture, API design, DB, frontend, UX, testing, SOP |
 | `anti_patterns.json` | 19 | What to avoid — security, compliance, process, schema alignment |
-| `decisions.json` | 16 | All 14 PRD binding decisions + 2 bootstrap decisions |
+| `decisions.json` | 16 | Binding PRD + bootstrap decisions |
 | `insights.json` | 17 | Process learnings, capacity planning, coordination patterns |
 | `tooling.json` | 31 | Full stack inventory with context and applicability |
-| `compressed_summary.md` | — | Post-discovery consolidated playbook with key decisions and learnings |
+| `compressed_summary.md` | — | Consolidated playbook with key decisions and learnings |
+
+Total: 114 entries. Counts must stay in sync with `CLAUDE.md` (Critical Rules section).
 
 ## How Agents Use This
 
@@ -29,6 +31,7 @@ Project-scoped learning system. See `docs/memory-system-reference.md` for entry 
 ## Applicability Filtering
 
 Discovery-phase entries use agent names in `applicability` for targeted filtering:
+
 - `harshit` — frontend patterns, tools, and decisions
 - `john-donaldson` — API design, backend
 - `gay-mark` — database engineering
