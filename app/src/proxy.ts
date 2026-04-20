@@ -15,6 +15,9 @@ const isPublicRoute = createRouteMatcher([
   "/internal(.*)",
   "/predict(.*)",
   "/results(.*)",
+  // LKID-63 new tokenized funnel — no-auth by design (token IS the credential)
+  "/labs(.*)",
+  "/gate(.*)",
 ]);
 
 export default clerkMiddleware(async (auth, request) => {
