@@ -1,0 +1,144 @@
+name: Post-deploy prod smoke (LKID-68 G2)
+
+# Guardrail G2 from the LKID-68 empty-DB outage postmortem
+# (agents/luca/drafts/lkid-68-empty-db-investigation.md).
+#
+# Runs a black-box curl smoke against production after every push to main.
+# Catches: empty DB, missing/wrong DATABASE_URL, CORS breakage, Next.js
+# proxy misconfig, Playwright/PDF failure, response-shape drift.
+# Does NOT cover: email (Resend not set in prod) and Klaviyo (firing events
+# from CI would pollute the real list). Those are deliberately skipped.
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+# Queue concurrent runs instead of cancelling — each push to main deserves
+# its own smoke, and cancelling mid-flight would leak a half-written /leads
+# row without a matching assertion.
+concurrency:
+  group: post-deploy-smoke-prod
+  cancel-in-progress: false
+
+jobs:
+  smoke:
+    name: Curl smoke against prod
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+
+    # MVP: URLs hardcoded. Move to repo-level Actions secrets if either
+    # service URL ever changes.
+    env:
+      VERCEL_PROD_URL: https://kidneyhood-automation-architecture.vercel.app
+      RAILWAY_PROD_URL: https://kidneyhood-backend-production.up.railway.app
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Wait for Vercel + Railway to finish deploying
+        # Vercel prod build + Railway deploy both land well under 90s from
+        # a main push. This is an MVP sleep; a Vercel API poll can replace
+        # it later. Note: Railway does NOT auto-deploy on push yet
+        # (see CLAUDE.md "Post-Ship Polish"), so in the interim this
+        # smoke tests the most recent manually-deployed Railway build
+        # against the fresh Vercel build.
+        run: |
+          echo "Sleeping 90s so Vercel (and any manual Railway redeploy) settle..."
+          sleep 90
+
+      - name: Frontend GET / (home)
+        run: |
+          set -euo pipefail
+          code=$(curl -sS -o /dev/null -w "%{http_code}" "${VERCEL_PROD_URL}/")
+          echo "GET / -> ${code}"
+          test "${code}" = "200" || { echo "FAIL: home page did not return 200"; exit 1; }
+
+      - name: Frontend GET /labs (tokenized form entry)
+        run: |
+          set -euo pipefail
+          code=$(curl -sS -o /dev/null -w "%{http_code}" "${VERCEL_PROD_URL}/labs")
+          echo "GET /labs -> ${code}"
+          test "${code}" = "200" || { echo "FAIL: /labs did not return 200"; exit 1; }
+
+      - name: Frontend GET /client/lee-a3f8b2 (Clerk-protected, logged-out 200)
+        run: |
+          set -euo pipefail
+          code=$(curl -sS -o /dev/null -w "%{http_code}" "${VERCEL_PROD_URL}/client/lee-a3f8b2")
+          echo "GET /client/lee-a3f8b2 -> ${code}"
+          test "${code}" = "200" || { echo "FAIL: /client/lee-a3f8b2 did not return 200"; exit 1; }
+
+      - name: Backend POST /predict (synthetic Stage 3a payload)
+        id: predict
+        run: |
+          set -euo pipefail
+          payload='{"bun":22,"creatinine":1.3,"potassium":4.2,"age":55,"sex":"male","hemoglobin":13.5,"co2":24,"albumin":4.0}'
+          resp=$(curl -sS -X POST \
+            -H "Content-Type: application/json" \
+            -w "\n%{http_code}" \
+            -d "${payload}" \
+            "${RAILWAY_PROD_URL}/predict")
+          body=$(echo "${resp}" | sed '$d')
+          code=$(echo "${resp}" | tail -n1)
+          echo "POST /predict -> ${code}"
+          echo "${body}" | head -c 500; echo
+          test "${code}" = "200" || { echo "FAIL: /predict did not return 200"; exit 1; }
+          token=$(echo "${body}" | jq -r '.report_token // empty')
+          test -n "${token}" || { echo "FAIL: /predict response missing report_token"; exit 1; }
+          # Pass the token to later steps via GITHUB_OUTPUT.
+          echo "report_token=${token}" >> "${GITHUB_OUTPUT}"
+
+      - name: Backend GET /results/{token} (inputs echo check)
+        run: |
+          set -euo pipefail
+          token='${{ steps.predict.outputs.report_token }}'
+          resp=$(curl -sS -w "\n%{http_code}" "${RAILWAY_PROD_URL}/results/${token}")
+          body=$(echo "${resp}" | sed '$d')
+          code=$(echo "${resp}" | tail -n1)
+          echo "GET /results/{token} -> ${code}"
+          test "${code}" = "200" || { echo "FAIL: /results did not return 200"; exit 1; }
+          bun=$(echo "${body}" | jq -r '.inputs.bun // empty')
+          test -n "${bun}" || { echo "FAIL: /results response missing inputs.bun"; exit 1; }
+          echo "inputs.bun=${bun}"
+
+      - name: Backend POST /leads (CI-only lead with timestamped email)
+        run: |
+          set -euo pipefail
+          token='${{ steps.predict.outputs.report_token }}'
+          email="ci-smoke+$(date +%s)@kidneyhood.org"
+          payload=$(jq -nc --arg t "${token}" --arg e "${email}" \
+            '{report_token:$t, name:"CI Smoke", email:$e}')
+          resp=$(curl -sS -X POST \
+            -H "Content-Type: application/json" \
+            -w "\n%{http_code}" \
+            -d "${payload}" \
+            "${RAILWAY_PROD_URL}/leads")
+          body=$(echo "${resp}" | sed '$d')
+          code=$(echo "${resp}" | tail -n1)
+          echo "POST /leads -> ${code} (email=${email})"
+          test "${code}" = "200" || { echo "FAIL: /leads did not return 200"; exit 1; }
+          captured=$(echo "${body}" | jq -r '.captured // empty')
+          test "${captured}" = "true" || { echo "FAIL: /leads response captured != true (got '${captured}')"; exit 1; }
+
+      - name: Backend GET /reports/{token}/pdf (PDF render + size check)
+        run: |
+          set -euo pipefail
+          token='${{ steps.predict.outputs.report_token }}'
+          body_file=$(mktemp)
+          headers_file=$(mktemp)
+          status=$(curl -sS -o "${body_file}" -D "${headers_file}" \
+            -w "%{http_code}" \
+            "${RAILWAY_PROD_URL}/reports/${token}/pdf")
+          ctype=$(tr -d '\r' < "${headers_file}" | awk 'BEGIN{IGNORECASE=1} /^content-type:/ {print tolower($2); exit}')
+          size=$(wc -c < "${body_file}" | tr -d ' ')
+          echo "GET /reports/{token}/pdf -> status=${status} content-type=${ctype} size=${size}"
+          test "${status}" = "200" || { echo "FAIL: /reports/{token}/pdf did not return 200"; exit 1; }
+          case "${ctype}" in
+            application/pdf*) ;;
+            *) echo "FAIL: expected Content-Type application/pdf, got '${ctype}'"; exit 1 ;;
+          esac
+          test "${size}" -gt 10240 || { echo "FAIL: PDF under 10KB (got ${size})"; exit 1; }
+
+      - name: Smoke passed
+        run: echo "All post-deploy smoke checks passed."
