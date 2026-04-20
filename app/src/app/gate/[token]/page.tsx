@@ -132,7 +132,7 @@ const GATE_CSS = `
   margin: 0 0 8px;
 }
 .kh-gate .preview-sub {
-  color: var(--body);
+  color: var(--ink-2);
   font-size: 14px;
   margin-bottom: 24px;
 }
@@ -156,7 +156,7 @@ const GATE_CSS = `
 }
 .kh-gate .preview-stat .label {
   font-size: 12px;
-  color: var(--body);
+  color: var(--ink-2);
   margin-top: 4px;
 }
 .kh-gate .preview-chart {
@@ -238,7 +238,7 @@ const GATE_CSS = `
 .kh-gate .field .hint {
   margin-top: 6px;
   font-size: 12px;
-  color: var(--muted);
+  color: var(--body);
   min-height: 18px;
 }
 .kh-gate .field.error .hint { color: var(--error); font-weight: 500; }
@@ -291,7 +291,7 @@ const GATE_CSS = `
   margin-top: 18px;
   text-align: center;
   font-size: 12px;
-  color: var(--muted);
+  color: var(--body);
   line-height: 1.6;
 }
 

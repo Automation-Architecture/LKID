@@ -186,7 +186,7 @@ const LABS_CSS = `
   right: 16px;
   top: 50%;
   transform: translateY(-50%);
-  color: var(--muted);
+  color: var(--body);
   font-size: 13px;
   font-weight: 500;
   pointer-events: none;
@@ -194,7 +194,7 @@ const LABS_CSS = `
 .kh-labs .hint {
   margin-top: 6px;
   font-size: 12px;
-  color: var(--muted);
+  color: var(--body);
   min-height: 18px;
 }
 .kh-labs .field.error .input-wrap input { border-color: var(--error); }
@@ -301,7 +301,7 @@ const LABS_CSS = `
   padding: 28px 24px 48px;
   text-align: center;
   font-size: 13px;
-  color: var(--muted);
+  color: var(--body);
 }
 .kh-labs .kh-foot .brand-foot {
   color: var(--navy);
@@ -311,7 +311,7 @@ const LABS_CSS = `
   margin-bottom: 10px;
 }
 .kh-labs .kh-foot nav { display: flex; gap: 24px; justify-content: center; }
-.kh-labs .kh-foot a { color: var(--muted); text-decoration: none; padding: 2px 0; }
+.kh-labs .kh-foot a { color: var(--body); text-decoration: none; padding: 2px 0; }
 .kh-labs .kh-foot a:hover { color: var(--ink-2); }
 
 /* Mobile */
