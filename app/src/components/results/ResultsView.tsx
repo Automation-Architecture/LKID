@@ -77,6 +77,27 @@ function formatDialysisFooter(dialysisAge: number | null): string {
   return `Dialysis: ~age ${Math.round(dialysisAge)} yr`;
 }
 
+/**
+ * Scenario tone ↔ palette token mapping.
+ *
+ * `tone` selects one of the four scoped `.kh-results .sc-{pill,card}.{tone}`
+ * rule blocks in `app/src/app/results/[token]/page.tsx` RESULTS_CSS, which
+ * resolve to the `--s-{green|blue|yellow|gray}-{bg,border,text}` tokens in
+ * `app/src/app/globals.css`. PR #57 introduced the `-text` variants so
+ * large scenario numerics (32px Manrope-800) pass WCAG AA on the tinted
+ * `-bg` surfaces:
+ *
+ *   green  → #2F7F45 text on rgba(108,194,74,.12) bg   → 4.53:1  (PASS AA)
+ *   blue   → #1F2577 text on #F4F5FA bg                → 12.14:1 (PASS AAA)
+ *   yellow → #92650C text on rgba(235,190,40,.14) bg   → 4.75:1  (PASS AA)
+ *   gray   → #6B6E78 text on #F4F5F7 bg                → 4.66:1  (PASS AA)
+ *
+ * All four beat the 3:1 large-text threshold with room to spare; the first
+ * three also clear the 4.5:1 body-text threshold. No hardcoded scenario
+ * hexes live in this component — palette is CSS-variable-driven via the
+ * scoped class names, so future palette edits flow from globals.css without
+ * touching JSX.
+ */
 type ScenarioTone = "green" | "blue" | "yellow" | "gray";
 
 const SCENARIO_META: {
