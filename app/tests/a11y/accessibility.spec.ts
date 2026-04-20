@@ -117,20 +117,12 @@ test.describe("Accessibility — axe-core audit", () => {
 
     const results = await new AxeBuilder({ page })
       .withTags(WCAG_TAGS)
-      // LKID-67 (Harshit half): stat-card text re-tokened to text-foreground /
-      // text-muted-foreground, so the HTML chrome of the chart wrapper (stat
-      // cards, footnote, header) is now audited. Inga's half (chart line
-      // colors inside <svg>) remains excluded below until she re-tokens the
-      // SVG fills. The prior `.exclude('[data-testid="egfr-chart-wrapper"]')`
-      // (whole-wrapper) was narrowed to SVG-only — the .exclude("svg") line
-      // already scopes that, so no extra selector is needed here.
-      // — Harshit, LKID-67, 2026-04-19
-      //
-      // Exclude SVG chart internals — Visx generates complex SVG with aria
-      // gaps, but the chart section carries an aria-label. SVG fills inside
-      // the chart wrapper (Inga's LKID-67 half) are also out of scope until
-      // re-tokened.
-      .exclude("svg")
+      // LKID-67 complete: Harshit re-tokened stat-card text (PR #48) and Inga
+      // re-tokened SVG trajectory/label colors to AA-compliant values (PR #49).
+      // The previous `.exclude("svg")` guard is no longer needed — Yuri's PR #49
+      // verification confirmed the a11y suite passes with full SVG in scope.
+      // Full chart audit is now on; any future SVG contrast regression will
+      // fail this test immediately.
       .analyze();
 
     const critical = results.violations.filter(
