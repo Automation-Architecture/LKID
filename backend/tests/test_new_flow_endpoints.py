@@ -446,6 +446,35 @@ class TestResultsEndpoint:
         # email_captured_at should be ISO (or null if nothing set)
         assert "email_captured_at" in data["lead"]
 
+    def test_results_response_includes_inputs(
+        self, client: TestClient, store: FakeStore, predict_body
+    ):
+        """LKID-63 IS-01: frontend structural-floor callout requires inputs.bun.
+
+        Round-trip via POST /predict (BUN=18 → structural-floor tier) then
+        GET /results/{token} must return the stored `inputs` JSONB so the
+        /results page can render the BUN > 17 callout in prod (MSW mocks
+        already include it; this closes the prod regression).
+        """
+        body = {**predict_body, "bun": 18.0}
+        r = client.post("/predict", json=body)
+        assert r.status_code == 200, r.text
+        token = r.json()["report_token"]
+
+        r = client.get(f"/results/{token}")
+        assert r.status_code == 200, r.text
+        data = r.json()
+
+        assert "inputs" in data
+        assert data["inputs"]["bun"] == 18.0
+        # Sanity: other validated fields round-trip too.
+        assert data["inputs"]["age"] == body["age"]
+        assert data["inputs"]["sex"] == body["sex"]
+        # Safety: no PII should leak via inputs (name/email are captured
+        # separately via POST /leads and never stored in predictions.inputs).
+        assert "name" not in data["inputs"]
+        assert "email" not in data["inputs"]
+
 
 # ---------------------------------------------------------------------------
 # POST /leads
