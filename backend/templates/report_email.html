@@ -1,0 +1,87 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="x-apple-disable-message-reformatting">
+<title>Your Kidney Health Report</title>
+</head>
+<body style="margin:0; padding:0; background-color:#E9EBEF; font-family:'Helvetica Neue', Helvetica, Arial, sans-serif; color:#0E0E12; -webkit-font-smoothing:antialiased;">
+  <!-- Preheader (hidden preview text) -->
+  <div style="display:none; max-height:0; overflow:hidden; mso-hide:all;">
+    Your personalized KidneyHood report is attached to this email as a PDF.
+  </div>
+
+  <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="background-color:#E9EBEF;">
+    <tr>
+      <td align="center" style="padding:24px 12px;">
+        <table role="presentation" width="600" cellpadding="0" cellspacing="0" border="0" style="width:100%; max-width:600px; background-color:#FFFFFF; border-radius:6px; overflow:hidden; box-shadow:0 10px 40px rgba(20,28,70,0.12);">
+
+          <!-- Brand header -->
+          <tr>
+            <td align="center" style="background-color:#1F2577; padding:22px 20px; color:#FFFFFF; font-family:'Helvetica Neue', Helvetica, Arial, sans-serif; font-weight:700; font-size:19px; letter-spacing:-0.01em;">
+              KidneyHood.org
+            </td>
+          </tr>
+
+          <!-- Body -->
+          <tr>
+            <td style="padding:32px 36px 28px 36px;">
+              <h1 style="margin:0 0 18px 0; color:#1F2577; font-family:'Helvetica Neue', Helvetica, Arial, sans-serif; font-weight:700; font-size:22px; line-height:1.3; letter-spacing:-0.01em;">
+                Your kidney health report is ready
+              </h1>
+
+              <p style="margin:0 0 14px 0; color:#2E2F36; font-size:15px; line-height:1.6;">
+                Hi {{ name }},
+              </p>
+
+              <p style="margin:0 0 14px 0; color:#5C5F6A; font-size:15px; line-height:1.6;">
+                Thanks for using KidneyHood. Based on the lab values you provided, your estimated current eGFR is
+                <strong style="color:#1F2577;">{{ "%.1f"|format(egfr_baseline) }} mL/min/1.73m&sup2;</strong>.
+              </p>
+
+              <p style="margin:0 0 14px 0; color:#2E2F36; font-size:15px; line-height:1.6;">
+                <strong>Your full personalized report is attached to this email as a PDF.</strong>
+                It includes projected trajectories across treatment scenarios, context on your current kidney function, and notes to help you discuss results with your healthcare provider.
+              </p>
+
+              <p style="margin:0 0 22px 0; color:#5C5F6A; font-size:14px; line-height:1.6;">
+                This report is based on the information you provided and is designed to help you better understand your kidney health over time. If you have questions about your results, please discuss them with your healthcare provider.
+              </p>
+
+              <!-- Disclaimer (verbatim from app/src/components/disclaimer-block.tsx DISCLAIMER_FULL) -->
+              <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="margin:22px 0 8px 0; background-color:#F4F5F7; border-left:4px solid #2FB872; border-radius:4px;">
+                <tr>
+                  <td style="padding:14px 16px;">
+                    <p style="margin:0; color:#2E2F36; font-size:13px; line-height:1.55;">
+                      This tool is for informational purposes only and does not constitute medical advice. Consult your healthcare provider before making any decisions about your kidney health.
+                    </p>
+                  </td>
+                </tr>
+              </table>
+            </td>
+          </tr>
+
+          <!-- Footer -->
+          <tr>
+            <td align="center" style="background-color:#F4F5F7; padding:22px 24px 26px 24px; border-top:1px solid #E4E6EB;">
+              <p style="margin:0 0 6px 0; color:#1F2577; font-family:'Helvetica Neue', Helvetica, Arial, sans-serif; font-weight:700; font-size:15px;">
+                KidneyHood.org
+              </p>
+              <p style="margin:0 0 4px 0; color:#5C5F6A; font-size:12px; line-height:1.5;">
+                Questions? Just reply to this email &mdash; we read every message.
+              </p>
+              <p style="margin:0 0 4px 0; color:#8A8D96; font-size:11px; line-height:1.5;">
+                You're receiving this because you requested a kidney health report at KidneyHood.org. This is a transactional email &mdash; no marketing list involved.
+              </p>
+              <p style="margin:0; color:#8A8D96; font-size:12px; line-height:1.5;">
+                For informational purposes only &mdash; not medical advice.
+              </p>
+            </td>
+          </tr>
+        </table>
+      </td>
+    </tr>
+  </table>
+</body>
+</html>
