@@ -1,21 +1,25 @@
-import { test, expect } from "@playwright/test";
+import { test, expect, Page, Route } from "@playwright/test";
 
 /**
- * E2E Integration Tests — LKID-28
+ * E2E Integration Tests — LKID-65
  *
- * Two required tests per PRD:
- *   1. Happy path: form → predict → chart → PDF download
- *   2. Error path: bad input → graceful error → lead not lost
+ * Two-step tokenized flow per LKID-63:
+ *   1. /labs — fill required lab values, POST /predict → report_token
+ *   2. /gate/[token] — fill name + email, POST /leads → mark captured
+ *   3. /results/[token] — render chart + stat cards + PDF link
  *
- * These tests intercept the /predict API to avoid depending on a live backend.
- * The prediction response matches Lee's golden vector V1 (BUN=16, eGFR=28).
+ * Tests intercept /predict, GET /results/[token], POST /leads, and the PDF
+ * endpoint so they run without a live backend. The prediction shape matches
+ * Lee's golden vector V1 (BUN=16, eGFR=28).
  */
 
 // ---------------------------------------------------------------------------
 // Mock data
 // ---------------------------------------------------------------------------
 
-const VALID_PREDICTION_RESPONSE = {
+const TEST_TOKEN = "test-token-abc123";
+
+const VALID_PREDICTION_RESULT = {
   egfr_baseline: 28.0,
   confidence_tier: 1,
   trajectories: {
@@ -42,35 +46,134 @@ const VALID_PREDICTION_RESPONSE = {
   bun_suppression_estimate: 1.9,
 };
 
+const VALID_PREDICTION_RESPONSE = {
+  report_token: TEST_TOKEN,
+  ...VALID_PREDICTION_RESULT,
+};
+
+const VALID_INPUTS = {
+  bun: 16,
+  creatinine: 3.2,
+  potassium: 4.5,
+  age: 58,
+  sex: "unknown",
+};
+
+function buildResultsResponse(captured: boolean) {
+  return {
+    report_token: TEST_TOKEN,
+    captured,
+    result: VALID_PREDICTION_RESULT,
+    inputs: VALID_INPUTS,
+    lead: captured
+      ? { name: "Test User", email: "test@example.com" }
+      : null,
+    created_at: "2026-04-20T00:00:00Z",
+  };
+}
+
+const VALID_LEADS_RESPONSE = {
+  ok: true,
+  captured: true,
+  token: TEST_TOKEN,
+};
+
 // ---------------------------------------------------------------------------
 // Helpers
 // ---------------------------------------------------------------------------
 
-async function fillPredictionForm(page: import("@playwright/test").Page) {
-  await page.getByTestId("input-email").fill("test@example.com");
-  await page.getByTestId("input-bun").fill("16");
-  await page.getByTestId("input-creatinine").fill("3.2");
-  await page.getByTestId("input-potassium").fill("4.5");
-  await page.getByTestId("input-age").fill("58");
-  // Select sex — click the Male radio button
-  await page.getByLabel("Male").click();
+async function fillLabsForm(page: Page) {
+  await page.getByTestId("labs-input-bun").fill("16");
+  await page.getByTestId("labs-input-creatinine").fill("3.2");
+  await page.getByTestId("labs-input-potassium").fill("4.5");
+  await page.getByTestId("labs-input-age").fill("58");
 }
 
-async function mockPredictAPI(
-  page: import("@playwright/test").Page,
-  response: Record<string, unknown>,
+async function fillGateForm(page: Page) {
+  await page.getByTestId("gate-input-name").fill("Test User");
+  await page.getByTestId("gate-input-email").fill("test@example.com");
+}
+
+async function mockPredict(
+  page: Page,
+  response: Record<string, unknown> = VALID_PREDICTION_RESPONSE,
   status = 200,
 ) {
-  await page.route("**/predict", (route) => {
-    if (route.request().method() === "POST" && !route.request().url().includes("/pdf")) {
-      route.fulfill({
+  await page.route("**/predict", (route: Route) => {
+    if (route.request().method() !== "POST") {
+      return route.continue();
+    }
+    return route.fulfill({
+      status,
+      contentType: "application/json",
+      body: JSON.stringify(status === 200 ? response : { error: response }),
+    });
+  });
+}
+
+async function mockResultsGet(
+  page: Page,
+  captured: boolean,
+  status = 200,
+) {
+  await page.route(`**/results/${TEST_TOKEN}`, (route: Route) => {
+    if (route.request().method() !== "GET") {
+      return route.continue();
+    }
+    if (status !== 200) {
+      return route.fulfill({
         status,
         contentType: "application/json",
-        body: JSON.stringify(status === 200 ? response : { error: response }),
+        body: JSON.stringify({ error: { code: "NOT_FOUND", message: "Not found" } }),
       });
-    } else {
-      route.continue();
     }
+    return route.fulfill({
+      status: 200,
+      contentType: "application/json",
+      body: JSON.stringify(buildResultsResponse(captured)),
+    });
+  });
+}
+
+async function mockPdf(page: Page) {
+  await page.route(`**/reports/${TEST_TOKEN}/pdf`, (route: Route) => {
+    return route.fulfill({
+      status: 200,
+      contentType: "application/pdf",
+      body: Buffer.from("%PDF-1.4\n%stub\n%%EOF", "utf-8"),
+    });
+  });
+}
+
+/**
+ * Stateful GET /results mock for the happy-path two-step flow.
+ * Starts with captured=false (so /gate renders the form), and flips to
+ * captured=true after POST /leads succeeds. Returns helpers to drive state.
+ */
+function setupStatefulResultsMocks(page: Page) {
+  let captured = false;
+
+  page.route(`**/results/${TEST_TOKEN}`, (route: Route) => {
+    if (route.request().method() !== "GET") {
+      return route.continue();
+    }
+    return route.fulfill({
+      status: 200,
+      contentType: "application/json",
+      body: JSON.stringify(buildResultsResponse(captured)),
+    });
+  });
+
+  page.route("**/leads", (route: Route) => {
+    if (route.request().method() !== "POST") {
+      return route.continue();
+    }
+    captured = true;
+    return route.fulfill({
+      status: 200,
+      contentType: "application/json",
+      body: JSON.stringify(VALID_LEADS_RESPONSE),
+    });
   });
 }
 
@@ -78,94 +181,77 @@ async function mockPredictAPI(
 // Happy path
 // ---------------------------------------------------------------------------
 
-test.describe("Happy path — form → predict → chart → PDF", () => {
-  test("completes the full prediction flow", async ({ page }) => {
-    // 1. Mock the /predict API
-    await mockPredictAPI(page, VALID_PREDICTION_RESPONSE);
+test.describe("Happy path — labs → gate → results", () => {
+  test("completes the full two-step tokenized flow", async ({ page }) => {
+    // Mock the three endpoints used across the flow.
+    await mockPredict(page);
+    setupStatefulResultsMocks(page);
+    await mockPdf(page);
 
-    // 2. Navigate to the prediction form
-    await page.goto("/predict");
-    await expect(page.getByTestId("predict-heading")).toBeVisible();
+    // 1. Navigate to /labs and fill required fields.
+    await page.goto("/labs");
+    await expect(page.getByTestId("labs-form")).toBeVisible();
+    await fillLabsForm(page);
 
-    // 3. Fill in all required fields
-    await fillPredictionForm(page);
+    // 2. Submit labs → backend returns report_token → navigate to /gate/[token].
+    await page.getByTestId("labs-submit").click();
+    await page.waitForURL(`**/gate/${TEST_TOKEN}`, { timeout: 10_000 });
 
-    // 4. Submit the form
-    await page.getByTestId("submit-button").click();
+    // 3. Gate form should render (captured=false, so not auto-redirected).
+    await expect(page.getByTestId("gate-form")).toBeVisible();
+    await fillGateForm(page);
 
-    // 5. Should navigate to results page
-    await page.waitForURL("**/results", { timeout: 10000 });
+    // 4. Submit lead capture → navigate to /results/[token].
+    await page.getByTestId("gate-submit").click();
+    await page.waitForURL(`**/results/${TEST_TOKEN}`, { timeout: 10_000 });
 
-    // 6. Chart should render with SVG element
-    await page.waitForSelector("svg", { state: "visible", timeout: 10000 });
+    // 5. Chart renders (SVG present).
+    await page.waitForSelector("svg", { state: "visible", timeout: 10_000 });
+    await expect(page.getByTestId("results-heading")).toBeVisible();
 
-    // 7. Verify the chart heading is visible
-    await expect(page.getByText("Your Prediction")).toBeVisible();
-
-    // 8. Verify all 4 trajectory lines exist (SVG paths)
+    // 6. Four trajectory lines exist.
     const paths = page.locator("svg path");
-    const pathCount = await paths.count();
-    expect(pathCount).toBeGreaterThanOrEqual(4);
+    expect(await paths.count()).toBeGreaterThanOrEqual(4);
 
-    // 9. PDF download button should be visible and enabled
-    const pdfButton = page.getByRole("button", {
-      name: /Download Your Results/i,
-    });
-    await expect(pdfButton).toBeVisible();
-    await expect(pdfButton).toBeEnabled();
+    // 7. PDF link is an anchor pointing to /reports/[token]/pdf.
+    const pdfLink = page.getByTestId("results-pdf-link");
+    await expect(pdfLink).toBeVisible();
+    await expect(pdfLink).toHaveAttribute(
+      "href",
+      expect.stringContaining(`/reports/${TEST_TOKEN}/pdf`),
+    );
 
-    // 10. Disclaimer should be present
+    // 8. Disclaimer should be present.
     await expect(
       page.getByText(/informational purposes only/i),
     ).toBeVisible();
-
-    // 11. Back to form link should work
-    const backLink = page.getByText("Back to form");
-    await expect(backLink).toBeVisible();
-  });
-
-  test("results page shows baseline eGFR from prediction", async ({
-    page,
-  }) => {
-    await mockPredictAPI(page, VALID_PREDICTION_RESPONSE);
-    await page.goto("/predict");
-    await fillPredictionForm(page);
-    await page.getByTestId("submit-button").click();
-    await page.waitForURL("**/results");
-
-    // The chart should contain the baseline eGFR value
-    await page.waitForSelector("svg", { state: "visible", timeout: 10000 });
-    // Verify page loaded with prediction data (heading visible = data parsed OK)
-    await expect(page.getByText("Your Prediction")).toBeVisible();
   });
 });
 
 // ---------------------------------------------------------------------------
-// Error path
+// Error paths
 // ---------------------------------------------------------------------------
 
-test.describe("Error path — bad input → graceful error", () => {
-  test("shows validation errors for empty required fields", async ({
-    page,
-  }) => {
-    await page.goto("/predict");
+test.describe("Error paths", () => {
+  test("labs form shows validation errors on empty submit and does not navigate", async ({ page }) => {
+    await page.goto("/labs");
+    await expect(page.getByTestId("labs-form")).toBeVisible();
 
-    // Submit without filling anything
-    await page.getByTestId("submit-button").click();
+    // Submit without filling anything.
+    await page.getByTestId("labs-submit").click();
 
-    // Should show error summary
-    const errorSummary = page.getByTestId("error-summary");
-    await expect(errorSummary).toBeVisible();
+    // Each required field should surface an inline error.
+    await expect(page.getByTestId("labs-error-bun")).toBeVisible();
+    await expect(page.getByTestId("labs-error-creatinine")).toBeVisible();
+    await expect(page.getByTestId("labs-error-potassium")).toBeVisible();
+    await expect(page.getByTestId("labs-error-age")).toBeVisible();
 
-    // Should not navigate away
-    expect(page.url()).toContain("/predict");
+    // No navigation occurred.
+    expect(page.url()).toContain("/labs");
   });
 
-  test("shows API error gracefully without losing form state", async ({
-    page,
-  }) => {
-    // Mock a 500 server error
-    await mockPredictAPI(
+  test("labs form surfaces a graceful error when /predict returns 500", async ({ page }) => {
+    await mockPredict(
       page,
       {
         code: "INTERNAL_ERROR",
@@ -175,50 +261,48 @@ test.describe("Error path — bad input → graceful error", () => {
       500,
     );
 
-    await page.goto("/predict");
-    await fillPredictionForm(page);
-    await page.getByTestId("submit-button").click();
+    await page.goto("/labs");
+    await fillLabsForm(page);
+    await page.getByTestId("labs-submit").click();
 
-    // Should show the API error message
-    const apiError = page.getByTestId("api-error");
-    await expect(apiError).toBeVisible();
+    // Error banner renders; no navigation.
+    await expect(page.getByTestId("labs-api-error")).toBeVisible();
+    expect(page.url()).toContain("/labs");
 
-    // Form values should still be filled (not cleared)
-    await expect(page.getByTestId("input-bun")).toHaveValue("16");
-    await expect(page.getByTestId("input-creatinine")).toHaveValue("3.2");
+    // Form values are preserved (user can retry without re-entering).
+    await expect(page.getByTestId("labs-input-bun")).toHaveValue("16");
+    await expect(page.getByTestId("labs-input-creatinine")).toHaveValue("3.2");
+  });
+});
 
-    // Should not navigate away
-    expect(page.url()).toContain("/predict");
+// ---------------------------------------------------------------------------
+// Routing guards — captured vs. not-captured
+// ---------------------------------------------------------------------------
+
+test.describe("Token routing guards", () => {
+  test("gate page auto-redirects to /results when already captured", async ({ page }) => {
+    await mockResultsGet(page, /* captured */ true);
+
+    await page.goto(`/gate/${TEST_TOKEN}`);
+    // If captured, the gate page replaces the URL with /results/[token].
+    await page.waitForURL(`**/results/${TEST_TOKEN}`, { timeout: 10_000 });
   });
 
-  test("results page redirects to form when no prediction data exists", async ({
-    page,
-  }) => {
-    // Go directly to /results without submitting a prediction
-    await page.goto("/results");
+  test("results page auto-redirects to /gate when not yet captured", async ({ page }) => {
+    await mockResultsGet(page, /* captured */ false);
 
-    // Should redirect to /predict
-    await page.waitForURL("**/predict", { timeout: 5000 });
+    await page.goto(`/results/${TEST_TOKEN}`);
+    // Without capture, the results page sends the user back to the gate.
+    await page.waitForURL(`**/gate/${TEST_TOKEN}`, { timeout: 10_000 });
   });
 
-  test("shows rate limit error with retry message", async ({ page }) => {
-    await mockPredictAPI(
-      page,
-      {
-        code: "RATE_LIMIT",
-        message: "Too many requests. Please wait before trying again.",
-        details: [],
-      },
-      429,
-    );
+  test("results page shows invalid-token UI when backend returns 404", async ({ page }) => {
+    await mockResultsGet(page, /* captured */ false, 404);
 
-    await page.goto("/predict");
-    await fillPredictionForm(page);
-    await page.getByTestId("submit-button").click();
+    await page.goto(`/results/${TEST_TOKEN}`);
 
-    // Should show error, not navigate away
-    const apiError = page.getByTestId("api-error");
-    await expect(apiError).toBeVisible();
-    expect(page.url()).toContain("/predict");
+    await expect(
+      page.getByText(/invalid or has expired/i),
+    ).toBeVisible();
   });
 });
