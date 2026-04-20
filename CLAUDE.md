@@ -54,14 +54,19 @@ Theme A delivered end-to-end in a single day. 9 engineering cards merged + deplo
 - LKID-77 — Engine edge case: `compute_dial_age` returns None when `trajectory[0] < 12` (Low, agent:john-donaldson)
 - LKID-81 — Wire up visual-regression tests (install Playwright, rewrite spec for tokenized flow, add CI job) (Medium, Harshit + Yuri pairing)
 
-**Still Brad-hands (agents can't do these):**
+**Brad-hands tickets (agents can't do these — filter Jira board by label `brad-hands`):**
 
-- **PostHog env vars** on Vercel (`NEXT_PUBLIC_POSTHOG_KEY` + host) — until set, PostHog is a silent no-op per design
-- **Sentry env vars** (5 total) on Vercel + Railway — until set, no error capture in prod
-- **Resend DNS + Klaviyo Flow** (LKID-47 Klaviyo dashboard config)
-- **Lee email** — Sprint 5 update draft at `agents/husser/drafts/email-to-lee-sprint5-update.md` ready to send
-- **CSP enforcing-mode flip** — requires 72-hour clean verification window per LKID-74 post-merge checklist
-- **DNS flip to kidneyhood.org** — once live, set `NEXT_PUBLIC_APP_URL=https://kidneyhood.org` on Vercel (auto-propagates to sitemap/robots/OG/JSON-LD)
+| Key | Item | Priority |
+|-----|------|----------|
+| [LKID-47](https://automationarchitecture.atlassian.net/browse/LKID-47) | Klaviyo Flow dashboard config (engineering shipped; Flow setup + DNS + API key pending) | — |
+| [LKID-83](https://automationarchitecture.atlassian.net/browse/LKID-83) | Set PostHog env vars on Vercel — activate analytics | **High** |
+| [LKID-84](https://automationarchitecture.atlassian.net/browse/LKID-84) | Set Sentry env vars on Vercel + Railway — activate error monitoring | **High** |
+| [LKID-85](https://automationarchitecture.atlassian.net/browse/LKID-85) | Resend DNS + flip FROM email to `reports@kidneyhood.org` | **High** |
+| [LKID-86](https://automationarchitecture.atlassian.net/browse/LKID-86) | DNS flip to `kidneyhood.org` + set `NEXT_PUBLIC_APP_URL` | Medium |
+| [LKID-87](https://automationarchitecture.atlassian.net/browse/LKID-87) | Flip CSP from Report-Only → enforcing (after 72h clean window) | Medium |
+| [LKID-88](https://automationarchitecture.atlassian.net/browse/LKID-88) | Send Sprint 5 update email to Lee | Low |
+
+Full acceptance criteria + step-by-step for each in `agents/luca/drafts/brad-hands-cards-pending.md`.
 
 ### Sprint 4 — No-Auth Tokenized Flow (DONE — shipped Apr 20, 2026)
 
@@ -391,6 +396,7 @@ agent-teams/
 | Sprint 5 PR #63 QA Verdict | `agents/yuri/drafts/sprint5-pr63-qa-verdict.md` | Yuri | Final | LKID-74 CSP + headers: PASS — 13/13 checks; Report-Only; 6-step post-merge verification for enforcing-mode flip |
 | Sprint 5 PR #64 QA Verdict | `agents/yuri/drafts/sprint5-pr64-qa-verdict.md` | Yuri | Final | LKID-73 SEO basics: PASS — 13/13 checks; base URL env-driven for DNS flip |
 | LKID-78 Audit Investigation | `agents/john_donaldson/drafts/lkid-78-audit-discrepancy-investigation.md` | John | Final | WAI — "32" was mockup copy; `sex="unknown"` locked in by Lee's preference |
+| Brad-Hands Pending Cards | `agents/luca/drafts/brad-hands-cards-pending.md` | Luca | Final | Full acceptance criteria + step-by-step for LKID-83/84/85/86/87/88 (durable reference if Jira is slow) |
 | Scenario dial_age Sign-off | `agents/john_donaldson/drafts/scenario-dial-age-signoff.md` | John | Final | LKID-76 engine PASS — "Not projected" output correct for Stage 3a baseline |
 | LKID-69 Pre/Post-Delete Memo | `agents/luca/drafts/lkid-69-predelete-verification.md` | Luca (subagent) | Final | Orphan Postgres verified empty, deleted 2026-04-20, post-delete checks all PASS |
 | Sprint 3 QA Verdicts | `agents/yuri/drafts/sprint3-pr-qa-verdicts.md` | Yuri | Final | QA verdicts for PRs #22-#27 |
