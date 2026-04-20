@@ -466,8 +466,12 @@ const RESULTS_CSS = `
 .kh-results .kh-foot a {
   color: var(--muted);
   text-decoration: none;
-  min-height: auto;
+  /* Preserve compact visual alignment while keeping the global 44px
+   * touch target for the 60+ audience (CodeRabbit #3). */
+  min-height: 44px;
   padding: 2px 0;
+  display: inline-flex;
+  align-items: center;
 }
 .kh-results .kh-foot a:hover,
 .kh-results .kh-foot a:focus-visible { color: var(--ink-2); }
