@@ -2,21 +2,19 @@
 
 Shared deliverables and artifact registry. Agents publish finalized work here.
 
+Sprint 5 is complete (shipped Apr 20, 2026). See the **Key Documents** table in `CLAUDE.md` for the authoritative, per-owner list of current artifacts — this README does not enumerate them to prevent drift.
+
 ## Current Contents
 
-| File / Dir | Description | Status |
-|------------|-------------|--------|
-| `registry.json` | Master index of all project artifacts | Active |
-| `lean-launch-mvp-prd.md` | Lean Launch MVP PRD — binding scope (potassium removed, eGFR uses 12 data points) | Corrected |
-| `frontend_build/` | Frontend build artifacts | Sprint 2 |
-| `test_suite/` | Test suite artifacts | Sprint 3 |
-| `archive/PRD-v2-original.md` | Original PRD (89 tickets) — archived, reference only | Archived |
+| File / Dir | Description |
+|------------|-------------|
+| `registry.json` | Master index of approved project artifacts |
+| `lean-launch-mvp-prd.md` | Lean Launch MVP PRD — binding scope for all sprints |
+| `frontend_build/` | Reserved for frontend build artifacts (currently empty) |
+| `test_suite/` | Reserved for test suite artifacts (currently empty) |
+| `archive/PRD-v2-original.md` | Original PRD (89 tickets) — archived, reference only |
 
-## Pending Deliverables (Sprint 2-3)
+## See Also
 
-| File | Description |
-|------|-------------|
-| `architecture.md` | Architecture document (from Luca) |
-| `api_contract.json` | API contract (from John Donaldson) |
-| `db_schema.sql` | Database schema (from Gay Mark) |
-| `test_report.md` | Final test report (from Yuri) |
+- `CLAUDE.md` — Key Documents table (governance, technical, clinical, specs & design, reports)
+- `CLAUDE.md` — Sitemap (full folder layout)

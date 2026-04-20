@@ -1,45 +1,40 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# app/ — KidneyHood Frontend
+
+Next.js 16 app deployed to Vercel. See `AGENTS.md` — **this is NOT the Next.js your training data knows**. APIs, conventions, and file structure have breaking changes. Read the relevant guide in `node_modules/next/dist/docs/` before writing code.
 
 ## Getting Started
 
-First, run the development server:
-
 ```bash
 npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+Open [http://localhost:3000](http://localhost:3000). The page auto-updates as you edit.
 
-You can start editing the page by modifying `src/app/page.tsx`. The page auto-updates as you edit the file.
+Fonts load via `next/font` (Inter, per Inga's design tokens). Tailwind CSS for styling.
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Inter](https://fonts.google.com/specimen/Inter), the primary typeface from Inga's design tokens.
-
-## Sitemap
+## Routes
 
 | Route | Description |
 |-------|-------------|
-| `/` | Landing page with CTA |
-| `/auth` | Magic link sign-in |
-| `/predict` | Lab value entry form |
-| `/results` | eGFR trajectory chart |
+| `/` | Landing page with CTA into the patient flow |
+| `/labs` | Lab value entry form (tokenized flow entry point; `sex="unknown"` hardcoded per Lee) |
+| `/gate/[token]` | Email verification gate; resends the report link |
+| `/results/[token]` | eGFR trajectory chart + PDF download; `report_token` is the only credential |
+| `/internal/chart/[token]` | Playwright PDF render target (internal, no patient-facing nav) |
+| `/client/[slug]` | Clerk-scoped dashboard for the client (Lee) — the **only** Clerk-gated surface |
 
-## Learn More
+No patient accounts, no sessionStorage. The tokenized flow replaced the legacy `/auth` → `/predict` → `/results` Clerk-gated flow in Sprint 4.
 
-To learn more about Next.js, take a look at the following resources:
+## Observability & Security
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+- **PostHog** analytics (env-gated by `NEXT_PUBLIC_POSTHOG_KEY` + host) — silent no-op until env vars set on Vercel
+- **Sentry** error monitoring, frontend + backend (env-gated) — silent no-op until DSN set
+- **CSP + 6 security headers** shipped in Report-Only mode (LKID-74). See `agents/yuri/drafts/sprint5-pr63-qa-verdict.md` for the enforcing-mode flip checklist.
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+## Design Parity
 
-## Deploy on Vercel
+Visual parity for the patient surfaces is driven by design-source HTML in `project/` (Landing Page, Lab Form, Email Gate, Results, PDF Report, Email Template). These files are maintained locally by Inga and are not committed — ask the designer or check the main repo clone for the current source of truth.
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+## Deployment
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+Auto-deploys from `main` via Vercel. Live at [kidneyhood-automation-architecture.vercel.app](https://kidneyhood-automation-architecture.vercel.app).
