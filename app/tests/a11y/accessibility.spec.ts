@@ -117,14 +117,20 @@ test.describe("Accessibility — axe-core audit", () => {
 
     const results = await new AxeBuilder({ page })
       .withTags(WCAG_TAGS)
-      // Exclude SVG chart internals — Visx generates complex SVG that may
-      // have aria gaps, but the chart section carries an aria-label.
+      // LKID-67 (Harshit half): stat-card text re-tokened to text-foreground /
+      // text-muted-foreground, so the HTML chrome of the chart wrapper (stat
+      // cards, footnote, header) is now audited. Inga's half (chart line
+      // colors inside <svg>) remains excluded below until she re-tokens the
+      // SVG fills. The prior `.exclude('[data-testid="egfr-chart-wrapper"]')`
+      // (whole-wrapper) was narrowed to SVG-only — the .exclude("svg") line
+      // already scopes that, so no extra selector is needed here.
+      // — Harshit, LKID-67, 2026-04-19
+      //
+      // Exclude SVG chart internals — Visx generates complex SVG with aria
+      // gaps, but the chart section carries an aria-label. SVG fills inside
+      // the chart wrapper (Inga's LKID-67 half) are also out of scope until
+      // re-tokened.
       .exclude("svg")
-      // Chart internals have pre-existing contrast violations (#1d9e75 /
-      // #378add / #85b7eb / #aaaaaa / #888888 in stat-card text). Separate
-      // follow-up card will fix these; scope the a11y audit to page chrome
-      // for now. — Yuri, LKID-65, 2026-04-20
-      .exclude('[data-testid="egfr-chart-wrapper"]')
       .analyze();
 
     const critical = results.violations.filter(

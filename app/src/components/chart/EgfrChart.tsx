@@ -713,7 +713,10 @@ function StatCards({ trajectories, selectedId, onSelect }: StatCardsProps) {
             <div className="mt-2 space-y-1">
               <div>
                 <span className="text-xs text-muted-foreground">5yr eGFR</span>
-                <p className="text-lg font-bold" style={{ color: traj.color }}>
+                {/* LKID-67: re-tokened from inline traj.color hex (failed AA 4.5:1)
+                    to text-foreground (~17:1 on white). Scenario semantic color
+                    is preserved via the dot swatch at line 705 above. */}
+                <p className="text-lg font-bold text-foreground">
                   {pointAt5yr ? Math.round(pointAt5yr.egfr) : "—"}
                 </p>
               </div>
@@ -781,9 +784,10 @@ export function EgfrChart({ data }: EgfrChartProps) {
       </div>
 
       {/* Footnote — HTML below SVG */}
+      {/* LKID-67: re-tokened from #888888 (3.9:1, failed AA) to
+          text-muted-foreground (~5.7:1 on white). */}
       <p
-        className="px-4 pb-3 text-[12px] italic"
-        style={{ color: "#888888", marginTop: 8 }}
+        className="mt-2 px-4 pb-3 text-[12px] italic text-muted-foreground"
         data-testid="chart-footnote"
       >
         <em>
