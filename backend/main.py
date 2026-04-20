@@ -1,16 +1,21 @@
 """
-KidneyHood Prediction API — FastAPI scaffold for Sprint 2.
+KidneyHood Prediction API — FastAPI app.
 
-Minimal working app with:
+Responsibilities:
 - Health endpoint
 - CORS middleware
 - Async SQLAlchemy database connection
-- POST /predict with CKD-EPI 2021 eGFR + placeholder trajectories (LKID-15)
-- slowapi rate limiting on /predict and /webhooks/clerk
-- Approved error envelope (Decision #9)
-- Fire-and-forget lead capture on POST /predict (LKID-11)
-
-Donaldson drops the prediction engine into predict() and predict_pdf().
+- POST /predict — CKD-EPI 2021 eGFR + trajectory engine, persists a row in
+  `predictions` and returns an opaque `report_token` (LKID-62).
+- GET /results/{token} — fetch the stored prediction (LKID-62).
+- POST /leads — email-gate upsert + fire-and-forget Resend + Klaviyo (LKID-62).
+- GET /reports/{token}/pdf — Playwright PDF render from stored inputs (LKID-62).
+- POST /predict/pdf — legacy stateless PDF render (preserved for back-compat
+  with the old /predict page until LKID-66 removes it).
+- POST /webhooks/clerk — Clerk `user.created` webhook lead capture (LKID-9).
+- GET /leads — admin leads list (protected, placeholder).
+- slowapi rate limiting on write endpoints.
+- Approved error envelope (Decision #9).
 """
 
 import asyncio
@@ -18,8 +23,9 @@ import base64
 import json
 import logging
 import os
+import secrets
 from contextlib import asynccontextmanager
-from typing import Literal, Optional
+from typing import Any, Literal, Optional
 
 from fastapi import FastAPI, Header, HTTPException, Request
 from fastapi.exceptions import RequestValidationError
@@ -33,7 +39,22 @@ from sqlalchemy import text
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_async_engine
 from svix.webhooks import Webhook, WebhookVerificationError
 
+from email_renderer import render_report_email
 from prediction.engine import predict_for_endpoint
+from services.klaviyo_service import track_prediction_completed
+from services.resend_service import send_report_email
+
+# Playwright's own TimeoutError is NOT a subclass of asyncio.TimeoutError
+# (HIGH-01 in PR #35 QA). Import it so the /reports/{token}/pdf handler can
+# map Playwright render timeouts to the AC-required 504. Guarded to tolerate
+# environments without playwright installed (unit-test runners, some CI
+# images) — if the import fails we fall back to a sentinel class that will
+# never match a real raise, so the generic `except Exception` handles it.
+try:
+    from playwright.async_api import TimeoutError as PlaywrightTimeoutError
+except ImportError:  # pragma: no cover — only hit in playwright-less envs
+    class PlaywrightTimeoutError(Exception):  # type: ignore[no-redef]
+        """Fallback — playwright not installed in this environment."""
 
 logger = logging.getLogger(__name__)
 
@@ -57,6 +78,13 @@ PDF_SECRET = os.environ.get("PDF_SECRET", "dev-pdf-secret")
 FRONTEND_INTERNAL_URL = os.environ.get(
     "FRONTEND_INTERNAL_URL", "http://localhost:3000"
 )
+# LKID-62 — public URL used for fallback email links and Klaviyo report_url.
+PUBLIC_APP_URL = os.environ.get(
+    "PUBLIC_APP_URL", "https://kidneyhood-automation-architecture.vercel.app"
+).rstrip("/")
+
+# Playwright render timeout for the tokenized PDF endpoint. Jira AC: 30s cap.
+PDF_RENDER_TIMEOUT_MS = 30_000
 
 # ---------------------------------------------------------------------------
 # Database
@@ -79,90 +107,13 @@ async def get_db() -> AsyncSession:
 
 
 # ---------------------------------------------------------------------------
-# Lead Capture — LKID-11
+# Lead Capture — LKID-62 tokenized flow
+#
+# The LKID-11 path (email supplied on /predict, JWT fallback, fire-and-forget
+# INSERT into leads) was removed in LKID-62. /predict now stores an anonymous
+# `predictions` row keyed by report_token; leads are upserted via the new
+# POST /leads endpoint. See `_upsert_lead_and_link_prediction` below.
 # ---------------------------------------------------------------------------
-
-
-def _extract_email_from_jwt(authorization: Optional[str]) -> Optional[str]:
-    """Extract email from a Clerk JWT Bearer token (unverified decode).
-
-    Clerk JWTs contain user metadata in the payload. We decode without
-    signature verification here — full Clerk JWKS verification is a
-    separate card (LKID-1). This is safe because we only use the email
-    for lead capture (non-security-critical), and the prediction response
-    is returned regardless.
-
-    Returns the email string if found, None otherwise.
-    """
-    if not authorization or not authorization.startswith("Bearer "):
-        return None
-    try:
-        token = authorization[len("Bearer "):]
-        # JWT must have exactly 3 segments
-        parts = token.split(".")
-        if len(parts) != 3:
-            return None
-        # JWT is three base64url-encoded segments separated by dots
-        payload_b64 = parts[1]
-        # Add padding if needed
-        padding = 4 - len(payload_b64) % 4
-        if padding != 4:
-            payload_b64 += "=" * padding
-        payload = json.loads(base64.urlsafe_b64decode(payload_b64))
-        # Clerk stores email in various claim locations
-        email = (
-            payload.get("email")
-            or payload.get("email_address")
-            or payload.get("primary_email_address")
-        )
-        # Also check Clerk's unsafe_metadata or public_metadata
-        if not email:
-            metadata = payload.get("unsafe_metadata") or payload.get("public_metadata") or {}
-            email = metadata.get("email")
-        return email if email else None
-    except Exception:
-        logger.debug("Could not extract email from JWT", exc_info=True)
-        return None
-
-
-async def _write_lead(
-    email: str,
-    name: str,
-    age: int,
-    bun: float,
-    creatinine: float,
-    egfr_baseline: Optional[float],
-) -> None:
-    """Insert a lead row into the leads table. Fire-and-forget.
-
-    If the database is not configured or the insert fails, the error is
-    logged but never propagated — the prediction response must always
-    reach the user (LKID-11 requirement).
-    """
-    if async_session is None:
-        logger.warning("Lead capture skipped: database not configured")
-        return
-
-    try:
-        async with async_session() as session:
-            await session.execute(
-                text(
-                    "INSERT INTO leads (email, name, age, bun, creatinine, egfr_baseline) "
-                    "VALUES (:email, :name, :age, :bun, :creatinine, :egfr_baseline)"
-                ),
-                {
-                    "email": email,
-                    "name": name,
-                    "age": age,
-                    "bun": bun,
-                    "creatinine": creatinine,
-                    "egfr_baseline": egfr_baseline,
-                },
-            )
-            await session.commit()
-        logger.info("Lead captured for %s", email)
-    except Exception:
-        logger.exception("Failed to write lead for %s — prediction still returned", email)
 
 
 # ---------------------------------------------------------------------------
@@ -328,6 +279,12 @@ class PredictRequest(BaseModel):
     Required fields: bun, creatinine, potassium, age, sex.
     Optional Confidence Tier 2 modifiers: hemoglobin, co2, albumin.
     Glucose and potassium accepted for storage/legacy but unused by engine.
+
+    LKID-62 note: `name` and `email` were removed here — the tokenized flow
+    captures contact info via POST /leads instead. Pydantic v2's default
+    behavior is to silently ignore extra fields, so the legacy /predict page
+    (which still sends `name`/`email`) keeps working unchanged; the extra
+    fields are dropped before they reach the engine or DB.
     """
 
     bun: float = Field(
@@ -358,13 +315,20 @@ class PredictRequest(BaseModel):
         None, ge=40, le=500, description="Fasting Glucose mg/dL"
     )
 
-    # Lead capture fields (optional)
-    name: Optional[str] = Field(
-        None, max_length=200, description="Patient name for lead capture"
+
+class LeadCaptureRequest(BaseModel):
+    """POST /leads body — LKID-62 email gate.
+
+    All three fields are required: the report_token ties the lead back to
+    the stored prediction; name + email are the marketing identity.
+    """
+
+    report_token: str = Field(
+        ..., min_length=32, max_length=128,
+        description="Opaque token from POST /predict response.",
     )
-    email: Optional[EmailStr] = Field(
-        None, description="Patient email for lead capture"
-    )
+    name: str = Field(..., min_length=1, max_length=200)
+    email: EmailStr = Field(...)
 
 
 class Trajectories(BaseModel):
@@ -392,8 +356,19 @@ class StructuralFloor(BaseModel):
 
 
 class PredictResponse(BaseModel):
-    """POST /predict response — LKID-14/15 v2.0 shape."""
+    """POST /predict response — LKID-14/15 v2.0 shape + LKID-62 `report_token`.
 
+    LKID-62: The response now also carries `report_token`, the opaque
+    32-byte URL-safe base64 credential the frontend uses for subsequent
+    GET /results/{token} and GET /reports/{token}/pdf calls. Existing fields
+    are preserved so the legacy /predict page keeps rendering its chart.
+    """
+
+    # LKID-62 — opaque bearer token for the tokenized flow. Added as the
+    # first field on the response so it is obvious in any API trace. New
+    # consumers (LKID-63 /gate page) are required to honor it; the legacy
+    # /predict page ignores it and renders from its existing sessionStorage.
+    report_token: str
     egfr_baseline: float
     confidence_tier: int  # 1 or 2
     trajectories: Trajectories
@@ -407,6 +382,29 @@ class PredictResponse(BaseModel):
     bun_suppression_estimate: Optional[float] = None
     # Amendment 3: BUN structural floor display callout.  Only present when BUN > 17.
     structural_floor: Optional[StructuralFloor] = None
+
+
+class ResultsResponse(BaseModel):
+    """GET /results/{token} response — LKID-62 §5.2."""
+
+    report_token: str
+    captured: bool
+    created_at: str  # ISO 8601
+    result: dict[str, Any]
+    lead: Optional[dict[str, Any]] = None
+
+
+class LeadCaptureResponse(BaseModel):
+    """POST /leads response — LKID-62 §5.3.
+
+    Returns a superset of Jira AC (`{token}`) and the techspec-prompt
+    (`{ok, captured}`) so both callers stay happy. LKID-63 can rely on
+    any of the three keys.
+    """
+
+    ok: bool = True
+    captured: bool = True
+    token: str
 
 
 # ---------------------------------------------------------------------------
@@ -438,22 +436,27 @@ async def health():
 @limiter.limit("10/minute")
 async def predict(request: Request, body: PredictRequest):
     """
-    Run the CKD-EPI 2021 eGFR calculation and 4-trajectory prediction engine.
+    Run the CKD-EPI 2021 eGFR calculation and 4-trajectory prediction engine,
+    persist the anonymous result in `predictions`, and return it along with an
+    opaque `report_token` that the frontend uses for the subsequent email-gate
+    and PDF download steps (LKID-62).
 
     Returns baseline eGFR, confidence tier, 4 trajectory paths (15 time points
-    each), dial_ages per trajectory, dialysis threshold, and stat cards.
+    each), dial_ages per trajectory, dialysis threshold, and stat cards, plus
+    the new `report_token`.
 
-    Potassium is validated but does not affect engine output (per spec).
-    Hemoglobin + glucose together unlock Tier 2 confidence.
+    LKID-62 changes:
+    - No longer accepts/stores `name` or `email` (new flow captures via POST
+      /leads). Pydantic ignores unknown fields, so the legacy /predict page
+      continues to work unchanged.
+    - Writes a row to `predictions (report_token, inputs, result, ...)` before
+      returning. `lead_id`/`email_sent_at` stay NULL until POST /leads links
+      them.
+    - Rate limit (10/min/IP) preserved from LKID-25 — `slowapi`'s
+      `get_remote_address` key function uses the client IP, which is exactly
+      what we want now that there is no email on this endpoint.
 
     Engine coefficients are server-side only — never exposed in responses.
-
-    Lead capture (LKID-11): After a successful prediction, a lead row is
-    written to the leads table as fire-and-forget. Email is resolved from:
-      1. The request body (guest flow — user enters email on the form)
-      2. The Clerk JWT Authorization header (authenticated flow)
-    If neither provides an email, lead capture is silently skipped.
-    Name defaults to "Anonymous" if not provided.
     """
     result = predict_for_endpoint(
         bun=body.bun,
@@ -467,28 +470,493 @@ async def predict(request: Request, body: PredictRequest):
         glucose=body.glucose,
     )
 
-    # --- LKID-11: Fire-and-forget lead capture ---
-    # Resolve email: prefer body.email, fall back to JWT claim
-    lead_email = body.email
-    if not lead_email:
-        auth_header = request.headers.get("authorization")
-        lead_email = _extract_email_from_jwt(auth_header)
+    # LKID-62: generate an opaque 32-byte URL-safe base64 bearer token.
+    # `secrets.token_urlsafe(32)` yields ~43 chars, 256 bits of entropy.
+    report_token = secrets.token_urlsafe(32)
 
-    if lead_email:
-        lead_name = body.name or "Anonymous"
-        egfr_baseline = result.get("egfr_baseline")
-        asyncio.create_task(
-            _write_lead(
-                email=lead_email,
-                name=lead_name,
-                age=body.age,
-                bun=body.bun,
-                creatinine=body.creatinine,
-                egfr_baseline=egfr_baseline,
+    # Persist the prediction row. The DB is the source of truth from this
+    # point on; if the INSERT fails we raise 500 because returning a token
+    # that maps to nothing would hand the user a broken flow.
+    if async_session is not None:
+        inputs_json = body.model_dump(mode="json", exclude_none=False)
+        async with async_session() as session:
+            await session.execute(
+                text(
+                    """
+                    INSERT INTO predictions (report_token, inputs, result)
+                    VALUES (
+                        :report_token,
+                        CAST(:inputs AS JSONB),
+                        CAST(:result AS JSONB)
+                    )
+                    """
+                ),
+                {
+                    "report_token": report_token,
+                    "inputs": json.dumps(inputs_json),
+                    "result": json.dumps(result),
+                },
             )
+            await session.commit()
+    else:
+        # Local-dev fallback: no DB configured. Log the condition but still
+        # return a token so the dev harness keeps flowing. The /results and
+        # /leads endpoints will simply 404 on this token.
+        logger.warning(
+            "POST /predict returning token without DB insert "
+            "(DATABASE_URL unset; dev mode only)"
         )
 
-    return result
+    return {"report_token": report_token, **result}
+
+
+# ---------------------------------------------------------------------------
+# 2a. GET /results/{token} — Fetch stored prediction (LKID-62)
+# ---------------------------------------------------------------------------
+
+
+async def _fetch_prediction_by_token(token: str) -> dict[str, Any]:
+    """Return the full prediction row as a dict. Raises 404/410/503 on miss.
+
+    Shared by GET /results/{token} and GET /reports/{token}/pdf so error
+    semantics (404 missing / 410 revoked / 503 no-DB) stay consistent.
+    """
+    if async_session is None:
+        raise HTTPException(status_code=503, detail="Database not configured")
+
+    async with async_session() as session:
+        row = (
+            await session.execute(
+                text(
+                    """
+                    SELECT id, report_token, token_created_at, revoked_at,
+                           inputs, result, lead_id, email_sent_at, created_at
+                    FROM predictions
+                    WHERE report_token = :token
+                    LIMIT 1
+                    """
+                ),
+                {"token": token},
+            )
+        ).mappings().first()
+
+    if row is None:
+        raise HTTPException(status_code=404, detail="Report not found")
+    if row["revoked_at"] is not None:
+        raise HTTPException(status_code=410, detail="Report revoked")
+
+    return dict(row)
+
+
+@app.get(
+    "/results/{token}",
+    response_model=ResultsResponse,
+    responses={
+        404: {"model": ErrorResponse, "description": "Token not found"},
+        410: {"model": ErrorResponse, "description": "Token revoked"},
+    },
+    tags=["Prediction"],
+)
+async def get_results(token: str):
+    """LKID-62 — fetch the stored prediction for the given report_token.
+
+    - 404 if the token is unknown.
+    - 410 if the row has been revoked (reserved; not enforced by UI in MVP).
+    - 200 with `captured=true` when a lead has already linked via POST /leads.
+      The `lead` block includes the display name and email_captured_at so the
+      gate page can detect prior captures and skip re-prompting.
+    """
+    row = await _fetch_prediction_by_token(token)
+
+    captured = row["lead_id"] is not None
+
+    # Pull lead details when linked so the frontend can skip the gate.
+    lead_block: Optional[dict[str, Any]] = None
+    if captured and async_session is not None:
+        async with async_session() as session:
+            lead_row = (
+                await session.execute(
+                    text(
+                        """
+                        SELECT name, email, created_at, updated_at
+                        FROM leads
+                        WHERE id = :lead_id
+                        LIMIT 1
+                        """
+                    ),
+                    {"lead_id": row["lead_id"]},
+                )
+            ).mappings().first()
+        if lead_row is not None:
+            # `email_captured_at` in the response ≡ the first time we saw
+            # this lead tied to this prediction, which is effectively the
+            # lead's created_at (or updated_at if re-seen).
+            captured_at = lead_row.get("updated_at") or lead_row.get("created_at")
+            lead_block = {
+                "name": lead_row["name"],
+                "email_captured_at": (
+                    captured_at.isoformat() if captured_at else None
+                ),
+            }
+
+    created_at = row["created_at"]
+    return {
+        "report_token": row["report_token"],
+        "captured": captured,
+        "created_at": (
+            created_at.isoformat() if created_at else ""
+        ),
+        "result": row["result"],
+        "lead": lead_block,
+    }
+
+
+# ---------------------------------------------------------------------------
+# 2b. POST /leads — Email gate: upsert lead, link prediction, fire-and-forget
+#                   Resend + Klaviyo (LKID-62).
+# ---------------------------------------------------------------------------
+
+
+async def _upsert_lead_and_link_prediction(
+    *, report_token: str, name: str, email: str
+) -> tuple[str, str]:
+    """Upsert a leads row and link it to the predictions row identified by
+    `report_token`. Returns `(prediction_id, lead_id)` as UUID strings.
+
+    Raises 404/410 if the token is unknown/revoked, 503 if no DB.
+
+    Idempotent on email: re-submitting with the same email updates name +
+    `updated_at` and returns the existing lead_id (uses ON CONFLICT (email)).
+    """
+    if async_session is None:
+        raise HTTPException(status_code=503, detail="Database not configured")
+
+    async with async_session() as session:
+        async with session.begin():
+            # 1. Verify the prediction exists and is active.
+            pred_row = (
+                await session.execute(
+                    text(
+                        """
+                        SELECT id, revoked_at
+                        FROM predictions
+                        WHERE report_token = :token
+                        FOR UPDATE
+                        """
+                    ),
+                    {"token": report_token},
+                )
+            ).mappings().first()
+            if pred_row is None:
+                raise HTTPException(status_code=404, detail="Report not found")
+            if pred_row["revoked_at"] is not None:
+                raise HTTPException(status_code=410, detail="Report revoked")
+
+            # 2. Upsert the lead row on (email).
+            lead_row = (
+                await session.execute(
+                    text(
+                        """
+                        INSERT INTO leads (email, name)
+                        VALUES (:email, :name)
+                        ON CONFLICT (email) DO UPDATE
+                            SET name       = EXCLUDED.name,
+                                updated_at = now()
+                        RETURNING id
+                        """
+                    ),
+                    {"email": email, "name": name},
+                )
+            ).mappings().first()
+            lead_id = str(lead_row["id"])
+
+            # 3. Link the prediction to the lead.
+            await session.execute(
+                text(
+                    """
+                    UPDATE predictions
+                       SET lead_id = :lead_id
+                     WHERE report_token = :token
+                    """
+                ),
+                {"lead_id": lead_row["id"], "token": report_token},
+            )
+
+    return str(pred_row["id"]), lead_id
+
+
+async def _render_pdf_for_token(token: str) -> bytes:
+    """Render the PDF for a report_token by navigating the internal chart
+    page. Raises on any Playwright failure (caller handles fallback).
+
+    The internal chart route is `/internal/chart/{token}?secret={PDF_SECRET}`
+    (LKID-63 will build this). The token identifies the user; the secret is
+    the service-to-service credential so the /internal route only serves
+    the backend.
+    """
+    chart_url = (
+        f"{FRONTEND_INTERNAL_URL}/internal/chart/{token}"
+        f"?secret={PDF_SECRET}"
+    )
+    page = None
+    try:
+        browser = await _get_browser()
+        page = await browser.new_page(viewport={"width": 1060, "height": 800})
+        await page.goto(
+            chart_url, wait_until="networkidle", timeout=PDF_RENDER_TIMEOUT_MS
+        )
+        await page.wait_for_selector(
+            "#pdf-ready", timeout=PDF_RENDER_TIMEOUT_MS
+        )
+        return await page.pdf(
+            format="Letter",
+            print_background=True,
+            margin={
+                "top": "0.4in",
+                "bottom": "0.4in",
+                "left": "0.3in",
+                "right": "0.3in",
+            },
+        )
+    finally:
+        if page:
+            await page.close()
+
+
+async def _mark_email_sent(report_token: str) -> None:
+    """UPDATE predictions.email_sent_at = now() for the given token.
+
+    Called from the fire-and-forget task after Resend success (and also on
+    the PDF-failure fallback path, per techspec §4.2: the email still went
+    out, just without an attachment).
+    """
+    if async_session is None:
+        return
+    try:
+        async with async_session() as session:
+            await session.execute(
+                text(
+                    """
+                    UPDATE predictions
+                       SET email_sent_at = now()
+                     WHERE report_token = :token
+                    """
+                ),
+                {"token": report_token},
+            )
+            await session.commit()
+    except Exception:
+        logger.exception(
+            "Failed to set email_sent_at for token_prefix=%s",
+            report_token[:8],
+        )
+
+
+async def _send_report_email_task(
+    *,
+    report_token: str,
+    prediction_id: str,
+    lead_email: str,
+    lead_name: str,
+    egfr_baseline: float,
+    confidence_tier: Any,
+) -> None:
+    """Fire-and-forget pipeline invoked from POST /leads.
+
+    Steps (techspec §8.4–§8.5):
+      1. Render the PDF via Playwright (30s timeout, Jira AC).
+      2. Render the HTML email body (standard template if PDF OK, fallback
+         template with /results/{token} link if PDF failed).
+      3. Send via Resend (with or without attachment).
+      4. On Resend success, set predictions.email_sent_at = now().
+         On PDF failure but Resend success, still set email_sent_at —
+         the email reached the user, just without a file.
+      5. Fire the Klaviyo "Prediction Completed" event.
+
+    Never raises — a failure here cannot block POST /leads which has
+    already returned 200 to the client.
+
+    MED-02 fix (PR #35 QA): the Resend pipeline and the Klaviyo fire are
+    independent. Klaviyo MUST fire regardless of whether PDF render,
+    template render, or Resend itself fail — the warm campaign is
+    lead-capture business data and cannot be gated on transactional email
+    success. Each integration gets its own try/except below.
+    """
+    # --- Resend pipeline (render PDF -> render template -> send -> mark sent) ---
+    try:
+        pdf_bytes: Optional[bytes]
+        pdf_failed = False
+        try:
+            pdf_bytes = await _render_pdf_for_token(report_token)
+        except Exception:
+            logger.exception(
+                "PDF render failed for prediction %s — using fallback email",
+                prediction_id,
+            )
+            pdf_bytes = None
+            pdf_failed = True
+
+        # Confidence tier: the renderer accepts Optional[str]; stringify so
+        # we do not silently drop int values the engine emits.
+        tier_str: Optional[str] = (
+            None if confidence_tier is None else str(confidence_tier)
+        )
+
+        html_body = render_report_email(
+            name=lead_name,
+            egfr_baseline=egfr_baseline,
+            confidence_tier=tier_str,
+            token=report_token,
+            pdf_failed=pdf_failed,
+        )
+
+        sent_ok = await send_report_email(
+            to_email=lead_email,
+            html_body=html_body,
+            pdf_bytes=pdf_bytes,
+        )
+
+        if sent_ok:
+            # Per techspec §4.2: even when PDF failed, if the email went out
+            # we still set email_sent_at — the outbound side succeeded.
+            # Invariant: email_sent_at is gated on Resend success. A template
+            # render failure or Resend failure must NOT set this column.
+            await _mark_email_sent(report_token)
+    except Exception:
+        # Any failure in the Resend pipeline (template render, send, etc.)
+        # is logged and swallowed — we still need to fire Klaviyo below.
+        logger.exception(
+            "Resend pipeline failed for prediction %s", prediction_id
+        )
+
+    # --- Klaviyo event — independent of Resend outcome ---
+    # Fires regardless of PDF/template/Resend success so the warm campaign
+    # triggers for every captured lead. Its own try/except so a Klaviyo
+    # hiccup cannot escape the fire-and-forget boundary.
+    try:
+        report_url = f"{PUBLIC_APP_URL}/results/{report_token}"
+        await track_prediction_completed(
+            email=lead_email,
+            name=lead_name,
+            prediction_id=prediction_id,
+            egfr_baseline=egfr_baseline,
+            confidence_tier=confidence_tier,
+            report_url=report_url,
+        )
+    except Exception:
+        logger.exception(
+            "Klaviyo fire failed for prediction %s", prediction_id
+        )
+
+
+@app.post(
+    "/leads",
+    response_model=LeadCaptureResponse,
+    responses={
+        404: {"model": ErrorResponse, "description": "Token not found"},
+        410: {"model": ErrorResponse, "description": "Token revoked"},
+        422: {"model": ErrorResponse, "description": "Validation error"},
+        429: {"model": ErrorResponse, "description": "Rate limit exceeded"},
+    },
+    tags=["Prediction"],
+)
+@limiter.limit("5/minute")
+async def capture_lead(request: Request, body: LeadCaptureRequest):
+    """LKID-62 — email-gate capture.
+
+    1. Validate the token (404/410).
+    2. Upsert the lead (idempotent on email) and link predictions.lead_id.
+    3. Kick off the fire-and-forget Resend + Klaviyo pipeline.
+    4. Return immediately — email/Klaviyo outcomes do not block.
+
+    Rate limit: 5/min/IP (Jira AC).
+    """
+    prediction_id, _lead_id = await _upsert_lead_and_link_prediction(
+        report_token=body.report_token,
+        name=body.name,
+        email=body.email,
+    )
+
+    # Pull the engine result + egfr_baseline / confidence_tier off the
+    # stored prediction so the fire-and-forget task has everything it needs
+    # without a second round-trip to the engine.
+    pred_row = await _fetch_prediction_by_token(body.report_token)
+    result_json = pred_row["result"] or {}
+    egfr_baseline = float(result_json.get("egfr_baseline", 0.0))
+    confidence_tier = result_json.get("confidence_tier")
+
+    asyncio.create_task(
+        _send_report_email_task(
+            report_token=body.report_token,
+            prediction_id=prediction_id,
+            lead_email=body.email,
+            lead_name=body.name,
+            egfr_baseline=egfr_baseline,
+            confidence_tier=confidence_tier,
+        )
+    )
+
+    return {
+        "ok": True,
+        "captured": True,
+        "token": body.report_token,
+    }
+
+
+# ---------------------------------------------------------------------------
+# 2c. GET /reports/{token}/pdf — In-app PDF download (LKID-62).
+# ---------------------------------------------------------------------------
+
+
+@app.get("/reports/{token}/pdf", tags=["Prediction"])
+async def get_report_pdf(token: str):
+    """LKID-62 — render the Playwright PDF for a stored prediction.
+
+    The prediction row must exist and not be revoked. The token in the path
+    identifies the user; PDF_SECRET is passed to the internal chart route
+    as the service-to-service credential.
+
+    Returns `application/pdf` as an inline download (the browser shows it
+    in-tab). A 30s Playwright timeout matches the Jira AC; on timeout the
+    endpoint returns 504.
+    """
+    import io
+
+    # Validate the token first — 404/410 before we spend Chromium cycles.
+    await _fetch_prediction_by_token(token)
+
+    try:
+        pdf_bytes = await _render_pdf_for_token(token)
+    except (asyncio.TimeoutError, PlaywrightTimeoutError):
+        # Playwright's own TimeoutError is NOT a subclass of asyncio.TimeoutError,
+        # so both must be caught explicitly to map 30s renders to the AC-required
+        # 504. A generic `except Exception` below would have swallowed the
+        # Playwright timeout as a 500.
+        logger.warning(
+            "PDF render timed out for token_prefix=%s", token[:8]
+        )
+        raise HTTPException(
+            status_code=504,
+            detail="PDF rendering timed out. Please try again.",
+        )
+    except Exception:
+        logger.exception(
+            "PDF render failed for token_prefix=%s", token[:8]
+        )
+        raise HTTPException(
+            status_code=500,
+            detail="PDF rendering failed. Please try again.",
+        )
+
+    return StreamingResponse(
+        io.BytesIO(pdf_bytes),
+        media_type="application/pdf",
+        headers={
+            "Content-Disposition": (
+                'inline; filename="kidney-health-report.pdf"'
+            ),
+        },
+    )
 
 
 # ---------------------------------------------------------------------------

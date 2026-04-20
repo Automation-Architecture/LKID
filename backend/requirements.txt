@@ -7,8 +7,12 @@ python-dotenv==1.0.1
 pydantic>=2.10.0
 httpx==0.28.0
 pytest==9.0.0
+pytest-asyncio>=0.24.0
 alembic==1.14.0
 email-validator
 svix>=1.21.0
 playwright>=1.40.0
 jinja2>=3.1.0
+# LKID-62 — tokenized flow integrations
+resend==2.29.0
+klaviyo-api==23.0.0
