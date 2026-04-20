@@ -12,6 +12,41 @@ interface UpdateData {
 // Static update data — in production this would read from markdown files
 const UPDATES: UpdateData[] = [
   {
+    title: "Week 4 — No-Auth Tokenized Flow",
+    date: "April 20, 2026",
+    sprint: 4,
+    highlights: [
+      "New patient funnel shipped: /labs → /gate → /results (no patient account required — the report token is the credential)",
+      "Transactional email with PDF attached is live — patients receive their report immediately via Resend",
+      "Klaviyo warm-campaign event wired — every captured lead fires Prediction Completed with eGFR, BUN tier, and report link",
+      "WCAG 2 AA accessibility on the chart and stat cards — Harshit + Inga color pass",
+      "Three deploy guardrails added (auto-migrate, post-deploy smoke, 6-hour heartbeat) — no more silent regressions",
+      "Legacy Clerk-gated pages retired — cleaner codebase for the next sprint",
+    ],
+    productUpdate: `Sprint 4 shipped the new no-auth patient funnel in a single day — 13 days ahead of the original two-week plan. Patients now land on the marketing page, click "Start your check," fill in lab values on /labs, enter name + email at the gate, and view their personalized trajectory chart on /results/{token}. The report token is the credential — shareable by link, no account required.
+
+Every patient who completes the gate now gets two things automatically: a transactional email from Resend with the full PDF report attached (they can open it in their inbox without returning to the site), and a Klaviyo event ("Prediction Completed") that upserts their profile with eGFR, BUN tier, confidence tier, and the report URL. That Klaviyo event is what the warm-campaign Flow will trigger off — once the Flow is configured in the Klaviyo dashboard (next on your list), the nurture cadence runs automatically.
+
+The chart itself got an accessibility pass this sprint. Stat-card text was re-tokened to meet WCAG 2 AA contrast (4.5:1 on white), and Inga re-picked the four trajectory colors — BUN ≤12 uses emerald green (5.5:1), BUN 13–17 uses sky blue (5.9:1), BUN 18–24 uses amber (5:1), and No Treatment uses dark slate (10.3:1). She chose slate rather than red for No Treatment specifically to avoid a clash with the dialysis-threshold marker, which is already red. We'd value your review of the palette from a clinical standpoint — happy to revisit if any of the colors signal the wrong thing.
+
+One incident worth surfacing: during the Sprint 4 deploy we discovered that the production database was completely empty — none of our schema migrations from Sprint 2 or Sprint 3 had actually run in production. We caught it, applied the migrations live, and added three guardrails so it can't happen again (auto-migrate on every deploy, a post-deploy smoke test that runs the full user flow, and a 6-hour heartbeat that catches silent regressions between deploys). Because your app was pre-launch with near-zero real traffic, no patient data was affected — the incident was purely internal. A short postmortem is drafted and available if you'd like to read it.
+
+The app is now functionally launch-ready. Remaining operational tasks before you go public: finish DNS verification for kidneyhood.org (records were generated and are ready to paste into your registrar), configure the Klaviyo Flow in the Klaviyo dashboard (profile schema + warm-campaign cadence), and decide on launch timing.`,
+    technicalUpdate: `Sprint 4 merged 18 PRs in ~24 hours. Seven engineering cards (LKID-61 through LKID-67, plus LKID-70) plus three incident-driven infrastructure PRs and four close-out chores.
+
+Backend (LKID-61, LKID-62, LKID-64, LKID-70): Added a predictions table keyed by a 32-byte URL-safe report_token (no JWT, no HMAC — plain opaque credential with 256 bits of entropy). Rewired POST /predict to return the token alongside the prediction payload. Added GET /results/[token] (404/410 semantics, captured flag), POST /leads (upserts lead, links prediction, fires Resend + Klaviyo in parallel), and GET /reports/[token]/pdf. The Resend transactional send runs fire-and-forget from /leads so the user never waits on email; Klaviyo is independently fire-and-forget so a Resend failure doesn't block the warm campaign. Alembic migration 004 creates the table with all three indexes; regenerated db_schema.sql snapshot (LKID-70) so the human-readable schema matches migrations.
+
+Frontend (LKID-63, LKID-66, LKID-67): Four new pages — /labs (labs form with client-side validation), /gate/[token] (email capture with blurred preview), /results/[token] (full chart + stat cards + PDF download link), /internal/chart/[token] (server-rendered target for the Playwright PDF engine, secret-gated). ClerkProvider moved from the root layout into /client/[slug]/layout.tsx — Clerk now scopes only to your dashboard, not the patient funnel. Landing page CTAs repointed from /auth → /labs. Legacy /predict, /auth, and /results pages deleted after 24-hour prod smoke. Chart accessibility pass across HTML text (Harshit) and SVG colors (Inga).
+
+QA (LKID-65): Playwright E2E suite rewritten for the two-step flow (labs → gate → results with MSW mocks). Axe-core suite updated for /labs, /gate/[token], /results/[token]. 6/6 E2E + 5/5 a11y passing locally and in CI.
+
+Guardrails (LKID-68): Three preventive measures added after the empty-DB incident. G1 — preDeployCommand in railway.toml now runs alembic upgrade head on every deploy; psycopg2-binary added because Alembic's env is sync while the app uses asyncpg. G2 — GitHub Actions workflow runs a real curl-based prod smoke (predict → results → leads → PDF) on every push to main. G3 — same workflow on a 6-hour cron to catch silent regressions between deploys (env drift, container restart, DNS issues, expired keys). First scheduled G3 run verified green at 07:53 UTC today.
+
+Secrets + ops: Resend and Klaviyo API keys wired to Railway. Live end-to-end smoke delivered a real PDF-attached email to Brad's inbox from reports@automationarchitecture.ai (stopgap — flips to reports@kidneyhood.org once the DNS records provisioned today verify). Klaviyo "Prediction Completed" event fires with the full attribute payload including bun_tier for Flow segmentation.
+
+Four incidents caught and resolved same-day: empty prod DB (root cause: no deploy-time migration hook, fixed via G1), landing CTAs 404 (Clerk proxy missed the new routes, hotfixed in PR #42), PDF endpoint 504 (Vercel env var split — NEXT_PUBLIC_PDF_SECRET set but not PDF_SECRET, fixed by copying to a new env var and redeploying), chart a11y contrast (pre-existing Sprint 3 issue surfaced by the new test scope, fixed across three PRs). Full retrospective at agents/husser/drafts/sprint4-retrospective.md.`,
+  },
+  {
     title: "Week 3 — PDF, Polish & Ship",
     date: "April 8, 2026",
     sprint: 3,
