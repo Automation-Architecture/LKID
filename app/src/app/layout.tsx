@@ -19,9 +19,7 @@ export const metadata: Metadata = {
  * LKID-63: ClerkProvider moved out of the root layout into the
  * `client/[slug]` subtree. The patient funnel (`/labs`, `/gate/[token]`,
  * `/results/[token]`, `/internal/chart/[token]`) no longer requires auth.
- * The existing `/auth` and `/predict` pages still import Clerk hooks and
- * will fail at runtime until LKID-66 deletes them — this is expected and
- * tracked.
+ * Legacy `/auth` and `/predict` pages deleted in LKID-66.
  */
 export default function RootLayout({
   children,
