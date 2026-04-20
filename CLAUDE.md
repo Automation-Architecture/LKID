@@ -7,7 +7,7 @@
 **Jira:** [SPEC Board](https://automationarchitecture.atlassian.net/jira/software/c/projects/SPEC/boards/329/backlog) | [LKID Board](https://automationarchitecture.atlassian.net/jira/software/c/projects/LKID/boards/363)
 **Repo:** [github.com/Automation-Architecture/LKID](https://github.com/Automation-Architecture/LKID)
 **Specs:** `/Users/brad/IDE/kidneyhood/` (3 docx files)
-**Status:** Sprint 4 COMPLETE (shipped Apr 20 — 13 days ahead of plan). 7 engineering cards Done + LKID-47 backend code shipped. PRs #33–#52 merged. App live at kidneyhood-automation-architecture.vercel.app with no-auth tokenized flow (`/labs` → `/gate/[token]` → `/results/[token]`). G1/G2/G3 guardrails active.
+**Status:** Sprint 5 IN PROGRESS (Launch Readiness theme). Sprint 4 COMPLETE (shipped Apr 20 — 13 days ahead of plan). App live at kidneyhood-automation-architecture.vercel.app with no-auth tokenized flow (`/labs` → `/gate/[token]` → `/results/[token]`). G1/G2/G3 guardrails active. LKID-72 Sentry (PR #55) merged; LKID-71 PostHog (PR #56) open.
 **Client Dashboard:** https://kidneyhood-automation-architecture.vercel.app/client/lee-a3f8b2 — auto-updated by `scripts/refresh-sprint-progress.py`.
 
 ## Sprint Plan
@@ -18,22 +18,32 @@
 | Sprint 2 — Core Flow | Mar 26 – Apr 2 (DONE) | 17 (LKID-1–3, 6–19) | Auth, DB, API, form, chart — e2e prediction |
 | Sprint 3 — PDF, Polish & QA | Mar 30 – Apr 9 (DONE) | 12 (LKID-4–5, 20–29) | Interactivity, PDF, disclaimers, tests, QA gate |
 | Sprint 4 — No-Auth Tokenized Flow | Apr 19 – Apr 20 (DONE) | 7 engineering cards + follow-ups (LKID-61–70) | Replace Clerk-gated flow with `/labs` → `/gate/[token]` → `/results/[token]` + Resend + Klaviyo. Shipped 13 days ahead of plan. |
+| Sprint 5 — Launch Readiness | Apr 20 – (IN PROGRESS) | LKID-71–75 + Sprint 4 rollovers | PostHog analytics, Sentry error monitoring, SEO basics, CSP headers, Lee dashboard v2 |
 
 **Ship date:** April 9, 2026 (Sprint 3). **Sprint 4 shipped:** April 20, 2026.
 **Retrospective:** `agents/husser/drafts/sprint4-retrospective.md` — 18 PRs merged, G1/G2/G3 guardrails added, 4 incidents resolved.
-**Sprint 5 proposal:** `agents/luca/drafts/sprint-5-proposal.md` — 3 theme candidates (Launch Readiness recommended), awaiting Brad sign-off.
+**Sprint 5 proposal (selected: Theme A — Launch Readiness):** `agents/luca/drafts/sprint-5-proposal.md`.
 **Brad-hands backlog:** `agents/luca/drafts/brad-action-setup-guide.md` covers Resend DNS, Klaviyo Flow, LKID-68 Q&A, LKID-69 deletion approval, Lee sign-off.
 
 ## What's Next
 
-### Sprint 5 — Scope pending
+### Sprint 5 — Launch Readiness (IN PROGRESS)
 
-See `agents/luca/drafts/sprint-5-proposal.md` for 3 theme candidates:
-- **Theme A — Launch Readiness** (recommended): PostHog analytics, Sentry error monitoring, SEO basics, CSP headers, Lee dashboard v2
-- **Theme B — Observability**: measurement + alerting foundation before further features
-- **Theme C — Content & Brand**: Inga polish pass on every user-facing surface
+Theme A selected. Goal: flip from "works" to "launched" — measurement + safety + discoverability layer needed before public announcement.
 
-Awaiting Brad's theme pick + answers to 5 open questions (launch timing, analytics provider, error-monitoring provider, Lee dashboard scope, HIPAA posture). Husser creates cards after selection.
+| Card | Title | Owner | Status | PR |
+|------|-------|-------|--------|----|
+| LKID-72 | Sentry frontend + backend error monitoring | John + Harshit | **Merged** | #55 |
+| LKID-71 | PostHog conversion funnel analytics (labs/gate/results/pdf) | Harshit | **Open — PR #56** (QA pending) | #56 |
+| LKID-73 | SEO basics (OG tags, sitemap, robots, JSON-LD) | Harshit + Inga | Not started | — |
+| LKID-74 | CSP + security headers | John + Harshit | Not started | — |
+| LKID-75 | Lee dashboard v2 (funnel + leads + opt-in rate) | Harshit + Inga | Not started | — |
+
+**Sprint 4 rollovers still Brad-gated:**
+
+- LKID-68 postmortem sign-off — 5 open questions in `lkid-68-postmortem-synthesis.md` §8
+- LKID-69 dup Postgres cleanup — deletion approval
+- LKID-47 Klaviyo Flow dashboard config
 
 ### Sprint 4 — No-Auth Tokenized Flow (DONE — shipped Apr 20, 2026)
 
@@ -197,6 +207,13 @@ CTO (Luca) opens one PR per Jira card. Each card gets a feature branch (`feat/LK
 | [#30](https://github.com/Automation-Architecture/LKID/pull/30) | `feat/LKID-28-e2e-tests` | LKID-28 | Yuri + Gay Mark | Merged |
 | [#31](https://github.com/Automation-Architecture/LKID/pull/31) | `feat/LKID-26-axe-core-audit` | LKID-26 | Yuri | Merged |
 | [#32](https://github.com/Automation-Architecture/LKID/pull/32) | `feat/LKID-60-clerk-proxy` | LKID-60 | Harshit | Merged |
+
+### Sprint 5 PRs (Launch Readiness)
+
+| PR | Branch | Card | Owner | Status |
+|----|--------|------|-------|--------|
+| [#55](https://github.com/Automation-Architecture/LKID/pull/55) | `feat/LKID-72-sentry-integration` | LKID-72 | John + Harshit | Merged |
+| [#56](https://github.com/Automation-Architecture/LKID/pull/56) | `feat/LKID-71-posthog-analytics` | LKID-71 | Harshit | Open (QA pending) |
 
 ## Team
 
