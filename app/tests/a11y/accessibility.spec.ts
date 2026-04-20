@@ -16,6 +16,12 @@ import AxeBuilder from "@axe-core/playwright";
 
 const TEST_TOKEN = "test-token-abc123";
 
+// Backend API origin — scope route mocks to this origin so the
+// `page.goto('/results/[token]')` page navigation is not intercepted by
+// the mock (otherwise Playwright short-circuits the page load itself).
+const API_BASE = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:8000";
+const RESULTS_API_URL = `${API_BASE}/results/${TEST_TOKEN}`;
+
 const MOCK_PREDICTION_RESULT = {
   egfr_baseline: 28.0,
   confidence_tier: 1,
@@ -50,7 +56,7 @@ function buildResultsResponse(captured: boolean) {
 }
 
 async function mockResultsGet(page: Page, captured: boolean) {
-  await page.route(`**/results/${TEST_TOKEN}`, (route: Route) => {
+  await page.route(RESULTS_API_URL, (route: Route) => {
     if (route.request().method() !== "GET") return route.continue();
     return route.fulfill({
       status: 200,

@@ -19,6 +19,17 @@ import { test, expect, Page, Route } from "@playwright/test";
 
 const TEST_TOKEN = "test-token-abc123";
 
+// Backend API origin. Tests run without a live backend, so we scope route
+// mocks to this origin — otherwise `**/results/${TEST_TOKEN}` also matches
+// the Next.js page URL (http://localhost:3000/results/...) and intercepts
+// the page navigation itself, which breaks routing-guard tests that
+// `page.goto(/results/...)`.
+const API_BASE = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:8000";
+const RESULTS_API_URL = `${API_BASE}/results/${TEST_TOKEN}`;
+const LEADS_API_URL = `${API_BASE}/leads`;
+const PREDICT_API_URL = `${API_BASE}/predict`;
+const PDF_API_URL = `${API_BASE}/reports/${TEST_TOKEN}/pdf`;
+
 const VALID_PREDICTION_RESULT = {
   egfr_baseline: 28.0,
   confidence_tier: 1,
@@ -99,7 +110,7 @@ async function mockPredict(
   response: Record<string, unknown> = VALID_PREDICTION_RESPONSE,
   status = 200,
 ) {
-  await page.route("**/predict", (route: Route) => {
+  await page.route(PREDICT_API_URL, (route: Route) => {
     if (route.request().method() !== "POST") {
       return route.continue();
     }
@@ -116,7 +127,7 @@ async function mockResultsGet(
   captured: boolean,
   status = 200,
 ) {
-  await page.route(`**/results/${TEST_TOKEN}`, (route: Route) => {
+  await page.route(RESULTS_API_URL, (route: Route) => {
     if (route.request().method() !== "GET") {
       return route.continue();
     }
@@ -136,7 +147,7 @@ async function mockResultsGet(
 }
 
 async function mockPdf(page: Page) {
-  await page.route(`**/reports/${TEST_TOKEN}/pdf`, (route: Route) => {
+  await page.route(PDF_API_URL, (route: Route) => {
     return route.fulfill({
       status: 200,
       contentType: "application/pdf",
@@ -153,7 +164,7 @@ async function mockPdf(page: Page) {
 function setupStatefulResultsMocks(page: Page) {
   let captured = false;
 
-  page.route(`**/results/${TEST_TOKEN}`, (route: Route) => {
+  page.route(RESULTS_API_URL, (route: Route) => {
     if (route.request().method() !== "GET") {
       return route.continue();
     }
@@ -164,7 +175,7 @@ function setupStatefulResultsMocks(page: Page) {
     });
   });
 
-  page.route("**/leads", (route: Route) => {
+  page.route(LEADS_API_URL, (route: Route) => {
     if (route.request().method() !== "POST") {
       return route.continue();
     }
@@ -221,9 +232,12 @@ test.describe("Happy path — labs → gate → results", () => {
       expect.stringContaining(`/reports/${TEST_TOKEN}/pdf`),
     );
 
-    // 8. Disclaimer should be present.
+    // 8. Disclaimer should be present. Use the desktop-panel testid — the
+    // disclaimer component renders mobile panel + mobile toggle + desktop
+    // panel, so a text-match on "informational purposes only" triggers
+    // strict-mode violations (3 elements on the page at desktop viewport).
     await expect(
-      page.getByText(/informational purposes only/i),
+      page.getByTestId("disclaimer-full-panel-desktop"),
     ).toBeVisible();
   });
 });
