@@ -13,6 +13,11 @@ on:
   push:
     branches: [main]
   workflow_dispatch:
+  # G3 guardrail: scheduled heartbeat every 6 hours. Catches silent regressions
+  # between deploys (env var drift, Railway container restart, Vercel cache,
+  # DNS issues, expired API keys).
+  schedule:
+    - cron: "0 */6 * * *"
 
 # Queue concurrent runs instead of cancelling — each push to main deserves
 # its own smoke, and cancelling mid-flight would leak a half-written /leads
@@ -106,7 +111,11 @@ jobs:
         run: |
           set -euo pipefail
           token='${{ steps.predict.outputs.report_token }}'
-          email="ci-smoke+$(date +%s)@kidneyhood.org"
+          # Stable email so Klaviyo upserts the same profile on every run
+          # (prevents new-profile pollution from the 6-hourly G3 heartbeat).
+          # Tag this in Klaviyo with a "CI/QA" suppression segment to keep
+          # it out of marketing sends.
+          email="ci-smoke@kidneyhood.org"
           payload=$(jq -nc --arg t "${token}" --arg e "${email}" \
             '{report_token:$t, name:"CI Smoke", email:$e}')
           resp=$(curl -sS -X POST \
