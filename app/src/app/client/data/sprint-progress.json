@@ -326,7 +326,7 @@
     },
     {
       "name": "Sprint 5 — Launch Readiness",
-      "dates": "Apr 20 - (in progress)",
+      "dates": "Apr 20 (Done)",
       "cards": [
         {
           "id": "LKID-72",
@@ -366,6 +366,11 @@
         {
           "id": "LKID-74",
           "title": "CSP + security headers",
+          "status": "done"
+        },
+        {
+          "id": "LKID-82",
+          "title": "PDF report design parity",
           "status": "done"
         }
       ]
