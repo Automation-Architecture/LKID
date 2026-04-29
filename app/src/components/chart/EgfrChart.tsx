@@ -17,7 +17,7 @@ import { scaleLinear } from "@visx/scale";
 import { AxisBottom, AxisLeft } from "@visx/axis";
 import { GridRows } from "@visx/grid";
 import { ParentSize } from "@visx/responsive";
-import { curveMonotoneX } from "@visx/curve";
+import { curveMonotoneX, curveCatmullRom } from "@visx/curve";
 import { Text } from "@visx/text";
 import { useTooltip, TooltipWithBounds } from "@visx/tooltip";
 import { localPoint } from "@visx/event";
@@ -48,8 +48,15 @@ const HEIGHT_MOBILE = 200;
 // so margins can be much tighter than chrome-mode.
 const DESIGN_MARGIN = { top: 8, right: 28, bottom: 20, left: 36 };
 const DESIGN_MARGIN_MOBILE = { top: 6, right: 22, bottom: 18, left: 30 };
-const DESIGN_HEIGHT_DESKTOP = 300;
-const DESIGN_HEIGHT_MOBILE = 180;
+// LKID-89: chart aspect ratio matches design viewBox 720:280 = 2.571:1.
+// Height is computed from container width (via ParentSize) so the chart keeps
+// the wide-short feel of project/Results.html. Mobile uses a slightly taller
+// 2.0:1 ratio for legibility.
+const DESIGN_ASPECT_DESKTOP = 720 / 280; // 2.571
+const DESIGN_ASPECT_MOBILE = 2.0;
+// Mobile floor — never collapse below this height even if the container is
+// extremely narrow (e.g. iframe edge cases).
+const DESIGN_MIN_HEIGHT_MOBILE = 180;
 
 /* -------------------------------------------------------------------------- */
 /*  Types                                                                     */
@@ -84,8 +91,14 @@ function getChartDimensions(
   if (designMode) {
     // Breakpoint at 880px matches project/Results.html:339 mobile rule.
     const mobile = width < 880;
+    // LKID-89: derive height from aspect ratio to match design 720:280.
+    const aspect = mobile ? DESIGN_ASPECT_MOBILE : DESIGN_ASPECT_DESKTOP;
+    const computed = width / aspect;
+    const height = mobile
+      ? Math.max(DESIGN_MIN_HEIGHT_MOBILE, computed)
+      : computed;
     return {
-      height: mobile ? DESIGN_HEIGHT_MOBILE : DESIGN_HEIGHT_DESKTOP,
+      height,
       margin: mobile ? DESIGN_MARGIN_MOBILE : DESIGN_MARGIN,
       bp: mobile ? "mobile" : "desktop",
     };
@@ -438,20 +451,52 @@ function InnerChart({
           {/*  Y-axis labels inside the plot area (design mode only — LKID-80) */}
           {/*  Matches project/Results.html:409-415 styling.                   */}
           {/* ---------------------------------------------------------------- */}
-          {designMode && (
-            <g
-              aria-hidden="true"
-              fontFamily="Nunito Sans, system-ui, sans-serif"
-              fontSize="10"
-              fill="#8A8D96"
-            >
-              {designYTicks(yMax).map((tick) => (
-                <text key={`y-${tick}`} x={-margin.left + 4} y={yScale(tick) + 3}>
-                  {tick}
-                </text>
-              ))}
-            </g>
-          )}
+          {designMode && (() => {
+            // LKID-89 (P1-1, P1-2): match project/Results.html:409-415 placement.
+            // Design uses non-uniform y-positions [40, 100, 160, 220, 260] of a
+            // 280-tall viewBox with a slight indent for single-digit values.
+            // When yMax === 30 we honor the design's hand-tuned positions so
+            // "5" sits just above the dashed dialysis line. Other yMax values
+            // (45/60/75/90) fall back to proportional yScale spacing.
+            const ticks = designYTicks(yMax);
+            const useDesignPositions = yMax === 30;
+            // Design coords are in viewBox units (280 tall). Map to inner-Group
+            // coords by scaling to actual height and subtracting margin.top.
+            const designYByValue: Record<number, number> = {
+              30: 40,
+              20: 100,
+              10: 160,
+              5: 220,
+              0: 260,
+            };
+            const totalHeight = innerHeight + margin.top + margin.bottom;
+            const mapDesignY = (designY: number) =>
+              (designY / 280) * totalHeight - margin.top;
+            return (
+              <g
+                aria-hidden="true"
+                fontFamily="Nunito Sans, system-ui, sans-serif"
+                fontSize="10"
+                fill="#8A8D96"
+              >
+                {ticks.map((tick) => {
+                  const isSingleDigit = tick < 10;
+                  // P1-1: design x is 20 for two-digit, 24 for single-digit.
+                  // Convert to inner-group coords by subtracting margin.left.
+                  const designX = isSingleDigit ? 24 : 20;
+                  const xInner = designX - margin.left;
+                  const yInner = useDesignPositions && designYByValue[tick] !== undefined
+                    ? mapDesignY(designYByValue[tick])
+                    : yScale(tick) + 3;
+                  return (
+                    <text key={`y-${tick}`} x={xInner} y={yInner}>
+                      {tick}
+                    </text>
+                  );
+                })}
+              </g>
+            );
+          })()}
 
           {/* ---------------------------------------------------------------- */}
           {/*  Healthy-range gradient fill under BUN ≤12 line (design mode).    */}
@@ -460,7 +505,11 @@ function InnerChart({
           {designMode && (() => {
             const green = data.trajectories.find((t) => t.id === "bun_lte_12");
             if (!green || green.points.length === 0) return null;
-            const baselineY = yScale(0);
+            // LKID-89 (P2-3): close the fill to the bottom edge of the viewBox
+            // (design closes to y=275 of 280 — 5px above the bottom). This
+            // makes the green fill bleed into the dialysis pink zone like the
+            // design rather than stopping at yScale(0).
+            const baselineY = innerHeight + 5;
             // Walk the green line, then close down to the baseline and back.
             const first = green.points[0];
             let d = `M ${xScale(first.monthsFromBaseline)} ${yScale(first.egfr)}`;
@@ -511,8 +560,20 @@ function InnerChart({
           )}
 
           {designMode && (() => {
-            const thresholdY = yScale(data.dialysisThreshold);
-            const bandHeight = 25;
+            // LKID-89 (P0-2): pin the dashed dialysis line at 76.8% down the
+            // chart, matching design's emphasis (project/Results.html:418
+            // places the line at y=215 of a 280-tall viewBox = 215/280 = 0.768).
+            // The yScale-driven position would land at ~60% (12/30 = 0.4 from
+            // top), washing out the "dialysis is way down here" visual.
+            // The line is decorative in design mode — engine-driven threshold
+            // text remains in chrome mode (PDF) above.
+            const totalHeight = innerHeight + margin.top + margin.bottom;
+            const thresholdY = 0.768 * totalHeight - margin.top;
+            // Band height also scales with viewBox: design uses h=25 of 280 = 8.93%.
+            const bandHeight = (25 / 280) * totalHeight;
+            // P2-1: design label is at x=70 of viewBox (15px right of axis at x=55).
+            // Convert to inner-group coords.
+            const labelXInner = 70 - margin.left;
             return (
               <g aria-hidden="true" data-testid="dialysis-threshold-band">
                 <rect
@@ -533,7 +594,7 @@ function InnerChart({
                   data-testid="dialysis-threshold-line"
                 />
                 <text
-                  x={14}
+                  x={labelXInner}
                   y={thresholdY - 6}
                   fontFamily="Nunito Sans, system-ui, sans-serif"
                   fontSize="10"
@@ -599,7 +660,7 @@ function InnerChart({
                   strokeDasharray={traj.strokeDasharray}
                   strokeLinecap="round"
                   strokeLinejoin="round"
-                  curve={curveMonotoneX}
+                  curve={designMode ? curveCatmullRom : curveMonotoneX}
                   fill="none"
                   opacity={opacity}
                   style={
@@ -712,15 +773,26 @@ function InnerChart({
               fontSize="10"
               fill="#8A8D96"
             >
-              {[12, 24, 36, 48, 60, 72, 84, 96, 108, 120].map((m, idx) => {
+              {[12, 24, 36, 48, 60, 72, 84, 96, 108, 120].map((m, idx, arr) => {
                 if (isMobile && idx % 2 === 1) return null; // thin on mobile
                 const yr = m / 12;
+                // LKID-89 (P1-3): match design — labels sit just inside the
+                // bottom of the plot area (y=275 of 280 = innerHeight - 5)
+                // overlapping the pink dialysis fill, not below the chart.
+                const yLabel = innerHeight - 5;
+                // LKID-89 (P1-4): last tick ("10 yr") clears the endpoint
+                // circle (centered at innerWidth-16, r=16). textAnchor="end"
+                // and a small left offset land the text to the left of the
+                // circle, matching design's x=650 placement.
+                const isLast = idx === arr.length - 1;
+                const anchor = isLast ? "end" : "middle";
+                const xLabel = isLast ? xScale(m) - 36 : xScale(m);
                 return (
                   <text
                     key={`x-${m}`}
-                    x={xScale(m)}
-                    y={innerHeight + 14}
-                    textAnchor="middle"
+                    x={xLabel}
+                    y={yLabel}
+                    textAnchor={anchor}
                   >
                     {yr} yr
                   </text>
