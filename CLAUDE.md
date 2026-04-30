@@ -63,8 +63,13 @@ Theme A delivered end-to-end in a single day. 9 engineering cards merged + deplo
 | [LKID-84](https://automationarchitecture.atlassian.net/browse/LKID-84) | Set Sentry env vars on Vercel + Railway — activate error monitoring | **High** |
 | [LKID-85](https://automationarchitecture.atlassian.net/browse/LKID-85) | Resend DNS + flip FROM email to `reports@kidneyhood.org` | **High** |
 | [LKID-86](https://automationarchitecture.atlassian.net/browse/LKID-86) | DNS flip to `kidneyhood.org` + set `NEXT_PUBLIC_APP_URL` | Medium |
-| [LKID-87](https://automationarchitecture.atlassian.net/browse/LKID-87) | Flip CSP from Report-Only → enforcing (after 72h clean window) | Medium |
 | [LKID-88](https://automationarchitecture.atlassian.net/browse/LKID-88) | Send Sprint 5 update email to Lee | Low |
+
+LKID-83/84/85 are blockers but on the backlog — agents will keep moving on engineering work first.
+
+**Done (post-Sprint 5):**
+
+- LKID-87 — CSP flipped from Report-Only → enforcing on frontend + backend (PR #70, merged 2026-04-30). Yuri PASS WITH NITS. Follow-up: wire `report-uri` to Sentry once LKID-84 lands.
 
 Full acceptance criteria + step-by-step for each in `agents/luca/drafts/brad-hands-cards-pending.md`.
 
@@ -246,6 +251,7 @@ CTO (Luca) opens one PR per Jira card. Each card gets a feature branch (`feat/LK
 | [#63](https://github.com/Automation-Architecture/LKID/pull/63) | `feat/LKID-74-security-headers` | LKID-74 | John + Harshit | Merged |
 | [#64](https://github.com/Automation-Architecture/LKID/pull/64) | `feat/LKID-73-seo-basics` | LKID-73 | Harshit + Inga | Merged |
 | [#66](https://github.com/Automation-Architecture/LKID/pull/66) | `feat/LKID-89-chart-pixel-parity-v2` | LKID-89 | Harshit + Inga | Merged |
+| [#70](https://github.com/Automation-Architecture/LKID/pull/70) | `feat/LKID-87-csp-enforce-flip` | LKID-87 | John + Harshit | Merged |
 
 ## Team
 
