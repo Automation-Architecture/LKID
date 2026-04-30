@@ -126,7 +126,13 @@ test.describe("Accessibility — axe-core audit", () => {
       // compliant via the --s-*-text tokens from PR #57.
       // See agents/inga/drafts/chart-palette-decision.md (top supersession
       // block) for the reversed decision and contrast math.
-      .exclude("svg")
+      // LKID-89 PR #66 review (CodeRabbit Major): scope the waiver to the
+      // chart SVG only (was previously `svg`, which excluded every SVG on
+      // the page including icons and page chrome — too broad).
+      // TODO(LKID-89): re-enable contrast scanning on the chart SVG when
+      // the LKID-81 visual-regression suite lands and can verify chart
+      // palette via pixel diff. Remove this waiver at that time.
+      .exclude('[data-testid="egfr-chart-svg"]')
       .analyze();
 
     const critical = results.violations.filter(

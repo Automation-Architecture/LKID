@@ -13,23 +13,28 @@ import type {
 // literal types for each entry (avoids the looseness of Record<string, ...>).
 //
 // Trajectory colors — design-source palette per `project/Results.html:23-35`
-// and lines 426-432 (LKID-80, 2026-04-20).
+// and lines 426-432.
 //
-// *** LKID-67 / Palette A+ REVERSED for chart trajectory lines only ***
-// Brad explicitly chose the brighter design hues to align the chart with the
-// rest of the brand identity in the Results mock. This accepts a WCAG AA
-// contrast regression on the yellow line (`#D4A017` = 2.38:1 vs. white, fails
-// both 3:1 graphical and 4.5:1 text thresholds). The `.exclude("svg")` guard
-// is re-added to the axe test suite for the Results page (chart SVG only —
-// page chrome, nav, buttons, and text remain audited).
+// *** Binding policy: Brad 2026-04-29 (LKID-89) ***
+// Chart trajectory line strokes use design hex exactly. This intentionally
+// overrides the AA palette from LKID-67 on the four chart lines only — pills,
+// cards, text, icons, and the dialysis-zone label outside the chart keep
+// their AA tokens. The "Palette A+ hybrid" decision in
+// `agents/inga/drafts/chart-palette-decision.md` is narrowed accordingly:
+// chart **lines** = design hex; everything else = AA tokens.
 //
-// Scenario pills, cards, icons, and stat-card text on the Results page are
-// **not** reversed — those surfaces keep the WCAG-compliant `--s-*-text`
-// tokens introduced in PR #57. Semantic meaning still flows pill ↔ line
-// through hue family (green ↔ green, navy ↔ navy, gold ↔ gold, gray ↔ gray).
+// Brad accepts a WCAG AA contrast regression on the yellow line
+// (`#D4A017` = 2.38:1 vs. white, fails both 3:1 graphical and 4.5:1 text
+// thresholds). The axe test suite scopes the waiver narrowly to the chart
+// `<svg data-testid="egfr-chart-svg">` only — every other SVG, page
+// chrome, nav, buttons, and text remain audited. The narrow exclusion is
+// time-bound: see `TODO(LKID-89)` in `app/tests/a11y/accessibility.spec.ts`,
+// to be removed once the LKID-81 visual-regression suite verifies the
+// chart palette by visual diff.
 //
-// See `agents/inga/drafts/chart-palette-decision.md` (LKID-80 supersession
-// section at the top) for the reversed decision and full contrast math.
+// Semantic meaning flows pill ↔ line through hue family (green ↔ green,
+// navy ↔ navy, gold ↔ gold, gray ↔ gray).
+//
 // Stroke pattern: solid 2.5px with round linecap on all four lines. No
 // dash patterns on lines — design brief was explicit.
 export const TRAJECTORY_CONFIG = {
