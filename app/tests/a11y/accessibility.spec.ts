@@ -142,12 +142,13 @@ test.describe("Accessibility — axe-core audit", () => {
 
   test("results page has no critical or serious violations", async ({ page }) => {
     // Full-page axe scan restored in LKID-96. The three page-chrome contrast
-    // failures that previously forced the scope to `.include("egfr-chart-svg")`
-    // (`.sc-pill.gray`, `.lbl`/`.foot` muted text, footer links — all caused
-    // by the old `--kh-muted: #8A8D96` token) are now fixed: token darkened to
-    // #5E6169 (≥ 4.98:1 on every scenario-card tint) and --s-gray-text darkened
-    // to #616469 (5.03:1 on the gray pill composite). The scope-narrowing
-    // `.include(...)` call has been removed accordingly.
+    // failures that previously forced the scope to
+    // `.include('[data-testid="egfr-chart-svg"]')` are now fixed:
+    // - `.sc-pill.gray`: `--s-gray-text` #6B6E78 → #616469 (5.03:1 on the
+    //   gray pill composite #ebecef)
+    // - `.lbl`/`.foot` muted text + footer links: `--kh-muted` #8A8D96 →
+    //   #5E6169 (≥ 4.98:1 on every scenario-card tint; 5.68:1 on page bg)
+    // The scope-narrowing `.include(...)` call has been removed accordingly.
     //
     // The route mock + matching `NEXT_PUBLIC_API_URL` (set in
     // playwright.a11y.config.ts webServer.env) lets the client-side fetch
