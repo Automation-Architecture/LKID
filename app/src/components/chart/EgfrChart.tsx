@@ -374,7 +374,7 @@ function InnerChart({
       >
         <title>eGFR Trajectory — Predicted Kidney Function Over 10 Years</title>
         <desc>
-          {`Chart shows predicted eGFR values for four BUN management scenarios. Best outcome (BUN \u2264 12) maintains eGFR at ${bestFinal}. Worst outcome (no treatment) declines to ${worstFinal}.`}
+          {`Starting eGFR: ${Math.round(data.baselineEgfr)}. Chart shows predicted eGFR values for BUN management scenarios. Best outcome (BUN \u2264 12) maintains eGFR at ${bestFinal}. Worst outcome (no treatment) declines to ${worstFinal}.`}
         </desc>
 
         {/* Design-mode gradient definitions (LKID-80).
@@ -768,6 +768,42 @@ function InnerChart({
                     </text>
                   </g>
                 ))}
+              </g>
+            );
+          })()}
+
+          {/* ---------------------------------------------------------------- */}
+          {/*  Starting eGFR callout at left edge (design mode — LKID-90 AC-4) */}
+          {/*  Anchors the day-zero value as a numeric label, not just a tick. */}
+          {/* ---------------------------------------------------------------- */}
+          {designMode && (() => {
+            const startX = xScale(0);
+            const startY = yScale(data.baselineEgfr);
+            const labelText = `Starting eGFR: ${Math.round(data.baselineEgfr)}`;
+            // Position label to the right of the anchor dot. On mobile the
+            // chart is narrow, so cap label so it never extends past 60% of
+            // the inner width.
+            const labelX = startX + 12;
+            return (
+              <g data-testid="chart-starting-egfr">
+                <circle
+                  cx={startX}
+                  cy={startY}
+                  r={5}
+                  fill="#1F2577"
+                  stroke="#fff"
+                  strokeWidth={2}
+                />
+                <text
+                  x={labelX}
+                  y={startY - 8}
+                  fontFamily="Manrope, system-ui, sans-serif"
+                  fontSize={isMobile ? 11 : 12}
+                  fontWeight={600}
+                  fill="#1F2577"
+                >
+                  {labelText}
+                </text>
               </g>
             );
           })()}
