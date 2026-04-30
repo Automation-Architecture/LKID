@@ -57,7 +57,7 @@ const GATE_CSS = `
   --ink: #0E0E12;
   --ink-2: #2E2F36;
   --body: #5C5F6A;
-  --muted: #8A8D96;
+  --muted: var(--kh-muted);
   --bg: #F4F5F7;
   --card: #FFFFFF;
   --border: #E4E6EB;
