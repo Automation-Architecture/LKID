@@ -175,6 +175,8 @@ test.describe("Accessibility — axe-core audit", () => {
     // Wait for trajectory paths so the chart is fully painted before axe
     // runs colour-contrast checks against its strokes (LKID-91 hides the
     // AA-failing yellow line; the surviving navy + gray strokes are AA/AAA).
+    // Count is 2 because LKID-91 reduced display to BUN 12-17 + No Treatment.
+    // If a future card changes the displayed trajectory count, update this.
     await expect(
       page.locator('[data-testid^="trajectory-line-"]'),
     ).toHaveCount(2, { timeout: 10_000 });
