@@ -72,6 +72,7 @@ LKID-83/84/85 are blockers but on the backlog — agents will keep moving on eng
 - LKID-81 — Visual-regression infrastructure wired (PR #73, merged 2026-04-30). Playwright + 2 chart baselines (Stage 3a, Stage 4) + CI workflow on chart-touching PRs + workflow_dispatch baseline-regen mode. Yuri PASS WITH NITS. Demonstration: deliberate `#D4A017 → #0000FF` flip caught with 1318px diff. Next: remove `TODO(LKID-89)` axe waiver on the chart SVG (visual regression now catches palette regressions).
 - LKID-90 — Chart redesign v3 per Lee feedback from 2026-04-09 call (PR #71, merged 2026-04-30). 7 ACs: dramatic divergence wedge (hatched outcome-gap area), dialysis event markers at eGFR=15 crossings, scenario reduction 4→3 (UI-only midpoint of BUN 13–17/18–24, engine emits all 4), `Starting eGFR: {value}` left-edge callout, "reported eGFR"/"structural capacity" stripped from `/results` prose only (PDF preserved). Yuri PASS — 7/7 ACs, `#9F2D2D` marker contrast 7.27:1 (better than claimed 4.78). CodeRabbit CLI review: no findings. Superseded by LKID-91 same day (3 lines → 2).
 - LKID-91 — Chart simplification: 2 trajectory lines per Lee feedback (PR #75, merged 2026-04-30). Display-only — engine/API untouched. Hides `bun_lte_12` + `bun_18_24`, relabels `bun_13_17` → "BUN 12-17". Scenario cards 4→2; PDF report 4→2. Healthy-range fill auto-removed (was anchored to hidden ≤12 line). Yuri PASS (3 non-blocking nits). LKID-81 update-baselines `workflow_dispatch` recovery path exercised live — macOS baselines drifted on Linux CI as predicted; regen pushed Linux baselines to branch in 2m31s.
+- LKID-92 — Post-LKID-91 cleanup (PR #78, merged 2026-04-30). Removed the `.exclude('[data-testid="egfr-chart-svg"]')` axe waiver + `TODO(LKID-89)` comment block (visual regression now catches palette drift; LKID-91 hid the AA-failing yellow line). Deleted dormant `combineMidScenarios` helper + `bun_13_24` config entry left over from the LKID-90 spike. -105 lines net. Yuri PASS WITH NITS — 2 follow-ups filed: chart-SVG axe scan needs a working test (results-page accessibility test pre-existing broken on main), and no axe workflow exists in CI.
 
 Full acceptance criteria + step-by-step for each in `agents/luca/drafts/brad-hands-cards-pending.md`.
 
@@ -260,6 +261,7 @@ CTO (Luca) opens one PR per Jira card. Each card gets a feature branch (`feat/LK
 | [#71](https://github.com/Automation-Architecture/LKID/pull/71) | `feat/LKID-90-chart-v3-divergence` | LKID-90 | Harshit + Inga | Merged |
 | [#73](https://github.com/Automation-Architecture/LKID/pull/73) | `feat/LKID-81-visual-regression` | LKID-81 | Harshit + Yuri | Merged |
 | [#75](https://github.com/Automation-Architecture/LKID/pull/75) | `feat/LKID-91-chart-2-line` | LKID-91 | Harshit + Yuri | Merged |
+| [#78](https://github.com/Automation-Architecture/LKID/pull/78) | `chore/LKID-92-post-lkid-91-cleanup` | LKID-92 | Harshit + Yuri | Merged |
 
 ## Team
 
