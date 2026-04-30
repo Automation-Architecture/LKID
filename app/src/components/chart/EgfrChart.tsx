@@ -775,6 +775,97 @@ function InnerChart({
           </Group>
 
           {/* ---------------------------------------------------------------- */}
+          {/*  Dialysis event markers (design mode — LKID-90 AC-2).            */}
+          {/*  For each trajectory that crosses eGFR = 15 within the 10-year   */}
+          {/*  window, render a filled marker + label at the interpolated      */}
+          {/*  crossing point. WCAG AA contrast on label text via #9F2D2D.     */}
+          {/*  No marker if a line never crosses.                              */}
+          {/* ---------------------------------------------------------------- */}
+          {designMode && (() => {
+            const THRESHOLD = 15;
+            type Crossing = {
+              id: string;
+              color: string;
+              x: number;
+              y: number;
+              year: number;
+            };
+            const crossings: Crossing[] = [];
+            for (const traj of data.trajectories) {
+              const pts = traj.points;
+              for (let i = 1; i < pts.length; i++) {
+                const prev = pts[i - 1];
+                const curr = pts[i];
+                if (prev.egfr >= THRESHOLD && curr.egfr < THRESHOLD) {
+                  // Linear interpolation between the bounding points;
+                  // mirrors the engine's compute_dial_age algorithm.
+                  const denom = prev.egfr - curr.egfr || 1;
+                  const frac = (prev.egfr - THRESHOLD) / denom;
+                  const monthsCross =
+                    prev.monthsFromBaseline +
+                    frac *
+                      (curr.monthsFromBaseline - prev.monthsFromBaseline);
+                  crossings.push({
+                    id: traj.id,
+                    color: traj.color,
+                    x: xScale(monthsCross),
+                    y: yScale(THRESHOLD),
+                    year: monthsCross / 12,
+                  });
+                  break;
+                }
+              }
+            }
+            if (crossings.length === 0) return null;
+            const labelMinSep = 16;
+            const sorted = [...crossings].sort((a, b) => a.x - b.x);
+            const labelYByIndex: number[] = [];
+            for (let i = 0; i < sorted.length; i++) {
+              const baseY = sorted[i].y - 14;
+              if (i === 0) {
+                labelYByIndex.push(baseY);
+              } else {
+                const prevLabelY = labelYByIndex[i - 1];
+                labelYByIndex.push(Math.min(baseY, prevLabelY - labelMinSep));
+              }
+            }
+            return (
+              <g data-testid="chart-dialysis-markers">
+                {sorted.map((c, idx) => {
+                  const yearLabel = `Year ${Math.max(1, Math.round(c.year))}`;
+                  const flipLeft = c.x > innerWidth - 100;
+                  const labelX = flipLeft ? c.x - 8 : c.x + 8;
+                  const labelAnchor = flipLeft ? "end" : "start";
+                  const labelY = labelYByIndex[idx];
+                  return (
+                    <g key={`dx-${c.id}`}>
+                      <circle
+                        cx={c.x}
+                        cy={c.y}
+                        r={6}
+                        fill={c.color}
+                        stroke="#fff"
+                        strokeWidth={2}
+                      />
+                      <text
+                        x={labelX}
+                        y={labelY}
+                        textAnchor={labelAnchor}
+                        fontFamily="Manrope, system-ui, sans-serif"
+                        fontSize={11}
+                        fontWeight={600}
+                        fill="#9F2D2D"
+                      >
+                        Dialysis range — {yearLabel}
+                      </text>
+                    </g>
+                  );
+                })}
+              </g>
+            );
+          })()}
+
+          {/* ---------------------------------------------------------------- */}
           {/*  End-of-line labels (chrome mode only — design uses callouts).   */}
           {/* ---------------------------------------------------------------- */}
           {!designMode && (
