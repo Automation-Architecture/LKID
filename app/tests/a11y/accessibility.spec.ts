@@ -149,12 +149,11 @@ test.describe("Accessibility — axe-core audit", () => {
     // mathematically AA-pass; this test makes that empirical.
     //
     // Scope narrowed via `.include(...)` rather than asserting on the
-    // whole page. The page chrome has separate, pre-existing AA-contrast
-    // failures (`.sc-pill.gray`, `.lbl` / `.foot` muted text, footer
-    // links) that surface only because LKID-93 fixed the CSP/env-var
-    // mismatch hiding them. Those are tracked separately as a Harshit +
-    // Inga design-token follow-up — fixing brand tokens is out of scope
-    // for an a11y test-plumbing card.
+    // whole page. The page chrome has pre-existing AA-contrast failures
+    // (`.sc-pill.gray`, `.lbl` / `.foot` muted text, footer links) that
+    // surface only because LKID-93 fixed the CSP/env-var mismatch that
+    // was hiding them. Tracked in LKID-96 (Harshit + Inga design-token
+    // fixes) — the full-page scope will be restored there.
     //
     // The route mock + matching `NEXT_PUBLIC_API_URL` (set in
     // playwright.a11y.config.ts webServer.env) lets the client-side fetch
