@@ -792,10 +792,8 @@ function InnerChart({
             const THRESHOLD = 15;
             type Crossing = {
               id: string;
-              color: string;
               x: number;
               y: number;
-              year: number;
             };
             const crossings: Crossing[] = [];
             for (const traj of data.trajectories) {
@@ -814,10 +812,8 @@ function InnerChart({
                       (curr.monthsFromBaseline - prev.monthsFromBaseline);
                   crossings.push({
                     id: traj.id,
-                    color: traj.color,
                     x: xScale(monthsCross),
                     y: yScale(THRESHOLD),
-                    year: monthsCross / 12,
                   });
                   break;
                 }
