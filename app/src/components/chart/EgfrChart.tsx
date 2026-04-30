@@ -23,7 +23,7 @@ import { useTooltip, TooltipWithBounds } from "@visx/tooltip";
 import { localPoint } from "@visx/event";
 
 import type { ChartData, DataPoint, TooltipData, TrajectoryData } from "./types";
-import { mergedTimePoints } from "./transform";
+import { mergedTimePoints, selectDisplayTrajectories } from "./transform";
 
 /* -------------------------------------------------------------------------- */
 /*  Constants                                                                 */
@@ -359,8 +359,10 @@ function InnerChart({
     [data.trajectories, yScale]
   );
 
-  // Dynamic SVG desc
-  const bestFinal = data.trajectories.find((t) => t.id === "bun_lte_12")?.finalEgfr ?? 0;
+  // Dynamic SVG desc — LKID-91 updates "best" anchor from BUN ≤12 (hidden)
+  // to BUN 12-17, the new top displayed line.
+  const trajectoryCount = data.trajectories.length;
+  const bestFinal = data.trajectories.find((t) => t.id === "bun_13_17")?.finalEgfr ?? 0;
   const worstFinal = data.trajectories.find((t) => t.id === "no_treatment")?.finalEgfr ?? 0;
 
   return (
@@ -369,12 +371,12 @@ function InnerChart({
         width={width}
         height={height}
         role="img"
-        aria-label="eGFR trajectory chart showing 4 predicted kidney function scenarios over 10 years"
+        aria-label={`eGFR trajectory chart showing ${trajectoryCount} predicted kidney function scenarios over 10 years`}
         data-testid="egfr-chart-svg"
       >
         <title>eGFR Trajectory — Predicted Kidney Function Over 10 Years</title>
         <desc>
-          {`Starting eGFR: ${Math.round(data.baselineEgfr)}. Chart shows predicted eGFR values for BUN management scenarios. Best outcome (BUN \u2264 12) maintains eGFR at ${bestFinal}. Worst outcome (no treatment) declines to ${worstFinal}.`}
+          {`Starting eGFR: ${Math.round(data.baselineEgfr)}. Chart shows predicted eGFR values for BUN management scenarios. With BUN management (12-17), eGFR ends at ${bestFinal}. Without treatment, eGFR declines to ${worstFinal}.`}
         </desc>
 
         {/* Design-mode gradient definitions (LKID-80).
@@ -732,13 +734,17 @@ function InnerChart({
             {data.trajectories.map((traj) => {
               const isSelected = selectedTrajectoryId === traj.id;
               const hasSelection = selectedTrajectoryId !== null;
-              // LKID-90 AC-1 — emphasis treatment in design mode only.
-              // BUN ≤ 12 + No Treatment (the wedge anchors) get heavier
-              // strokes so they read as the "your choice" framing; the mid
-              // scenario stays lighter so it doesn't compete visually.
+              // LKID-91 — chart simplifies to 2 displayed lines (BUN 12-17 +
+              // No Treatment). Both displayed lines are anchors at full
+              // emphasis. The legacy LKID-90 AC-1 mid-scenario de-emphasis
+              // (`isMid`) is dormant on this branch since `bun_13_24` /
+              // `bun_13_17` is now itself an anchor; the chart still defends
+              // gracefully if a third line is ever passed in.
               const isAnchor =
                 designMode &&
-                (traj.id === "bun_lte_12" || traj.id === "no_treatment");
+                (traj.id === "bun_13_17" ||
+                  traj.id === "bun_lte_12" ||
+                  traj.id === "no_treatment");
               const isMid = designMode && !isAnchor;
               const baseWidth = designMode ? (isAnchor ? 3 : 2) : traj.strokeWidth;
               const baseOpacity = isMid ? 0.65 : 1.0;
@@ -894,15 +900,15 @@ function InnerChart({
           )}
 
           {/* ---------------------------------------------------------------- */}
-          {/*  End-point callouts (design mode — LKID-80).                     */}
-          {/*  Per dispatch §4, render only BUN ≤12 (green) and No Treatment   */}
-          {/*  (gray) at the right edge to avoid crowding. Values come from    */}
-          {/*  the engine's computed final eGFR, NOT hardcoded 17/4.           */}
+          {/*  End-point callouts (design mode — LKID-80; updated LKID-91).    */}
+          {/*  Render the two displayed lines: BUN 12-17 (navy) and No         */}
+          {/*  Treatment (gray) at the right edge. Values come from the        */}
+          {/*  engine's computed final eGFR, NOT hardcoded.                    */}
           {/* ---------------------------------------------------------------- */}
           {designMode && (() => {
-            const green = data.trajectories.find((t) => t.id === "bun_lte_12");
+            const mid = data.trajectories.find((t) => t.id === "bun_13_17");
             const noTx = data.trajectories.find((t) => t.id === "no_treatment");
-            const callouts = [green, noTx].filter(
+            const callouts = [mid, noTx].filter(
               (t): t is TrajectoryData => !!t && t.points.length > 0
             );
             if (callouts.length === 0) return null;
@@ -1190,7 +1196,7 @@ function InnerChart({
         data-testid="egfr-chart-data-table"
         aria-label="eGFR trajectory data table"
       >
-        <caption>Predicted eGFR values over 10 years for 4 treatment scenarios.</caption>
+        <caption>Predicted eGFR values over 10 years for the displayed treatment scenarios.</caption>
         <thead>
           <tr>
             <th scope="col">Time</th>
@@ -1230,7 +1236,7 @@ interface StatCardsProps {
 function StatCards({ trajectories, selectedId, onSelect }: StatCardsProps) {
   return (
     <div
-      className="mt-4 grid grid-cols-2 gap-2 md:grid-cols-4"
+      className="mt-4 grid grid-cols-2 gap-2"
       role="group"
       aria-label="Trajectory scenarios"
     >
@@ -1327,6 +1333,15 @@ export function EgfrChart({ data, chrome = true }: EgfrChartProps) {
   // outer chrome, it wants the inner SVG in design-parity mode (LKID-80).
   const designMode = !chrome;
 
+  // LKID-91 — Lee feedback (2026-04-30): chart simplifies to 2 displayed
+  // lines (BUN 12-17 + No Treatment). The engine still emits all 4
+  // trajectories upstream; this is the last filter at the chart-rendering
+  // boundary. Hidden trajectories: bun_lte_12 (green) and bun_18_24 (gold).
+  // Healthy-range gradient fill (anchored to bun_lte_12) and outcome-gap
+  // wedge (anchored to bun_lte_12 + no_treatment) auto-disappear because
+  // their `find()` lookups return undefined and the JSX bails to null.
+  const displayData = useMemo(() => selectDisplayTrajectories(data), [data]);
+
   if (designMode) {
     return (
       <div
@@ -1338,7 +1353,7 @@ export function EgfrChart({ data, chrome = true }: EgfrChartProps) {
             width > 0 ? (
               <InnerChart
                 width={width}
-                data={data}
+                data={displayData}
                 selectedTrajectoryId={selectedTrajectoryId}
                 designMode
               />
@@ -1371,7 +1386,7 @@ export function EgfrChart({ data, chrome = true }: EgfrChartProps) {
             width > 0 ? (
               <InnerChart
                 width={width}
-                data={data}
+                data={displayData}
                 selectedTrajectoryId={selectedTrajectoryId}
               />
             ) : null
@@ -1392,10 +1407,10 @@ export function EgfrChart({ data, chrome = true }: EgfrChartProps) {
         </em>
       </p>
 
-      {/* Stat cards */}
+      {/* Stat cards (LKID-91: 2 cards — BUN 12-17, No Treatment) */}
       <div className="border-t border-border px-4 pb-4">
         <StatCards
-          trajectories={data.trajectories}
+          trajectories={displayData.trajectories}
           selectedId={selectedTrajectoryId}
           onSelect={setSelectedTrajectoryId}
         />

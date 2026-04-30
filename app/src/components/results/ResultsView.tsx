@@ -20,7 +20,7 @@
 import Link from "next/link";
 import type { ChartData, StructuralFloor, TrajectoryData } from "@/components/chart/types";
 import { EgfrChart } from "@/components/chart/EgfrChart";
-import { combineMidScenarios } from "@/components/chart/transform";
+import { selectDisplayTrajectories } from "@/components/chart/transform";
 
 /* -------------------------------------------------------------------------- */
 /*  Props — the stable contract                                               */
@@ -99,19 +99,21 @@ function formatDialysisFooter(dialysisAge: number | null): string {
  * scoped class names, so future palette edits flow from globals.css without
  * touching JSX.
  */
-type ScenarioTone = "green" | "blue" | "yellow" | "gray";
+type ScenarioTone = "blue" | "gray";
 
-// LKID-90 AC-3: collapsed Best / Mid / None spectrum per Lee 2026-04-09.
-// Engine still returns 4 trajectories; the BUN 13–17 + 18–24 series are
-// folded into one combined "BUN 13–24" line via combineMidScenarios().
+// LKID-91 — Lee feedback (2026-04-30): chart simplifies to 2 displayed
+// scenarios. The bun_13_17 trajectory is relabeled "BUN 12-17" and uses the
+// blue (navy) tone — semantic continuity with the new single-line band.
+// Engine still returns 4 trajectories upstream; selectDisplayTrajectories()
+// filters to the 2 displayed lines before render.
 const SCENARIO_META: {
   id: TrajectoryData["id"];
   label: string;
   tone: ScenarioTone;
+  legend: string;
 }[] = [
-  { id: "bun_lte_12", label: "BUN ≤ 12", tone: "green" },
-  { id: "bun_13_24", label: "BUN 13–24", tone: "yellow" },
-  { id: "no_treatment", label: "No Treatment", tone: "gray" },
+  { id: "bun_13_17", label: "BUN 12-17", tone: "blue", legend: "With BUN management" },
+  { id: "no_treatment", label: "No Treatment", tone: "gray", legend: "No treatment" },
 ];
 
 /* -------------------------------------------------------------------------- */
@@ -210,10 +212,11 @@ export function ResultsView({
   pdfHref,
   onPdfClick,
 }: ResultsViewProps) {
-  // LKID-90 AC-3: fold the two mid scenarios into one combined "BUN 13–24"
-  // line for both the chart and the scenario UI. Engine output (4 series) is
-  // unchanged in `data`; `displayData` is the 3-line Best / Mid / None view.
-  const displayData = combineMidScenarios(data);
+  // LKID-91 — chart simplifies to 2 displayed lines (BUN 12-17 + No
+  // Treatment) per Lee feedback (2026-04-30). Engine output (4 series) is
+  // unchanged in `data`; `displayData` is the 2-line view shared by the
+  // chart, scenario pills, scenario cards, and heart-icon legend.
+  const displayData = selectDisplayTrajectories(data);
   const trajectoryById = new Map(displayData.trajectories.map((t) => [t.id, t]));
 
   const scenarios = SCENARIO_META.map((meta) => {
@@ -261,9 +264,7 @@ export function ResultsView({
             {scenarios.map((s) => (
               <div key={s.id} className="legend-row">
                 <Heart fill={s.heartColor} />
-                {s.tone === "green" && "Best treatment"}
-                {s.tone === "yellow" && "Partial treatment"}
-                {s.tone === "gray" && "No treatment"}
+                {s.legend}
               </div>
             ))}
           </div>
