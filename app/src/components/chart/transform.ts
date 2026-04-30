@@ -25,9 +25,12 @@ import type {
 //
 // Brad accepts a WCAG AA contrast regression on the yellow line
 // (`#D4A017` = 2.38:1 vs. white, fails both 3:1 graphical and 4.5:1 text
-// thresholds). The `.exclude("svg")` guard remains on the axe test suite for
-// the Results page so the chart SVG is excluded from contrast audits;
-// page chrome, nav, buttons, and text remain audited.
+// thresholds). The axe test suite scopes the waiver narrowly to the chart
+// `<svg data-testid="egfr-chart-svg">` only — every other SVG, page
+// chrome, nav, buttons, and text remain audited. The narrow exclusion is
+// time-bound: see `TODO(LKID-89)` in `app/tests/a11y/accessibility.spec.ts`,
+// to be removed once the LKID-81 visual-regression suite verifies the
+// chart palette by visual diff.
 //
 // Semantic meaning flows pill ↔ line through hue family (green ↔ green,
 // navy ↔ navy, gold ↔ gold, gray ↔ gray).
