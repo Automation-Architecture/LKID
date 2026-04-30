@@ -374,7 +374,7 @@ function InnerChart({
       >
         <title>eGFR Trajectory — Predicted Kidney Function Over 10 Years</title>
         <desc>
-          {`Chart shows predicted eGFR values for four BUN management scenarios. Best outcome (BUN \u2264 12) maintains eGFR at ${bestFinal}. Worst outcome (no treatment) declines to ${worstFinal}.`}
+          {`Starting eGFR: ${Math.round(data.baselineEgfr)}. Chart shows predicted eGFR values for BUN management scenarios. Best outcome (BUN \u2264 12) maintains eGFR at ${bestFinal}. Worst outcome (no treatment) declines to ${worstFinal}.`}
         </desc>
 
         {/* Design-mode gradient definitions (LKID-80).
@@ -389,6 +389,27 @@ function InnerChart({
               <stop offset="0%" stopColor="#E08B8B" stopOpacity={0.12} />
               <stop offset="100%" stopColor="#E08B8B" stopOpacity={0} />
             </linearGradient>
+            {/* LKID-90 AC-1 — outcome-gap wedge. Soft green tint + diagonal
+                hatch makes the divergence between BUN ≤ 12 (top) and No
+                Treatment (bottom) read as a widening gap. */}
+            <pattern
+              id="kh-chart-gap-hatch"
+              patternUnits="userSpaceOnUse"
+              width={8}
+              height={8}
+              patternTransform="rotate(20)"
+            >
+              <rect width={8} height={8} fill="#3FA35B" fillOpacity={0.08} />
+              <line
+                x1={0}
+                y1={0}
+                x2={0}
+                y2={8}
+                stroke="#374151"
+                strokeOpacity={0.06}
+                strokeWidth={1}
+              />
+            </pattern>
           </defs>
         )}
 
@@ -618,6 +639,61 @@ function InnerChart({
           })()}
 
           {/* ---------------------------------------------------------------- */}
+          {/*  Outcome-gap wedge (design mode — LKID-90 AC-1).                 */}
+          {/*  Diagonal-hatched fill between BUN ≤ 12 (top edge) and No        */}
+          {/*  Treatment (bottom edge). Per Inga's design spike Option A this  */}
+          {/*  is the structural fix for Lee's "no difference at year 10"      */}
+          {/*  feedback. Year-10 caption is computed live from the engine      */}
+          {/*  output, not hardcoded.                                          */}
+          {/* ---------------------------------------------------------------- */}
+          {designMode && (() => {
+            const best = data.trajectories.find((t) => t.id === "bun_lte_12");
+            const worst = data.trajectories.find((t) => t.id === "no_treatment");
+            if (!best || !worst) return null;
+            const len = Math.min(best.points.length, worst.points.length);
+            if (len < 2) return null;
+            const paired = Array.from({ length: len }, (_, i) => ({
+              months: best.points[i].monthsFromBaseline,
+              top: best.points[i].egfr,
+              bottom: worst.points[i].egfr,
+            }));
+            const wedge = d3Area<{ months: number; top: number; bottom: number }>({
+              x: (d) => xScale(d.months),
+              y0: (d) => yScale(d.bottom),
+              y1: (d) => yScale(d.top),
+              curve: curveCatmullRom,
+            });
+            const wedgePath = wedge(paired) ?? "";
+            const last = paired[paired.length - 1];
+            const delta = Math.max(0, Math.round(last.top - last.bottom));
+            const captionY = yScale((last.top + last.bottom) / 2);
+            const captionX = xScale(last.months) - 8;
+            return (
+              <g data-testid="chart-outcome-gap-wedge">
+                <path
+                  d={wedgePath}
+                  fill="url(#kh-chart-gap-hatch)"
+                  aria-hidden="true"
+                />
+                {!isMobile && delta > 0 && (
+                  <text
+                    x={captionX}
+                    y={captionY}
+                    textAnchor="end"
+                    fontFamily="Manrope, system-ui, sans-serif"
+                    fontSize={11}
+                    fontWeight={600}
+                    fill="#1F2937"
+                    aria-hidden="true"
+                  >
+                    {`~${delta} eGFR points difference at year 10`}
+                  </text>
+                )}
+              </g>
+            );
+          })()}
+
+          {/* ---------------------------------------------------------------- */}
           {/*  Crosshair (desktop only, behind trajectories)                  */}
           {/* ---------------------------------------------------------------- */}
           {!isMobile && crosshairX !== null && (
@@ -656,7 +732,21 @@ function InnerChart({
             {data.trajectories.map((traj) => {
               const isSelected = selectedTrajectoryId === traj.id;
               const hasSelection = selectedTrajectoryId !== null;
-              const opacity = hasSelection ? (isSelected ? 1.0 : 0.3) : 1.0;
+              // LKID-90 AC-1 — emphasis treatment in design mode only.
+              // BUN ≤ 12 + No Treatment (the wedge anchors) get heavier
+              // strokes so they read as the "your choice" framing; the mid
+              // scenario stays lighter so it doesn't compete visually.
+              const isAnchor =
+                designMode &&
+                (traj.id === "bun_lte_12" || traj.id === "no_treatment");
+              const isMid = designMode && !isAnchor;
+              const baseWidth = designMode ? (isAnchor ? 3 : 2) : traj.strokeWidth;
+              const baseOpacity = isMid ? 0.65 : 1.0;
+              const opacity = hasSelection
+                ? isSelected
+                  ? 1.0
+                  : 0.3
+                : baseOpacity;
               const extraWidth = isSelected ? 1 : 0;
 
               return (
@@ -666,7 +756,7 @@ function InnerChart({
                   x={(d) => xScale(d.monthsFromBaseline)}
                   y={(d) => yScale(d.egfr)}
                   stroke={traj.color}
-                  strokeWidth={traj.strokeWidth + extraWidth}
+                  strokeWidth={baseWidth + extraWidth}
                   strokeDasharray={traj.strokeDasharray}
                   strokeLinecap="round"
                   strokeLinejoin="round"
@@ -683,6 +773,97 @@ function InnerChart({
               );
             })}
           </Group>
+
+          {/* ---------------------------------------------------------------- */}
+          {/*  Dialysis event markers (design mode — LKID-90 AC-2).            */}
+          {/*  For each trajectory that crosses eGFR = 15 within the 10-year   */}
+          {/*  window, render a filled marker + label at the interpolated      */}
+          {/*  crossing point. WCAG AA contrast on label text via #9F2D2D.     */}
+          {/*  No marker if a line never crosses.                              */}
+          {/* ---------------------------------------------------------------- */}
+          {designMode && (() => {
+            const THRESHOLD = 15;
+            type Crossing = {
+              id: string;
+              color: string;
+              x: number;
+              y: number;
+              year: number;
+            };
+            const crossings: Crossing[] = [];
+            for (const traj of data.trajectories) {
+              const pts = traj.points;
+              for (let i = 1; i < pts.length; i++) {
+                const prev = pts[i - 1];
+                const curr = pts[i];
+                if (prev.egfr >= THRESHOLD && curr.egfr < THRESHOLD) {
+                  // Linear interpolation between the bounding points;
+                  // mirrors the engine's compute_dial_age algorithm.
+                  const denom = prev.egfr - curr.egfr || 1;
+                  const frac = (prev.egfr - THRESHOLD) / denom;
+                  const monthsCross =
+                    prev.monthsFromBaseline +
+                    frac *
+                      (curr.monthsFromBaseline - prev.monthsFromBaseline);
+                  crossings.push({
+                    id: traj.id,
+                    color: traj.color,
+                    x: xScale(monthsCross),
+                    y: yScale(THRESHOLD),
+                    year: monthsCross / 12,
+                  });
+                  break;
+                }
+              }
+            }
+            if (crossings.length === 0) return null;
+            const labelMinSep = 16;
+            const sorted = [...crossings].sort((a, b) => a.x - b.x);
+            const labelYByIndex: number[] = [];
+            for (let i = 0; i < sorted.length; i++) {
+              const baseY = sorted[i].y - 14;
+              if (i === 0) {
+                labelYByIndex.push(baseY);
+              } else {
+                const prevLabelY = labelYByIndex[i - 1];
+                labelYByIndex.push(Math.min(baseY, prevLabelY - labelMinSep));
+              }
+            }
+            return (
+              <g data-testid="chart-dialysis-markers">
+                {sorted.map((c, idx) => {
+                  const yearLabel = `Year ${Math.max(1, Math.round(c.year))}`;
+                  const flipLeft = c.x > innerWidth - 100;
+                  const labelX = flipLeft ? c.x - 8 : c.x + 8;
+                  const labelAnchor = flipLeft ? "end" : "start";
+                  const labelY = labelYByIndex[idx];
+                  return (
+                    <g key={`dx-${c.id}`}>
+                      <circle
+                        cx={c.x}
+                        cy={c.y}
+                        r={6}
+                        fill={c.color}
+                        stroke="#fff"
+                        strokeWidth={2}
+                      />
+                      <text
+                        x={labelX}
+                        y={labelY}
+                        textAnchor={labelAnchor}
+                        fontFamily="Manrope, system-ui, sans-serif"
+                        fontSize={11}
+                        fontWeight={600}
+                        fill="#9F2D2D"
+                      >
+                        Dialysis range — {yearLabel}
+                      </text>
+                    </g>
+                  );
+                })}
+              </g>
+            );
+          })()}
 
           {/* ---------------------------------------------------------------- */}
           {/*  End-of-line labels (chrome mode only — design uses callouts).   */}
@@ -768,6 +949,42 @@ function InnerChart({
                     </text>
                   </g>
                 ))}
+              </g>
+            );
+          })()}
+
+          {/* ---------------------------------------------------------------- */}
+          {/*  Starting eGFR callout at left edge (design mode — LKID-90 AC-4) */}
+          {/*  Anchors the day-zero value as a numeric label, not just a tick. */}
+          {/* ---------------------------------------------------------------- */}
+          {designMode && (() => {
+            const startX = xScale(0);
+            const startY = yScale(data.baselineEgfr);
+            const labelText = `Starting eGFR: ${Math.round(data.baselineEgfr)}`;
+            // Position label to the right of the anchor dot. On mobile the
+            // chart is narrow, so cap label so it never extends past 60% of
+            // the inner width.
+            const labelX = startX + 12;
+            return (
+              <g data-testid="chart-starting-egfr">
+                <circle
+                  cx={startX}
+                  cy={startY}
+                  r={5}
+                  fill="#1F2577"
+                  stroke="#fff"
+                  strokeWidth={2}
+                />
+                <text
+                  x={labelX}
+                  y={startY - 8}
+                  fontFamily="Manrope, system-ui, sans-serif"
+                  fontSize={isMobile ? 11 : 12}
+                  fontWeight={600}
+                  fill="#1F2577"
+                >
+                  {labelText}
+                </text>
               </g>
             );
           })()}

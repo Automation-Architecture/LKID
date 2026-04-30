@@ -6,7 +6,12 @@ export interface DataPoint {
   egfr: number;
 }
 
-export type TrajectoryId = "bun_lte_12" | "bun_13_17" | "bun_18_24" | "no_treatment";
+export type TrajectoryId =
+  | "bun_lte_12"
+  | "bun_13_17"
+  | "bun_18_24"
+  | "bun_13_24"
+  | "no_treatment";
 
 export interface TrajectoryData {
   id: TrajectoryId;

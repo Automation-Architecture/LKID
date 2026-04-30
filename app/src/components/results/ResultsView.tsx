@@ -20,6 +20,7 @@
 import Link from "next/link";
 import type { ChartData, StructuralFloor, TrajectoryData } from "@/components/chart/types";
 import { EgfrChart } from "@/components/chart/EgfrChart";
+import { combineMidScenarios } from "@/components/chart/transform";
 
 /* -------------------------------------------------------------------------- */
 /*  Props — the stable contract                                               */
@@ -100,14 +101,16 @@ function formatDialysisFooter(dialysisAge: number | null): string {
  */
 type ScenarioTone = "green" | "blue" | "yellow" | "gray";
 
+// LKID-90 AC-3: collapsed Best / Mid / None spectrum per Lee 2026-04-09.
+// Engine still returns 4 trajectories; the BUN 13–17 + 18–24 series are
+// folded into one combined "BUN 13–24" line via combineMidScenarios().
 const SCENARIO_META: {
   id: TrajectoryData["id"];
   label: string;
   tone: ScenarioTone;
 }[] = [
   { id: "bun_lte_12", label: "BUN ≤ 12", tone: "green" },
-  { id: "bun_13_17", label: "BUN 13-17", tone: "blue" },
-  { id: "bun_18_24", label: "BUN 18-24", tone: "yellow" },
+  { id: "bun_13_24", label: "BUN 13–24", tone: "yellow" },
   { id: "no_treatment", label: "No Treatment", tone: "gray" },
 ];
 
@@ -207,7 +210,11 @@ export function ResultsView({
   pdfHref,
   onPdfClick,
 }: ResultsViewProps) {
-  const trajectoryById = new Map(data.trajectories.map((t) => [t.id, t]));
+  // LKID-90 AC-3: fold the two mid scenarios into one combined "BUN 13–24"
+  // line for both the chart and the scenario UI. Engine output (4 series) is
+  // unchanged in `data`; `displayData` is the 3-line Best / Mid / None view.
+  const displayData = combineMidScenarios(data);
+  const trajectoryById = new Map(displayData.trajectories.map((t) => [t.id, t]));
 
   const scenarios = SCENARIO_META.map((meta) => {
     const traj = trajectoryById.get(meta.id);
@@ -246,7 +253,7 @@ export function ResultsView({
               {/* chrome={false}: Results page owns section title, legend column,
                   and scenario cards — the chart renders as a bare SVG matching
                   project/Results.html per LKID-80. */}
-              <EgfrChart data={data} chrome={false} />
+              <EgfrChart data={displayData} chrome={false} />
             </section>
           </div>
           <div className="scenarios-legend">
@@ -254,9 +261,8 @@ export function ResultsView({
             {scenarios.map((s) => (
               <div key={s.id} className="legend-row">
                 <Heart fill={s.heartColor} />
-                {s.tone === "green" && "Healthy range"}
-                {s.tone === "blue" && "Stable range"}
-                {s.tone === "yellow" && "Higher risk"}
+                {s.tone === "green" && "Best treatment"}
+                {s.tone === "yellow" && "Partial treatment"}
                 {s.tone === "gray" && "No treatment"}
               </div>
             ))}
@@ -264,18 +270,15 @@ export function ResultsView({
         </div>
         {showStructural && structuralFloor && inputBun !== null && (
           <aside
-            aria-label="BUN structural floor estimate"
+            aria-label="BUN context for current eGFR reading"
             className="structural-callout"
             data-testid="structural-floor-callout"
           >
             <p>
-              Your reported eGFR is <strong>{Math.round(egfrBaseline)}</strong>. At your
-              current BUN of <strong>{Math.round(inputBun)}</strong>, approximately{" "}
-              <strong>{Math.round(structuralFloor.suppression_points)}</strong>{" "}
-              {Math.round(structuralFloor.suppression_points) === 1 ? "point" : "points"} of
-              that reading reflect BUN workload suppression, not permanent damage. Your
-              estimated structural capacity is eGFR{" "}
-              <strong>{Math.round(structuralFloor.structural_floor_egfr)}</strong>.
+              Your current eGFR is <strong>{Math.round(egfrBaseline)}</strong>. Your BUN
+              of <strong>{Math.round(inputBun)}</strong> is high, which can temporarily
+              lower the eGFR reading. Lowering your BUN may improve your kidney function
+              reading toward your true baseline.
             </p>
           </aside>
         )}
@@ -325,19 +328,16 @@ export function ResultsView({
           <h3 className="section-title">What Your Results Mean</h3>
           {showStructural && structuralFloor && inputBun !== null ? (
             <p>
-              Your reported eGFR is <strong>{Math.round(egfrBaseline)}</strong>. At your
-              current BUN of <strong>{Math.round(inputBun)}</strong>, approximately{" "}
-              <strong>{Math.round(structuralFloor.suppression_points)}</strong>{" "}
-              {Math.round(structuralFloor.suppression_points) === 1 ? "point" : "points"} of
-              that reading reflect BUN workload suppression, not permanent damage. Your
-              estimated structural capacity is eGFR{" "}
-              <strong>{Math.round(structuralFloor.structural_floor_egfr)}</strong>.
+              Your current eGFR is <strong>{Math.round(egfrBaseline)}</strong>. Your BUN
+              of <strong>{Math.round(inputBun)}</strong> is high, which can temporarily
+              lower the eGFR reading. The chart below shows how your kidney function may
+              change over the next 10 years — use the scenario cards to compare outcomes.
             </p>
           ) : (
             <p>
-              Your reported eGFR is <strong>{Math.round(egfrBaseline)}</strong>. This chart
-              shows how your kidney function may change over the next 10 years under four
-              possible BUN scenarios — use the scenario cards below to compare outcomes.
+              Your current eGFR is <strong>{Math.round(egfrBaseline)}</strong>. This chart
+              shows how your kidney function may change over the next 10 years under your
+              BUN-management scenarios — use the scenario cards below to compare outcomes.
             </p>
           )}
           <div className="explain-cta">
