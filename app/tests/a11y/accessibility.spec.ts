@@ -140,20 +140,14 @@ test.describe("Accessibility — axe-core audit", () => {
     expect(critical, formatViolations(critical)).toHaveLength(0);
   });
 
-  test("results page chart SVG has no critical or serious violations", async ({ page }) => {
-    // LKID-93 — the explicit purpose of this test is to verify the chart
-    // SVG (and only the chart SVG) is axe-clean now that LKID-91 hid the
-    // AA-failing yellow trajectory and LKID-92 removed the
-    // `.exclude([data-testid="egfr-chart-svg"])` waiver. The chart's two
-    // remaining strokes (navy 13.26:1 AAA, gray 5.08:1 AA) are
-    // mathematically AA-pass; this test makes that empirical.
-    //
-    // Scope narrowed via `.include(...)` rather than asserting on the
-    // whole page. The page chrome has pre-existing AA-contrast failures
-    // (`.sc-pill.gray`, `.lbl` / `.foot` muted text, footer links) that
-    // surface only because LKID-93 fixed the CSP/env-var mismatch that
-    // was hiding them. Tracked in LKID-96 (Harshit + Inga design-token
-    // fixes) — the full-page scope will be restored there.
+  test("results page has no critical or serious violations", async ({ page }) => {
+    // Full-page axe scan restored in LKID-96. The three page-chrome contrast
+    // failures that previously forced the scope to `.include("egfr-chart-svg")`
+    // (`.sc-pill.gray`, `.lbl`/`.foot` muted text, footer links — all caused
+    // by the old `--kh-muted: #8A8D96` token) are now fixed: token darkened to
+    // #5E6169 (≥ 4.98:1 on every scenario-card tint) and --s-gray-text darkened
+    // to #616469 (5.03:1 on the gray pill composite). The scope-narrowing
+    // `.include(...)` call has been removed accordingly.
     //
     // The route mock + matching `NEXT_PUBLIC_API_URL` (set in
     // playwright.a11y.config.ts webServer.env) lets the client-side fetch
@@ -182,7 +176,6 @@ test.describe("Accessibility — axe-core audit", () => {
     ).toHaveCount(2, { timeout: 10_000 });
 
     const results = await new AxeBuilder({ page })
-      .include('[data-testid="egfr-chart-svg"]')
       .withTags(WCAG_TAGS)
       .analyze();
 

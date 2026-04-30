@@ -69,7 +69,7 @@
   --kh-ink: #0E0E12;
   --kh-ink-2: #2E2F36;
   --kh-body: #5C5F6A;
-  --kh-muted: #8A8D96;
+  --kh-muted: #5E6169; /* LKID-96: darkened from #8A8D96 (3.04:1 on #F4F5F7) to #5E6169 (5.68:1 on #F4F5F7; 4.98:1 worst-case on blue card tint) for WCAG AA ≥ 4.5:1 */
   --kh-bg: #F4F5F7;
   --kh-border: #E4E6EB;
 
@@ -98,7 +98,7 @@
   --s-gray: #6B6E78;
   --s-gray-bg: rgba(90, 95, 110, 0.06);
   --s-gray-border: rgba(90, 95, 110, 0.2);
-  --s-gray-text: #6B6E78;         /* 4.66:1 on #F4F5F7 — already passes */
+  --s-gray-text: #616469;         /* LKID-96: darkened from #6B6E78 (4.31:1 on pill composite #ebecef) to #616469 (5.03:1 on pill composite; 5.45:1 on #F4F5F7) for WCAG AA */
 
   /* Dashboard brand palette */
   --brand-teal: #004D43;

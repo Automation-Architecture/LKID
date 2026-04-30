@@ -27,7 +27,7 @@ const LANDING_CSS = `
   --ink: #0E0E12;
   --ink-2: #2E2F36;
   --body: #5C5F6A;
-  --muted: #8A8D96;
+  --muted: var(--kh-muted);
   --bg: #F4F5F7;
   --bg-2: #EEF0F3;
   --border: #E4E6EB;
@@ -240,7 +240,7 @@ const LANDING_CSS = `
   font-family: var(--font-manrope), 'Manrope', sans-serif;
   font-size: 28px;
   font-weight: 700;
-  color: #8A8D96;
+  color: var(--kh-muted);
   display: block;
   margin-top: 4px;
   line-height: 1;
