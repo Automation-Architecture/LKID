@@ -781,10 +781,11 @@ function InnerChart({
           </Group>
 
           {/* ---------------------------------------------------------------- */}
-          {/*  Dialysis event markers (design mode — LKID-90 AC-2).            */}
+          {/*  Dialysis event markers (design mode — LKID-90 AC-2 / LKID-94).  */}
           {/*  For each trajectory that crosses eGFR = 15 within the 10-year   */}
-          {/*  window, render a filled marker + label at the interpolated      */}
-          {/*  crossing point. WCAG AA contrast on label text via #9F2D2D.     */}
+          {/*  window, render a filled #9F2D2D circle (r=11) with a centered   */}
+          {/*  white "D" at the interpolated crossing point. White-on-#9F2D2D  */}
+          {/*  contrast is 7.27:1 (AAA). Year info is implicit from x-axis.    */}
           {/*  No marker if a line never crosses.                              */}
           {/* ---------------------------------------------------------------- */}
           {designMode && (() => {
@@ -823,50 +824,33 @@ function InnerChart({
               }
             }
             if (crossings.length === 0) return null;
-            const labelMinSep = 16;
             const sorted = [...crossings].sort((a, b) => a.x - b.x);
-            const labelYByIndex: number[] = [];
-            for (let i = 0; i < sorted.length; i++) {
-              const baseY = sorted[i].y - 14;
-              if (i === 0) {
-                labelYByIndex.push(baseY);
-              } else {
-                const prevLabelY = labelYByIndex[i - 1];
-                labelYByIndex.push(Math.min(baseY, prevLabelY - labelMinSep));
-              }
-            }
             return (
               <g data-testid="chart-dialysis-markers">
-                {sorted.map((c, idx) => {
-                  const yearLabel = `Year ${Math.max(1, Math.round(c.year))}`;
-                  const flipLeft = c.x > innerWidth - 100;
-                  const labelX = flipLeft ? c.x - 8 : c.x + 8;
-                  const labelAnchor = flipLeft ? "end" : "start";
-                  const labelY = labelYByIndex[idx];
-                  return (
-                    <g key={`dx-${c.id}`}>
-                      <circle
-                        cx={c.x}
-                        cy={c.y}
-                        r={6}
-                        fill={c.color}
-                        stroke="#fff"
-                        strokeWidth={2}
-                      />
-                      <text
-                        x={labelX}
-                        y={labelY}
-                        textAnchor={labelAnchor}
-                        fontFamily="Manrope, system-ui, sans-serif"
-                        fontSize={11}
-                        fontWeight={600}
-                        fill="#9F2D2D"
-                      >
-                        Dialysis range — {yearLabel}
-                      </text>
-                    </g>
-                  );
-                })}
+                {sorted.map((c) => (
+                  <g key={`dx-${c.id}`}>
+                    <circle
+                      cx={c.x}
+                      cy={c.y}
+                      r={11}
+                      fill="#9F2D2D"
+                      stroke="#fff"
+                      strokeWidth={2}
+                    />
+                    <text
+                      x={c.x}
+                      y={c.y}
+                      textAnchor="middle"
+                      dominantBaseline="central"
+                      fontFamily="Manrope, system-ui, sans-serif"
+                      fontSize={13}
+                      fontWeight={700}
+                      fill="#fff"
+                    >
+                      D
+                    </text>
+                  </g>
+                ))}
               </g>
             );
           })()}
