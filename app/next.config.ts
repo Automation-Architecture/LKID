@@ -2,11 +2,13 @@ import type { NextConfig } from "next";
 import { withSentryConfig } from "@sentry/nextjs";
 
 /**
- * LKID-74 / LKID-87 — Content-Security-Policy + security headers.
+ * LKID-74 — Content-Security-Policy + security headers.
  *
- * Status: enforcing mode (LKID-87, 2026-04-30). The original LKID-74
- * shipped in Report-Only mode; after a 10-day soak with no real
- * violations surfaced, the header key was flipped to enforcing.
+ * Strategy (Report-Only first):
+ *   - Ship CSP in Report-Only mode so violations surface in the browser
+ *     console / `report-uri` collector WITHOUT breaking the app.
+ *   - After a clean 72-hour window, switch `Content-Security-Policy-Report-Only`
+ *     to `Content-Security-Policy` in a follow-up PR.
  *
  * Known tradeoffs (documented on the PR):
  *   - `'unsafe-inline'` + `'unsafe-eval'` in script-src are load-bearing
@@ -53,36 +55,9 @@ const VERCEL_ANALYTICS_HOSTS = [
   "https://vitals.vercel-insights.com",
 ].join(" ");
 
-// Railway backend — derived from `NEXT_PUBLIC_API_URL` so dev / preview /
-// prod each get their correct connect-src host without a hardcode.
-//
-// LKID-87 nit fix: the LKID-74 implementation hardcoded the production
-// Railway origin, which would generate noisy CSP reports on dev/preview
-// where the backend lives elsewhere. Parse to origin only — the env var
-// is a full URL (e.g. https://host:port/path) but `connect-src` matches
-// on origin, not path.
-//
-// Falls back to the production Railway origin when the env var is unset
-// (build time on a contributor's machine without `.env.local`) so the
-// build never produces a CSP that excludes the live backend.
-function backendOrigin(): string {
-  const fallback = "https://kidneyhood-backend-production.up.railway.app";
-  const raw = process.env.NEXT_PUBLIC_API_URL;
-  if (!raw) return fallback;
-  try {
-    return new URL(raw).origin;
-  } catch {
-    // Malformed env var — log loudly during build, fall back so the
-    // header is always emitted with a valid origin.
-    console.warn(
-      `[CSP] NEXT_PUBLIC_API_URL="${raw}" is not a valid URL; ` +
-        `falling back to ${fallback} for connect-src.`
-    );
-    return fallback;
-  }
-}
-
-const BACKEND_HOST = backendOrigin();
+// Railway backend — `NEXT_PUBLIC_API_URL` in production.
+// Confirmed from .github/workflows/post-deploy-smoke.yml.
+const BACKEND_HOST = "https://kidneyhood-backend-production.up.railway.app";
 
 // Full CSP policy string — kept as a constant so the PR body can link to
 // the exact source of truth.
@@ -102,12 +77,12 @@ const CSP_POLICY = [
 ].join("; ");
 
 // Security headers that apply to every response.
-// LKID-87 (2026-04-30): flipped from `Content-Security-Policy-Report-Only`
-// to `Content-Security-Policy` after the 10-day Report-Only soak — the
-// header is now enforcing.
+// `Content-Security-Policy-Report-Only` is used for the first deploy so a
+// bad whitelist entry cannot break the app. Flip to `Content-Security-Policy`
+// in a follow-up after a clean 72-hour window.
 const SECURITY_HEADERS = [
   {
-    key: "Content-Security-Policy",
+    key: "Content-Security-Policy-Report-Only",
     value: CSP_POLICY,
   },
   {
