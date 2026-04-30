@@ -70,6 +70,7 @@ LKID-83/84/85 are blockers but on the backlog — agents will keep moving on eng
 
 - LKID-87 — CSP flipped from Report-Only → enforcing on frontend + backend (PR #70, merged 2026-04-30). Yuri PASS WITH NITS. Follow-up: wire `report-uri` to Sentry once LKID-84 lands.
 - LKID-81 — Visual-regression infrastructure wired (PR #73, merged 2026-04-30). Playwright + 2 chart baselines (Stage 3a, Stage 4) + CI workflow on chart-touching PRs + workflow_dispatch baseline-regen mode. Yuri PASS WITH NITS. Demonstration: deliberate `#D4A017 → #0000FF` flip caught with 1318px diff. Next: remove `TODO(LKID-89)` axe waiver on the chart SVG (visual regression now catches palette regressions).
+- LKID-91 — Chart simplification: 2 trajectory lines per Lee feedback (PR #75, merged 2026-04-30). Display-only — engine/API untouched. Hides `bun_lte_12` + `bun_18_24`, relabels `bun_13_17` → "BUN 12-17". Scenario cards 4→2; PDF report 4→2. Healthy-range fill auto-removed (was anchored to hidden ≤12 line). Yuri PASS (3 non-blocking nits). LKID-81 update-baselines `workflow_dispatch` recovery path exercised live — macOS baselines drifted on Linux CI as predicted; regen pushed Linux baselines to branch in 2m31s.
 
 Full acceptance criteria + step-by-step for each in `agents/luca/drafts/brad-hands-cards-pending.md`.
 
@@ -253,6 +254,7 @@ CTO (Luca) opens one PR per Jira card. Each card gets a feature branch (`feat/LK
 | [#66](https://github.com/Automation-Architecture/LKID/pull/66) | `feat/LKID-89-chart-pixel-parity-v2` | LKID-89 | Harshit + Inga | Merged |
 | [#70](https://github.com/Automation-Architecture/LKID/pull/70) | `feat/LKID-87-csp-enforce-flip` | LKID-87 | John + Harshit | Merged |
 | [#73](https://github.com/Automation-Architecture/LKID/pull/73) | `feat/LKID-81-visual-regression` | LKID-81 | Harshit + Yuri | Merged |
+| [#75](https://github.com/Automation-Architecture/LKID/pull/75) | `feat/LKID-91-chart-2-line` | LKID-91 | Harshit + Yuri | Merged |
 
 ## Team
 
