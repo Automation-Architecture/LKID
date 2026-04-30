@@ -639,10 +639,7 @@ class TestEdgeCases:
     def test_dial_age_computed_for_stage5_patient(self):
         """Stage 5 patient starting just above threshold: no_treatment should cross 12.0.
 
-        Note: compute_dial_age() detects a CROSSING through DIALYSIS_THRESHOLD=12.0
-        via linear interpolation. A patient who starts BELOW 12 has no detectable
-        crossing in the trajectory (starts below threshold, stays below).
-        Using egfr_entered=15 to ensure a detectable crossing.
+        Using egfr_entered=15 to ensure a detectable crossing above the threshold.
         Stage 5 decline ~4.5/yr (base -4.0 + BUN modifier); crosses 12 in ~9 months.
         """
         result = _run_predict(bun=53, creatinine=5.0, age=65, egfr_entered=15.0)
@@ -653,6 +650,63 @@ class TestEdgeCases:
         )
         assert dial > 65, f"dial_age {dial} should be > current age 65"
         assert dial < 70, f"dial_age {dial} should be < 70 (Stage 5 crosses quickly)"
+
+    # ------------------------------------------------------------------
+    # LKID-77 — compute_dial_age: already-below-threshold edge case
+    # ------------------------------------------------------------------
+
+    def test_compute_dial_age_returns_current_age_when_baseline_below_threshold(self):
+        """compute_dial_age() returns float(current_age) when trajectory[0] < 12.0.
+
+        This exercises the LKID-77 guard directly: a trajectory starting below
+        DIALYSIS_THRESHOLD (12.0) must not return None (which would mean
+        "never crosses"), but must return the patient's current age to signal
+        "already below threshold at baseline."
+        """
+        # Build a trajectory that stays well below 12.0 throughout.
+        below_trajectory = [5.0] + [4.0] * (len(TIME_POINTS_MONTHS) - 1)
+        result = compute_dial_age(below_trajectory, current_age=45)
+        assert result == float(45), (
+            f"Expected float(45) when trajectory[0]=5.0 < DIALYSIS_THRESHOLD={DIALYSIS_THRESHOLD}, "
+            f"got {result!r}"
+        )
+
+    def test_compute_dial_age_returns_current_age_exact_type(self):
+        """Return value is a float (not int) when baseline is already below threshold."""
+        below_trajectory = [8.0] + [7.5] * (len(TIME_POINTS_MONTHS) - 1)
+        result = compute_dial_age(below_trajectory, current_age=72)
+        assert isinstance(result, float), (
+            f"Expected float, got {type(result).__name__}"
+        )
+        assert result == 72.0
+
+    def test_compute_dial_age_none_unchanged_for_above_threshold(self):
+        """Existing None-return path is unaffected: high eGFR never crossing stays None."""
+        # All points well above 12.0 — should still return None.
+        above_trajectory = [50.0] * len(TIME_POINTS_MONTHS)
+        result = compute_dial_age(above_trajectory, current_age=50)
+        assert result is None, (
+            f"Expected None for trajectory always above threshold, got {result!r}"
+        )
+
+    def test_dial_age_not_none_for_baseline_below_threshold_via_predict(self):
+        """Integration: egfr_entered=5.0 (valid extreme input) should not produce None dial_ages.
+
+        LKID-77: Before the fix, all four dial_ages returned None for this input
+        because every trajectory started below DIALYSIS_THRESHOLD=12.0 and the
+        crossing-detection loop found nothing.  After the fix, dial_ages should
+        equal the patient's current age (already below threshold at baseline).
+        """
+        age = 55
+        result = _run_predict(bun=22, creatinine=5.0, age=age, egfr_entered=5.0)
+        no_tx_dial = result["dial_ages"]["no_treatment"]
+        assert no_tx_dial is not None, (
+            f"dial_ages['no_treatment'] must not be None when egfr_entered=5.0 "
+            f"(trajectory starts below threshold). Got {no_tx_dial!r}"
+        )
+        assert no_tx_dial == float(age), (
+            f"Expected dial_age == float({age}), got {no_tx_dial!r}"
+        )
 
     def test_egfr_ceiling_not_exceeded(self):
         """No trajectory should produce arithmetic-runaway eGFR (ceiling: baseline+35).

@@ -288,9 +288,19 @@ def compute_dial_age(
 ) -> Optional[float]:
     """Find patient age at which trajectory crosses below DIALYSIS_THRESHOLD.
 
-    Returns None if trajectory stays above threshold for the full 120-month window.
+    Returns:
+      - float(current_age): baseline eGFR is already below the threshold at t=0
+        (dialysis threshold was crossed at or before the patient's current age).
+      - Interpolated float: the projected age when eGFR first crosses below the
+        threshold during the 120-month window.
+      - None: trajectory stays at or above the threshold for the full 120-month
+        window (threshold never crossed).
+
     Threshold: eGFR 12 (Q4 -- one-line change if Lee corrects to 15).
     """
+    if trajectory[0] < DIALYSIS_THRESHOLD:
+        return float(current_age)  # already below threshold at baseline
+
     for i in range(1, len(trajectory)):
         if trajectory[i] < DIALYSIS_THRESHOLD and trajectory[i - 1] >= DIALYSIS_THRESHOLD:
             frac = (trajectory[i - 1] - DIALYSIS_THRESHOLD) / (
