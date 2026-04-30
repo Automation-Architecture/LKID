@@ -33,10 +33,29 @@ export default defineConfig({
     },
   ],
 
+  // Run `next dev` for the test session unless one is already running on :3000.
+  // No backend is started — specs that hit `/gate/[token]` or `/results/[token]`
+  // mock all API calls via `page.route`.
+  //
+  // CRITICAL (LKID-93): `NEXT_PUBLIC_API_URL` MUST be set so that:
+  //   1. `apiUrl()` (src/lib/api.ts) issues fetches to this origin, which
+  //      Playwright then intercepts.
+  //   2. `next.config.ts` includes this origin in the `connect-src` CSP
+  //      directive — otherwise Chromium blocks the fetch before our
+  //      `page.route` handler runs (LKID-87 enforced CSP, not Report-Only).
+  //
+  // Without this env var, the CSP `connect-src` falls back to the production
+  // Railway origin while the browser tries to fetch `localhost:8000`, the
+  // fetch is CSP-blocked, the page never leaves its loading skeleton, and
+  // `getByTestId("results-heading"|"gate-form").waitFor()` times out. This
+  // mirrors the working setup in `playwright.visual.config.ts`.
   webServer: {
     command: "npm run dev",
     url: "http://localhost:3000",
-    reuseExistingServer: true,
-    timeout: 60000,
+    reuseExistingServer: !process.env.CI,
+    timeout: 60_000,
+    env: {
+      NEXT_PUBLIC_API_URL: "http://127.0.0.1:8000",
+    },
   },
 });
