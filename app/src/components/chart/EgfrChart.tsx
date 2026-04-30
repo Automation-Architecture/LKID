@@ -737,9 +737,9 @@ function InnerChart({
               // LKID-91 — chart simplifies to 2 displayed lines (BUN 12-17 +
               // No Treatment). Both displayed lines are anchors at full
               // emphasis. The legacy LKID-90 AC-1 mid-scenario de-emphasis
-              // (`isMid`) is dormant on this branch since `bun_13_24` /
-              // `bun_13_17` is now itself an anchor; the chart still defends
-              // gracefully if a third line is ever passed in.
+              // (`isMid`) is dormant on this branch since `bun_13_17` is now
+              // itself an anchor; the chart still defends gracefully if a
+              // third line is ever passed in.
               const isAnchor =
                 designMode &&
                 (traj.id === "bun_13_17" ||

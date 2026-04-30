@@ -115,25 +115,7 @@ test.describe("Accessibility — axe-core audit", () => {
     await page.waitForSelector("svg", { state: "visible", timeout: 10_000 });
     await page.getByTestId("results-heading").waitFor({ state: "visible" });
 
-    const results = await new AxeBuilder({ page })
-      .withTags(WCAG_TAGS)
-      // LKID-80 (2026-04-20): SVG exclusion re-added per Brad's reversal of
-      // the chart-line palette to design hues. The yellow trajectory line
-      // (#D4A017) fails WCAG AA at 2.38:1 on white — an intentional
-      // regression on chart SVG only, in exchange for brand-identity
-      // alignment with project/Results.html. Scenario pills, cards, heart
-      // icons, and page chrome (nav/buttons/text) remain in scope and AA-
-      // compliant via the --s-*-text tokens from PR #57.
-      // See agents/inga/drafts/chart-palette-decision.md (top supersession
-      // block) for the reversed decision and contrast math.
-      // LKID-89 PR #66 review (CodeRabbit Major): scope the waiver to the
-      // chart SVG only (was previously `svg`, which excluded every SVG on
-      // the page including icons and page chrome — too broad).
-      // TODO(LKID-89): re-enable contrast scanning on the chart SVG when
-      // the LKID-81 visual-regression suite lands and can verify chart
-      // palette via pixel diff. Remove this waiver at that time.
-      .exclude('[data-testid="egfr-chart-svg"]')
-      .analyze();
+    const results = await new AxeBuilder({ page }).withTags(WCAG_TAGS).analyze();
 
     const critical = results.violations.filter(
       (v) => v.impact === "critical" || v.impact === "serious",

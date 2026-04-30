@@ -16,21 +16,15 @@ import type {
 // and lines 426-432.
 //
 // *** Binding policy: Brad 2026-04-29 (LKID-89) ***
-// Chart trajectory line strokes use design hex exactly. This intentionally
-// overrides the AA palette from LKID-67 on the four chart lines only — pills,
-// cards, text, icons, and the dialysis-zone label outside the chart keep
-// their AA tokens. The "Palette A+ hybrid" decision in
-// `agents/inga/drafts/chart-palette-decision.md` is narrowed accordingly:
-// chart **lines** = design hex; everything else = AA tokens.
+// Chart trajectory line strokes use design hex exactly. The "Palette A+
+// hybrid" decision in `agents/inga/drafts/chart-palette-decision.md` is
+// narrowed accordingly: chart **lines** = design hex; everything else
+// (pills, cards, text, icons, dialysis-zone label) = AA tokens.
 //
-// Brad accepts a WCAG AA contrast regression on the yellow line
-// (`#D4A017` = 2.38:1 vs. white, fails both 3:1 graphical and 4.5:1 text
-// thresholds). The axe test suite scopes the waiver narrowly to the chart
-// `<svg data-testid="egfr-chart-svg">` only — every other SVG, page
-// chrome, nav, buttons, and text remain audited. The narrow exclusion is
-// time-bound: see `TODO(LKID-89)` in `app/tests/a11y/accessibility.spec.ts`,
-// to be removed once the LKID-81 visual-regression suite verifies the
-// chart palette by visual diff.
+// Axe contrast checks now run against the chart SVG. Visual regression
+// (LKID-81) catches palette drift; LKID-91 removed the AA-failing yellow
+// trajectory from the rendered chart, so the chart's remaining strokes
+// (navy + gray) all pass AA contrast.
 //
 // Semantic meaning flows pill ↔ line through hue family (green ↔ green,
 // navy ↔ navy, gold ↔ gold, gray ↔ gray).
@@ -64,17 +58,6 @@ export const TRAJECTORY_CONFIG = {
     id: "no_treatment" as TrajectoryId,
     label: "No Treatment",
     color: "#6B6E78", // design --s-gray — 5.08:1 on white (PASS AA text)
-    strokeWidth: 2.5,
-  },
-  // LKID-90 AC-3 — synthetic combined mid scenario rendered as a single line
-  // when ResultsView calls combineMidScenarios(). Engine still returns the
-  // separate bun_13_17 + bun_18_24 series; this fold happens at display time.
-  // Color matches the existing yellow line so the AA exemption (LKID-89)
-  // still applies to chart strokes only.
-  bun_13_24: {
-    id: "bun_13_24" as TrajectoryId,
-    label: "BUN 13–24",
-    color: "#D4A017",
     strokeWidth: 2.5,
   },
 } satisfies Record<
@@ -215,62 +198,6 @@ export function selectDisplayTrajectories(data: ChartData): ChartData {
     visibleIds.includes(t.id),
   );
   return { ...data, trajectories: filtered };
-}
-
-/**
- * LKID-90 AC-3 — fold the separate bun_13_17 + bun_18_24 series into one
- * averaged "BUN 13–24" line for display. Returns a new ChartData with three
- * trajectories (BUN ≤ 12, BUN 13–24, No Treatment).
- *
- * Per Lee 2026-04-09 ("the outcomes are not that different"), the chart and
- * scenario UI collapse to a Best / Mid / None spectrum. Engine output is
- * unchanged — the original 4 series are still in `data.trajectories`; this
- * helper produces a derived view, which is what ResultsView passes to the
- * chart and uses to drive the scenario cards/legend/pills.
- */
-export function combineMidScenarios(data: ChartData): ChartData {
-  const byId = new Map(data.trajectories.map((t) => [t.id, t]));
-  const best = byId.get("bun_lte_12");
-  const mid17 = byId.get("bun_13_17");
-  const mid24 = byId.get("bun_18_24");
-  const none = byId.get("no_treatment");
-
-  // If either source mid trajectory is missing, fall back to the original
-  // trajectory list so the chart still renders something coherent.
-  if (!best || !mid17 || !mid24 || !none) return data;
-
-  // Average per-point. Both engine series share the same TIME_POINTS_MONTHS
-  // grid, so a paired index walk is correct.
-  const len = Math.min(mid17.points.length, mid24.points.length);
-  const points: DataPoint[] = [];
-  for (let i = 0; i < len; i++) {
-    const a = mid17.points[i];
-    const b = mid24.points[i];
-    points.push({
-      monthsFromBaseline: a.monthsFromBaseline,
-      egfr: (a.egfr + b.egfr) / 2,
-    });
-  }
-
-  // Average the two source dialysisAges when both are non-null; otherwise null.
-  const dialysisAge =
-    mid17.dialysisAge !== null && mid24.dialysisAge !== null
-      ? (mid17.dialysisAge + mid24.dialysisAge) / 2
-      : null;
-
-  const finalEgfr = points.length > 0 ? points[points.length - 1].egfr : data.baselineEgfr;
-
-  const combined: TrajectoryData = {
-    ...TRAJECTORY_CONFIG.bun_13_24,
-    points,
-    finalEgfr,
-    dialysisAge,
-  };
-
-  return {
-    ...data,
-    trajectories: [best, combined, none],
-  };
 }
 
 /**
