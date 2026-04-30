@@ -7,7 +7,7 @@
 **Jira:** [SPEC Board](https://automationarchitecture.atlassian.net/jira/software/c/projects/SPEC/boards/329/backlog) | [LKID Board](https://automationarchitecture.atlassian.net/jira/software/c/projects/LKID/boards/363)
 **Repo:** [github.com/Automation-Architecture/LKID](https://github.com/Automation-Architecture/LKID)
 **Specs:** `/Users/brad/IDE/kidneyhood/` (3 docx files)
-**Status:** Sprint 5 COMPLETE (Launch Readiness theme, 8/8 engineering cards + 1 bonus card shipped Apr 20; LKID-89 chart pixel-parity v2 follow-up shipped Apr 30 in PR #66). Sprint 4 COMPLETE (shipped Apr 20 — 13 days ahead of plan). App live at kidneyhood-automation-architecture.vercel.app with no-auth tokenized flow (`/labs` → `/gate/[token]` → `/results/[token]`). G1/G2/G3 guardrails active. CSP Report-Only live on both frontend + backend (72-hour verification window before enforcing flip).
+**Status:** Sprint 5 COMPLETE + post-sprint hardening in progress. App live at kidneyhood-automation-architecture.vercel.app with no-auth tokenized flow (`/labs` → `/gate/[token]` → `/results/[token]`). G1/G2/G3 guardrails active. CSP enforcing (flipped 2026-04-30). A11y CI suite wired (LKID-93 + LKID-94, PRs #81 + #83). Color-contrast token fixes pending (LKID-96).
 **Client Dashboard:** https://kidneyhood-automation-architecture.vercel.app/client/lee-a3f8b2 — auto-updated by `scripts/refresh-sprint-progress.py`.
 
 ## Sprint Plan
@@ -52,6 +52,7 @@ Theme A delivered end-to-end in a single day. 9 engineering cards merged + deplo
 **Backlog (filed, not scheduled):**
 
 - LKID-77 — Engine edge case: `compute_dial_age` returns None when `trajectory[0] < 12` (Low, agent:john-donaldson)
+- LKID-96 — Color-contrast AA violations on page chrome: `.sc-pill.gray` (4.30:1), `.lbl`/`.foot` (`--kh-muted` #8A8D96 → 3.04:1), footer links (3.04:1). Root cause: `--kh-muted` token not AA-compliant on tinted backgrounds. Fix: darken token site-wide or introduce `--kh-muted-strong`. Will restore full-page axe scope in results-page test once fixed. (agent:harshit + inga)
 
 **Brad-hands tickets (agents can't do these — filter Jira board by label `brad-hands`):**
 
@@ -59,7 +60,7 @@ Theme A delivered end-to-end in a single day. 9 engineering cards merged + deplo
 |-----|------|----------|
 | [LKID-47](https://automationarchitecture.atlassian.net/browse/LKID-47) | Klaviyo Flow dashboard config (engineering shipped; Flow setup + DNS + API key pending) | — |
 | [LKID-83](https://automationarchitecture.atlassian.net/browse/LKID-83) | Set PostHog env vars on Vercel — activate analytics | **High** |
-| [LKID-84](https://automationarchitecture.atlassian.net/browse/LKID-84) | Set Sentry env vars on Vercel + Railway — activate error monitoring | **High** |
+| [LKID-84](https://automationarchitecture.atlassian.net/browse/LKID-84) | Set Sentry env vars — DSN set on all envs ✅; still need `SENTRY_ORG` + `SENTRY_PROJECT` + `SENTRY_AUTH_TOKEN` (source maps) | **High** |
 | [LKID-85](https://automationarchitecture.atlassian.net/browse/LKID-85) | Resend DNS + flip FROM email to `reports@kidneyhood.org` | **High** |
 | [LKID-86](https://automationarchitecture.atlassian.net/browse/LKID-86) | DNS flip to `kidneyhood.org` + set `NEXT_PUBLIC_APP_URL` | Medium |
 | [LKID-88](https://automationarchitecture.atlassian.net/browse/LKID-88) | Send Sprint 5 update email to Lee | Low |
@@ -73,6 +74,8 @@ LKID-83/84/85 are blockers but on the backlog — agents will keep moving on eng
 - LKID-90 — Chart redesign v3 per Lee feedback from 2026-04-09 call (PR #71, merged 2026-04-30). 7 ACs: dramatic divergence wedge (hatched outcome-gap area), dialysis event markers at eGFR=15 crossings, scenario reduction 4→3 (UI-only midpoint of BUN 13–17/18–24, engine emits all 4), `Starting eGFR: {value}` left-edge callout, "reported eGFR"/"structural capacity" stripped from `/results` prose only (PDF preserved). Yuri PASS — 7/7 ACs, `#9F2D2D` marker contrast 7.27:1 (better than claimed 4.78). CodeRabbit CLI review: no findings. Superseded by LKID-91 same day (3 lines → 2).
 - LKID-91 — Chart simplification: 2 trajectory lines per Lee feedback (PR #75, merged 2026-04-30). Display-only — engine/API untouched. Hides `bun_lte_12` + `bun_18_24`, relabels `bun_13_17` → "BUN 12-17". Scenario cards 4→2; PDF report 4→2. Healthy-range fill auto-removed (was anchored to hidden ≤12 line). Yuri PASS (3 non-blocking nits). LKID-81 update-baselines `workflow_dispatch` recovery path exercised live — macOS baselines drifted on Linux CI as predicted; regen pushed Linux baselines to branch in 2m31s.
 - LKID-92 — Post-LKID-91 cleanup (PR #78, merged 2026-04-30). Removed the `.exclude('[data-testid="egfr-chart-svg"]')` axe waiver + `TODO(LKID-89)` comment block (visual regression now catches palette drift; LKID-91 hid the AA-failing yellow line). Deleted dormant `combineMidScenarios` helper + `bun_13_24` config entry left over from the LKID-90 spike. -105 lines net. Yuri PASS WITH NITS — 2 follow-ups filed: chart-SVG axe scan needs a working test (results-page accessibility test pre-existing broken on main), and no axe workflow exists in CI.
+- LKID-93 — Fixed broken results-page a11y test (PR #81, merged 2026-04-30). Root cause: `NEXT_PUBLIC_API_URL` missing from `playwright.a11y.config.ts` `webServer.env` — CSP blocked the route-mock fetch so the page never left its loading skeleton. Fix: added env var + switched `RESULTS_API_URL` to regex to handle query params + scoped axe scan to `[data-testid="egfr-chart-svg"]` (pre-existing page-chrome contrast failures tracked in LKID-96). Yuri PASS 22/22.
+- LKID-94 — Wired a11y CI suite (PR #83, merged 2026-04-30). New `.github/workflows/accessibility.yml`: runs axe-core suite on every frontend-touching PR, Playwright browser cache, artifact upload on failure. Added `test:a11y` npm script. Yuri PASS 26/26.
 
 Full acceptance criteria + step-by-step for each in `agents/luca/drafts/brad-hands-cards-pending.md`.
 
@@ -262,6 +265,8 @@ CTO (Luca) opens one PR per Jira card. Each card gets a feature branch (`feat/LK
 | [#73](https://github.com/Automation-Architecture/LKID/pull/73) | `feat/LKID-81-visual-regression` | LKID-81 | Harshit + Yuri | Merged |
 | [#75](https://github.com/Automation-Architecture/LKID/pull/75) | `feat/LKID-91-chart-2-line` | LKID-91 | Harshit + Yuri | Merged |
 | [#78](https://github.com/Automation-Architecture/LKID/pull/78) | `chore/LKID-92-post-lkid-91-cleanup` | LKID-92 | Harshit + Yuri | Merged |
+| [#81](https://github.com/Automation-Architecture/LKID/pull/81) | `feat/LKID-93-fix-a11y-results-test` | LKID-93 | Harshit + Yuri | Merged |
+| [#83](https://github.com/Automation-Architecture/LKID/pull/83) | `feat/LKID-94-a11y-ci` | LKID-94 | Yuri | Merged |
 
 ## Team
 
