@@ -1,11 +1,17 @@
 import { defineConfig, devices } from "@playwright/test";
 
 /**
- * Playwright Visual Regression Configuration — LKID-48
+ * Playwright Visual Regression Configuration — LKID-81
  *
  * Dedicated config for visual regression tests against the Visx eGFR chart.
- * Separated from any future e2e config to allow independent runs and
- * different snapshot settings.
+ * Chromium-only (per LKID-81 AC) so cross-browser sub-pixel variance doesn't
+ * dominate the diff signal. Tight pixel threshold (0.1%) catches real chart
+ * regressions while tolerating sub-pixel anti-aliasing.
+ *
+ * The Results page is a `"use client"` component that fetches
+ * `GET ${NEXT_PUBLIC_API_URL}/results/{token}` from the browser, so all
+ * backend calls can be intercepted via `page.route` — no live FastAPI
+ * required in CI.
  *
  * Usage:
  *   npx playwright test --config=playwright.visual.config.ts
@@ -16,80 +22,84 @@ export default defineConfig({
   outputDir: "./tests/visual/test-results",
   snapshotDir: "./tests/visual/snapshots",
 
-  // Snapshot comparison settings
+  /**
+   * Template the snapshot path WITHOUT the `{platform}` token. The default is
+   * `{snapshotDir}/{testFilePath}/{arg}{-projectName}{-platform}.png`, which
+   * produces separate baselines for darwin/linux/win32 — fine for big visual
+   * suites, but expensive when only one OS (Linux on CI) is the source of
+   * truth. We commit baselines generated on Linux (in CI) and let local
+   * macOS / Windows runs work against the same baseline.
+   *
+   * On first CI run, baselines won't exist — the workflow has an
+   * `update-baselines` `workflow_dispatch` mode that regenerates them and
+   * pushes back to the branch. See `.github/workflows/visual-regression.yml`.
+   */
+  snapshotPathTemplate:
+    "{snapshotDir}/{testFilePath}-snapshots/{arg}{ext}",
+
   expect: {
     toHaveScreenshot: {
       /**
-       * Pixel diff threshold: 1% of total pixels.
-       *
-       * Rationale: SVG chart rendering has minor anti-aliasing differences
-       * across browser engines (especially WebKit). 1% allows for these
-       * sub-pixel rendering variations while still catching meaningful
-       * visual regressions like missing data series, wrong axis labels,
-       * or broken layout.
-       *
-       * Per-browser overrides can be set in individual test files if
-       * needed (e.g., WebKit may need 1.5% due to font rendering).
+       * 0.1% pixel-ratio threshold — per LKID-81 AC. Tight enough to catch
+       * any meaningful chart change (color shift, missing line, axis change),
+       * loose enough to absorb sub-pixel anti-aliasing differences between
+       * runs on the same OS / browser version.
        */
-      maxDiffPixelRatio: 0.01,
+      maxDiffPixelRatio: 0.001,
 
-      // Threshold for individual pixel color difference (0-1 scale)
-      // 0.2 allows slight anti-aliasing color shifts
+      // Per-pixel color threshold (0-1). 0.2 absorbs minor anti-aliasing
+      // color shifts without masking real palette changes.
       threshold: 0.2,
     },
   },
 
-  // Fail fast in CI, retry locally for flake investigation
+  // Fail fast in CI so diff PNGs surface immediately. One retry locally so
+  // a transient flake doesn't ruin a baseline-update session.
   retries: process.env.CI ? 0 : 1,
 
-  // Reporter
+  // Limit parallelism so we don't fight ourselves over the single dev server.
+  workers: 1,
+  fullyParallel: false,
+
   reporter: process.env.CI
     ? [["github"], ["html", { open: "never" }]]
     : [["html", { open: "on-failure" }]],
 
-  // Shared settings for all visual regression tests
   use: {
     baseURL: process.env.BASE_URL || "http://localhost:3000",
-    // Consistent viewport for snapshot reproducibility
-    viewport: { width: 1280, height: 720 },
-    // Disable animations for deterministic screenshots
+    viewport: { width: 1280, height: 800 },
     actionTimeout: 10000,
     navigationTimeout: 30000,
   },
 
-  // Cross-browser projects
   projects: [
     {
       name: "chromium-visual",
       use: {
         ...devices["Desktop Chrome"],
-        viewport: { width: 1280, height: 720 },
-      },
-    },
-    {
-      name: "firefox-visual",
-      use: {
-        ...devices["Desktop Firefox"],
-        viewport: { width: 1280, height: 720 },
-      },
-    },
-    {
-      name: "webkit-visual",
-      use: {
-        ...devices["Desktop Safari"],
-        viewport: { width: 1280, height: 720 },
-        // WebKit SVG rendering can differ more; allow slightly higher threshold
-        // Override in test file if needed:
-        //   expect(page).toHaveScreenshot({ maxDiffPixelRatio: 0.015 });
+        viewport: { width: 1280, height: 800 },
       },
     },
   ],
 
-  // Start local dev server if not already running
+  // Run `next dev` for the test session unless one is already running on :3000.
+  // No backend is started — the spec mocks all API calls via `page.route`.
+  //
+  // CRITICAL: `NEXT_PUBLIC_API_URL` MUST be set so that:
+  //   1. `apiUrl()` (src/lib/api.ts) issues fetches to this origin, which
+  //      Playwright then intercepts.
+  //   2. `next.config.ts` includes this origin in the `connect-src` CSP
+  //      directive — otherwise Chromium blocks the fetch before our
+  //      `page.route` handler runs (LKID-87 enforced CSP, not Report-Only).
+  // We use 127.0.0.1 (not localhost) to dodge any IPv6/IPv4 resolution
+  // ambiguity — the route mock matcher is host-pinned to API_BASE.
   webServer: {
     command: "npm run dev",
     url: "http://localhost:3000",
-    reuseExistingServer: true,
-    timeout: 60000,
+    reuseExistingServer: !process.env.CI,
+    timeout: 60_000,
+    env: {
+      NEXT_PUBLIC_API_URL: "http://127.0.0.1:8000",
+    },
   },
 });
