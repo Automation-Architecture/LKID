@@ -389,6 +389,27 @@ function InnerChart({
               <stop offset="0%" stopColor="#E08B8B" stopOpacity={0.12} />
               <stop offset="100%" stopColor="#E08B8B" stopOpacity={0} />
             </linearGradient>
+            {/* LKID-90 AC-1 — outcome-gap wedge. Soft green tint + diagonal
+                hatch makes the divergence between BUN ≤ 12 (top) and No
+                Treatment (bottom) read as a widening gap. */}
+            <pattern
+              id="kh-chart-gap-hatch"
+              patternUnits="userSpaceOnUse"
+              width={8}
+              height={8}
+              patternTransform="rotate(20)"
+            >
+              <rect width={8} height={8} fill="#3FA35B" fillOpacity={0.08} />
+              <line
+                x1={0}
+                y1={0}
+                x2={0}
+                y2={8}
+                stroke="#374151"
+                strokeOpacity={0.06}
+                strokeWidth={1}
+              />
+            </pattern>
           </defs>
         )}
 
@@ -618,6 +639,61 @@ function InnerChart({
           })()}
 
           {/* ---------------------------------------------------------------- */}
+          {/*  Outcome-gap wedge (design mode — LKID-90 AC-1).                 */}
+          {/*  Diagonal-hatched fill between BUN ≤ 12 (top edge) and No        */}
+          {/*  Treatment (bottom edge). Per Inga's design spike Option A this  */}
+          {/*  is the structural fix for Lee's "no difference at year 10"      */}
+          {/*  feedback. Year-10 caption is computed live from the engine      */}
+          {/*  output, not hardcoded.                                          */}
+          {/* ---------------------------------------------------------------- */}
+          {designMode && (() => {
+            const best = data.trajectories.find((t) => t.id === "bun_lte_12");
+            const worst = data.trajectories.find((t) => t.id === "no_treatment");
+            if (!best || !worst) return null;
+            const len = Math.min(best.points.length, worst.points.length);
+            if (len < 2) return null;
+            const paired = Array.from({ length: len }, (_, i) => ({
+              months: best.points[i].monthsFromBaseline,
+              top: best.points[i].egfr,
+              bottom: worst.points[i].egfr,
+            }));
+            const wedge = d3Area<{ months: number; top: number; bottom: number }>({
+              x: (d) => xScale(d.months),
+              y0: (d) => yScale(d.bottom),
+              y1: (d) => yScale(d.top),
+              curve: curveCatmullRom,
+            });
+            const wedgePath = wedge(paired) ?? "";
+            const last = paired[paired.length - 1];
+            const delta = Math.max(0, Math.round(last.top - last.bottom));
+            const captionY = yScale((last.top + last.bottom) / 2);
+            const captionX = xScale(last.months) - 8;
+            return (
+              <g data-testid="chart-outcome-gap-wedge">
+                <path
+                  d={wedgePath}
+                  fill="url(#kh-chart-gap-hatch)"
+                  aria-hidden="true"
+                />
+                {!isMobile && delta > 0 && (
+                  <text
+                    x={captionX}
+                    y={captionY}
+                    textAnchor="end"
+                    fontFamily="Manrope, system-ui, sans-serif"
+                    fontSize={11}
+                    fontWeight={600}
+                    fill="#1F2937"
+                    aria-hidden="true"
+                  >
+                    {`~${delta} eGFR points difference at year 10`}
+                  </text>
+                )}
+              </g>
+            );
+          })()}
+
+          {/* ---------------------------------------------------------------- */}
           {/*  Crosshair (desktop only, behind trajectories)                  */}
           {/* ---------------------------------------------------------------- */}
           {!isMobile && crosshairX !== null && (
@@ -656,7 +732,21 @@ function InnerChart({
             {data.trajectories.map((traj) => {
               const isSelected = selectedTrajectoryId === traj.id;
               const hasSelection = selectedTrajectoryId !== null;
-              const opacity = hasSelection ? (isSelected ? 1.0 : 0.3) : 1.0;
+              // LKID-90 AC-1 — emphasis treatment in design mode only.
+              // BUN ≤ 12 + No Treatment (the wedge anchors) get heavier
+              // strokes so they read as the "your choice" framing; the mid
+              // scenario stays lighter so it doesn't compete visually.
+              const isAnchor =
+                designMode &&
+                (traj.id === "bun_lte_12" || traj.id === "no_treatment");
+              const isMid = designMode && !isAnchor;
+              const baseWidth = designMode ? (isAnchor ? 3 : 2) : traj.strokeWidth;
+              const baseOpacity = isMid ? 0.65 : 1.0;
+              const opacity = hasSelection
+                ? isSelected
+                  ? 1.0
+                  : 0.3
+                : baseOpacity;
               const extraWidth = isSelected ? 1 : 0;
 
               return (
@@ -666,7 +756,7 @@ function InnerChart({
                   x={(d) => xScale(d.monthsFromBaseline)}
                   y={(d) => yScale(d.egfr)}
                   stroke={traj.color}
-                  strokeWidth={traj.strokeWidth + extraWidth}
+                  strokeWidth={baseWidth + extraWidth}
                   strokeDasharray={traj.strokeDasharray}
                   strokeLinecap="round"
                   strokeLinejoin="round"
