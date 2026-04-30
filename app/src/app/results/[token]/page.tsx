@@ -261,7 +261,8 @@ const RESULTS_CSS = `
 
 .kh-results .scenario-pills {
   display: grid;
-  grid-template-columns: repeat(4, 1fr);
+  /* LKID-91 — chart simplifies to 2 displayed scenarios. */
+  grid-template-columns: repeat(2, 1fr);
   gap: 14px;
   margin-bottom: 14px;
 }
@@ -284,7 +285,8 @@ const RESULTS_CSS = `
 
 .kh-results .scenario-cards {
   display: grid;
-  grid-template-columns: repeat(4, 1fr);
+  /* LKID-91 — chart simplifies to 2 displayed scenarios. */
+  grid-template-columns: repeat(2, 1fr);
   gap: 14px;
 }
 .kh-results .sc-card {

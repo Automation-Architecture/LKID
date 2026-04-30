@@ -141,18 +141,22 @@ interface Scenario {
   trajectoryPathCount: number;
 }
 
+// LKID-91 — chart simplifies to 2 displayed trajectories (BUN 12-17 +
+// No Treatment) per Lee feedback (2026-04-30). Engine still emits 4
+// trajectories; the chart filters at render boundary via
+// selectDisplayTrajectories(). Baselines regenerated alongside this change.
 const SCENARIOS: Scenario[] = [
   {
     name: "stage-3a-baseline",
     token: "vr-stage-3a-token",
     result: STAGE_3A_RESULT,
-    trajectoryPathCount: 4,
+    trajectoryPathCount: 2,
   },
   {
     name: "stage-4-baseline",
     token: "vr-stage-4-token",
     result: STAGE_4_RESULT,
-    trajectoryPathCount: 4,
+    trajectoryPathCount: 2,
   },
 ];
 

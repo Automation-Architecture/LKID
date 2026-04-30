@@ -74,7 +74,7 @@ export interface PdfReportProps {
 /*  Scenario metadata — parallels ResultsView.tsx SCENARIO_META                */
 /* -------------------------------------------------------------------------- */
 
-type ScenarioTone = "green" | "blue" | "yellow" | "gray";
+type ScenarioTone = "blue" | "gray";
 
 interface ScenarioMeta {
   id: TrajectoryData["id"];
@@ -83,10 +83,11 @@ interface ScenarioMeta {
   legend: string;
 }
 
+// LKID-91 — Lee feedback (2026-04-30): PDF mirrors the web Results surface
+// with 2 displayed scenarios. Engine still emits 4 trajectories; the
+// EgfrChart filters internally via selectDisplayTrajectories().
 const SCENARIO_META: ScenarioMeta[] = [
-  { id: "bun_lte_12", label: "BUN ≤ 12", tone: "green", legend: "Healthy range" },
-  { id: "bun_13_17", label: "BUN 13-17", tone: "blue", legend: "Stable range" },
-  { id: "bun_18_24", label: "BUN 18-24", tone: "yellow", legend: "Higher risk" },
+  { id: "bun_13_17", label: "BUN 12-17", tone: "blue", legend: "With BUN management" },
   { id: "no_treatment", label: "No Treatment", tone: "gray", legend: "No treatment" },
 ];
 
@@ -286,10 +287,10 @@ const PDF_CSS = `
   flex-shrink: 0;
 }
 
-/* ---------- Scenario pills ---------- */
+/* ---------- Scenario pills (LKID-91: 2 columns for 2 displayed scenarios) ---------- */
 .kh-pdf .sc-pills {
   display: grid;
-  grid-template-columns: repeat(4, 1fr);
+  grid-template-columns: repeat(2, 1fr);
   gap: 8px;
   margin-bottom: 8px;
 }
@@ -307,10 +308,10 @@ const PDF_CSS = `
 .kh-pdf .sc-pill.yellow { background: var(--s-yellow-bg); color: var(--s-yellow-text); border-color: var(--s-yellow-border); }
 .kh-pdf .sc-pill.gray   { background: var(--s-gray-bg);   color: var(--s-gray-text);   border-color: var(--s-gray-border); }
 
-/* ---------- Scenario cards ---------- */
+/* ---------- Scenario cards (LKID-91: 2 columns for 2 displayed scenarios) ---------- */
 .kh-pdf .sc-cards {
   display: grid;
-  grid-template-columns: repeat(4, 1fr);
+  grid-template-columns: repeat(2, 1fr);
   gap: 8px;
 }
 .kh-pdf .sc-card {
@@ -554,7 +555,7 @@ export default function PdfReport({
                 <p>
                   Your reported eGFR is <strong>{egfrBaseline}</strong>. This
                   chart shows how your kidney function may change over the
-                  next 10 years under four possible BUN scenarios — use the
+                  next 10 years with and without BUN management — use the
                   scenario cards above to compare outcomes.
                 </p>
               )}

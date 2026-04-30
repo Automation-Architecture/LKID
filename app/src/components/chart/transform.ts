@@ -46,7 +46,11 @@ export const TRAJECTORY_CONFIG = {
   },
   bun_13_17: {
     id: "bun_13_17" as TrajectoryId,
-    label: "BUN 13–17",
+    // LKID-91 — Lee feedback (2026-04-30): chart simplification to 2 lines.
+    // The trajectory ID stays `bun_13_17` (engine output is unchanged) but
+    // user-visible label collapses the band to "BUN 12-17". Display-only
+    // change; engine continues to compute the 13-17 series.
+    label: "BUN 12-17",
     color: "#1F2577", // design --s-blue (brand navy) — 13.26:1 on white (PASS AAA)
     strokeWidth: 2.5,
   },
@@ -194,6 +198,23 @@ export function transformPredictResponse(response: PredictResponse): ChartData {
     confidenceTier: confidence_tier,
     baselineEgfr: egfr_baseline,
   };
+}
+
+/**
+ * LKID-91 — Lee feedback (2026-04-30): chart simplifies to 2 displayed lines.
+ *
+ * Returns a new ChartData with only `bun_13_17` (relabeled "BUN 12-17") and
+ * `no_treatment`. Engine output in `data` is unchanged — this is the last
+ * filter at the chart-rendering boundary.
+ *
+ * Hidden trajectories: `bun_lte_12` (green) and `bun_18_24` (gold).
+ */
+export function selectDisplayTrajectories(data: ChartData): ChartData {
+  const visibleIds: TrajectoryId[] = ["bun_13_17", "no_treatment"];
+  const filtered = data.trajectories.filter((t) =>
+    visibleIds.includes(t.id),
+  );
+  return { ...data, trajectories: filtered };
 }
 
 /**
