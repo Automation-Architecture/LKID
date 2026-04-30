@@ -264,18 +264,15 @@ export function ResultsView({
         </div>
         {showStructural && structuralFloor && inputBun !== null && (
           <aside
-            aria-label="BUN structural floor estimate"
+            aria-label="BUN context for current eGFR reading"
             className="structural-callout"
             data-testid="structural-floor-callout"
           >
             <p>
-              Your reported eGFR is <strong>{Math.round(egfrBaseline)}</strong>. At your
-              current BUN of <strong>{Math.round(inputBun)}</strong>, approximately{" "}
-              <strong>{Math.round(structuralFloor.suppression_points)}</strong>{" "}
-              {Math.round(structuralFloor.suppression_points) === 1 ? "point" : "points"} of
-              that reading reflect BUN workload suppression, not permanent damage. Your
-              estimated structural capacity is eGFR{" "}
-              <strong>{Math.round(structuralFloor.structural_floor_egfr)}</strong>.
+              Your current eGFR is <strong>{Math.round(egfrBaseline)}</strong>. Your BUN
+              of <strong>{Math.round(inputBun)}</strong> is high, which can temporarily
+              lower the eGFR reading. Lowering your BUN may improve your kidney function
+              reading toward your true baseline.
             </p>
           </aside>
         )}
@@ -325,19 +322,16 @@ export function ResultsView({
           <h3 className="section-title">What Your Results Mean</h3>
           {showStructural && structuralFloor && inputBun !== null ? (
             <p>
-              Your reported eGFR is <strong>{Math.round(egfrBaseline)}</strong>. At your
-              current BUN of <strong>{Math.round(inputBun)}</strong>, approximately{" "}
-              <strong>{Math.round(structuralFloor.suppression_points)}</strong>{" "}
-              {Math.round(structuralFloor.suppression_points) === 1 ? "point" : "points"} of
-              that reading reflect BUN workload suppression, not permanent damage. Your
-              estimated structural capacity is eGFR{" "}
-              <strong>{Math.round(structuralFloor.structural_floor_egfr)}</strong>.
+              Your current eGFR is <strong>{Math.round(egfrBaseline)}</strong>. Your BUN
+              of <strong>{Math.round(inputBun)}</strong> is high, which can temporarily
+              lower the eGFR reading. The chart below shows how your kidney function may
+              change over the next 10 years — use the scenario cards to compare outcomes.
             </p>
           ) : (
             <p>
-              Your reported eGFR is <strong>{Math.round(egfrBaseline)}</strong>. This chart
-              shows how your kidney function may change over the next 10 years under four
-              possible BUN scenarios — use the scenario cards below to compare outcomes.
+              Your current eGFR is <strong>{Math.round(egfrBaseline)}</strong>. This chart
+              shows how your kidney function may change over the next 10 years under your
+              BUN-management scenarios — use the scenario cards below to compare outcomes.
             </p>
           )}
           <div className="explain-cta">
