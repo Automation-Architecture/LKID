@@ -52,7 +52,6 @@ Theme A delivered end-to-end in a single day. 9 engineering cards merged + deplo
 **Backlog (filed, not scheduled):**
 
 - LKID-77 — Engine edge case: `compute_dial_age` returns None when `trajectory[0] < 12` (Low, agent:john-donaldson)
-- LKID-81 — Wire up visual-regression tests (install Playwright, rewrite spec for tokenized flow, add CI job) (Medium, Harshit + Yuri pairing)
 
 **Brad-hands tickets (agents can't do these — filter Jira board by label `brad-hands`):**
 
@@ -70,6 +69,7 @@ LKID-83/84/85 are blockers but on the backlog — agents will keep moving on eng
 **Done (post-Sprint 5):**
 
 - LKID-87 — CSP flipped from Report-Only → enforcing on frontend + backend (PR #70, merged 2026-04-30). Yuri PASS WITH NITS. Follow-up: wire `report-uri` to Sentry once LKID-84 lands.
+- LKID-81 — Visual-regression infrastructure wired (PR #73, merged 2026-04-30). Playwright + 2 chart baselines (Stage 3a, Stage 4) + CI workflow on chart-touching PRs + workflow_dispatch baseline-regen mode. Yuri PASS WITH NITS. Demonstration: deliberate `#D4A017 → #0000FF` flip caught with 1318px diff. Next: remove `TODO(LKID-89)` axe waiver on the chart SVG (visual regression now catches palette regressions).
 
 Full acceptance criteria + step-by-step for each in `agents/luca/drafts/brad-hands-cards-pending.md`.
 
@@ -252,6 +252,7 @@ CTO (Luca) opens one PR per Jira card. Each card gets a feature branch (`feat/LK
 | [#64](https://github.com/Automation-Architecture/LKID/pull/64) | `feat/LKID-73-seo-basics` | LKID-73 | Harshit + Inga | Merged |
 | [#66](https://github.com/Automation-Architecture/LKID/pull/66) | `feat/LKID-89-chart-pixel-parity-v2` | LKID-89 | Harshit + Inga | Merged |
 | [#70](https://github.com/Automation-Architecture/LKID/pull/70) | `feat/LKID-87-csp-enforce-flip` | LKID-87 | John + Harshit | Merged |
+| [#73](https://github.com/Automation-Architecture/LKID/pull/73) | `feat/LKID-81-visual-regression` | LKID-81 | Harshit + Yuri | Merged |
 
 ## Team
 
