@@ -7,7 +7,7 @@
 **Jira:** [SPEC Board](https://automationarchitecture.atlassian.net/jira/software/c/projects/SPEC/boards/329/backlog) | [LKID Board](https://automationarchitecture.atlassian.net/jira/software/c/projects/LKID/boards/363)
 **Repo:** [github.com/Automation-Architecture/LKID](https://github.com/Automation-Architecture/LKID)
 **Specs:** `/Users/brad/IDE/kidneyhood/` (3 docx files)
-**Status:** Sprint 5 COMPLETE (Launch Readiness theme, 8/8 engineering cards + 1 bonus card, all shipped Apr 20). Sprint 4 COMPLETE (shipped Apr 20 — 13 days ahead of plan). App live at kidneyhood-automation-architecture.vercel.app with no-auth tokenized flow (`/labs` → `/gate/[token]` → `/results/[token]`). G1/G2/G3 guardrails active. CSP Report-Only live on both frontend + backend (72-hour verification window before enforcing flip).
+**Status:** Sprint 5 COMPLETE (Launch Readiness theme, 8/8 engineering cards + 1 bonus card shipped Apr 20; LKID-89 chart pixel-parity v2 follow-up shipped Apr 30 in PR #66). Sprint 4 COMPLETE (shipped Apr 20 — 13 days ahead of plan). App live at kidneyhood-automation-architecture.vercel.app with no-auth tokenized flow (`/labs` → `/gate/[token]` → `/results/[token]`). G1/G2/G3 guardrails active. CSP Report-Only live on both frontend + backend (72-hour verification window before enforcing flip).
 **Client Dashboard:** https://kidneyhood-automation-architecture.vercel.app/client/lee-a3f8b2 — auto-updated by `scripts/refresh-sprint-progress.py`.
 
 ## Sprint Plan
@@ -245,6 +245,7 @@ CTO (Luca) opens one PR per Jira card. Each card gets a feature branch (`feat/LK
 | [#62](https://github.com/Automation-Architecture/LKID/pull/62) | `feat/LKID-82-pdf-design-parity` | LKID-82 | Harshit + Inga | Merged |
 | [#63](https://github.com/Automation-Architecture/LKID/pull/63) | `feat/LKID-74-security-headers` | LKID-74 | John + Harshit | Merged |
 | [#64](https://github.com/Automation-Architecture/LKID/pull/64) | `feat/LKID-73-seo-basics` | LKID-73 | Harshit + Inga | Merged |
+| [#66](https://github.com/Automation-Architecture/LKID/pull/66) | `feat/LKID-89-chart-pixel-parity-v2` | LKID-89 | Harshit + Inga | Merged |
 
 ## Team
 
