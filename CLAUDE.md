@@ -178,7 +178,7 @@ CTO (Luca) opens one PR per Jira card. Each card gets a feature branch (`feat/LK
 1. Push branch → open PR via `gh pr create`
 2. Poll reviews (~60s): `gh api repos/Automation-Architecture/LKID/pulls/{N}/reviews` + `/comments`
 3. Auto-review fans out three ways:
-   - **Copilot** auto-attaches via the org-wide ruleset (id 15788058 at `https://github.com/organizations/Automation-Architecture/settings/rules/15788058`) — fires on PR open + every push to default branch across all Automation-Architecture repos
+   - **Copilot** auto-attaches via the org-wide ruleset (id 15788058 at `https://github.com/organizations/Automation-Architecture/settings/rules/15788058`) — fires on PR open + every push to the PR branch (`pull_request.synchronize`) across all Automation-Architecture repos
    - **CodeRabbit CLI** runs locally via the global Claude Code hook at `~/.claude/hooks/coderabbit-review-pr.sh`, posting findings as a PR comment under "CodeRabbit CLI review (auto-posted by Claude Code hook)". Replaces the unreliable CodeRabbit GitHub bot.
    - The CodeRabbit GitHub bot is no longer relied on (silent failures / rate limits even on Pro plan, 2026-04-30)
 4. Dispatch engineer agent to fix review findings on the correct branch
