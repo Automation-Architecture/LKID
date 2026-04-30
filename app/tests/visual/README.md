@@ -9,7 +9,7 @@ Results page, the Lab Form, or the Email Gate.
 
 ## Layout
 
-```
+```text
 app/tests/visual/
 ├── README.md                          (this file)
 ├── chart-regression.spec.ts           (the spec — Stage 3a + Stage 4 scenarios)
