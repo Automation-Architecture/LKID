@@ -310,13 +310,23 @@ app.add_middleware(
 
 
 # ---------------------------------------------------------------------------
-# Security headers — LKID-74
+# Security headers — LKID-74 / LKID-87
 #
 # Mirror of the seven-header set applied on the Next.js frontend (see
 # `app/next.config.ts`). Backend CSP is tighter since the API only serves
 # JSON / PDF streams: `default-src 'none'` with only `frame-ancestors`
 # allowing nothing. No script/style/font/connect allowances are needed
 # because the backend never renders HTML.
+#
+# LKID-87 (2026-04-30): flipped from Report-Only to enforcing mode after
+# the 10-day soak window. The header key is now `Content-Security-Policy`.
+#
+# Swagger / OpenAPI exemption (LKID-87, Yuri PR #63 nit #3):
+#   FastAPI's built-in `/docs` (Swagger UI) and `/redoc` pages pull
+#   scripts/styles/fonts from `cdn.jsdelivr.net` and would be blocked by
+#   the strict `default-src 'none'` policy. We emit a relaxed CSP for
+#   exactly those routes so the auto-generated API docs keep working.
+#   `/openapi.json` itself is JSON and stays under the strict policy.
 #
 # HSTS is conditional on the X-Forwarded-Proto header so localhost dev
 # (http://localhost:8000) does not get the preload directive. In Railway
@@ -330,14 +340,36 @@ _BACKEND_CSP = (
     "form-action 'none'"
 )
 
+# Relaxed policy used only on FastAPI's built-in Swagger UI / ReDoc routes.
+# Both pages bundle their JS/CSS/fonts from jsdelivr; the strict default
+# would prevent the docs from rendering at all once we flip to enforcing
+# mode. We deliberately do NOT relax `frame-ancestors` so the docs can
+# still not be embedded by third parties.
+_BACKEND_CSP_DOCS = (
+    "default-src 'none'; "
+    "script-src 'self' https://cdn.jsdelivr.net 'unsafe-inline'; "
+    "style-src 'self' https://cdn.jsdelivr.net 'unsafe-inline'; "
+    "img-src 'self' data: https://fastapi.tiangolo.com https://cdn.jsdelivr.net; "
+    "font-src 'self' https://cdn.jsdelivr.net; "
+    "connect-src 'self'; "
+    "frame-ancestors 'none'; "
+    "base-uri 'none'; "
+    "form-action 'none'"
+)
+
+# Path prefixes that get the relaxed Swagger/ReDoc policy. `/openapi.json`
+# is intentionally excluded — it's a pure JSON document and stays strict.
+_DOCS_PATH_PREFIXES: tuple[str, ...] = ("/docs", "/redoc")
+
 
 @app.middleware("http")
 async def security_headers_middleware(request: Request, call_next):
-    """Apply the LKID-74 security header set to every response.
+    """Apply the LKID-74 / LKID-87 security header set to every response.
 
     Headers mirror `app/next.config.ts`:
-      - Content-Security-Policy-Report-Only — tight `default-src 'none'`
-        policy; nothing but JSON/PDF flows through here.
+      - Content-Security-Policy — tight `default-src 'none'` policy on
+        every route except `/docs` + `/redoc`, which get a relaxed policy
+        so FastAPI's bundled Swagger UI / ReDoc render correctly.
       - Strict-Transport-Security — only when the edge advertises HTTPS
         via X-Forwarded-Proto, so localhost dev is unaffected.
       - X-Frame-Options: DENY (redundant with frame-ancestors, kept for
@@ -349,9 +381,14 @@ async def security_headers_middleware(request: Request, call_next):
     """
     response = await call_next(request)
 
-    response.headers.setdefault(
-        "Content-Security-Policy-Report-Only", _BACKEND_CSP
-    )
+    # LKID-87: pick the appropriate CSP based on path. The Swagger/ReDoc
+    # pages need a relaxed policy; everything else stays strict.
+    path = request.url.path
+    if any(path.startswith(prefix) for prefix in _DOCS_PATH_PREFIXES):
+        csp_value = _BACKEND_CSP_DOCS
+    else:
+        csp_value = _BACKEND_CSP
+    response.headers.setdefault("Content-Security-Policy", csp_value)
     response.headers.setdefault("X-Frame-Options", "DENY")
     response.headers.setdefault("X-Content-Type-Options", "nosniff")
     response.headers.setdefault(
