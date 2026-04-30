@@ -4,8 +4,8 @@
 **Date:** 2026-04-29
 **Context:** Brad reported the deployed `/results/[token]` chart still does not match `project/Results.html` after LKID-80 shipped. This audit lists every visible delta and a prioritized fix list for Harshit. **No implementation here — this is a spec.**
 
-**Reference:** `/Users/brad/Documents/aaa/Client Projects/KidneyHood/repo/LKID/project/Results.html:396-455` (hand-tuned SVG, `viewBox="0 0 720 280"`).
-**Implementation:** `/Users/brad/Documents/aaa/Client Projects/KidneyHood/repo/LKID/app/src/components/chart/EgfrChart.tsx` — `designMode` branch.
+**Reference:** `project/Results.html:396-455` (hand-tuned SVG, `viewBox="0 0 720 280"`).
+**Implementation:** `app/src/components/chart/EgfrChart.tsx` — `designMode` branch.
 
 ---
 

@@ -12,7 +12,7 @@
 
 import { useCallback, useMemo, useRef, useState } from "react";
 import { Group } from "@visx/group";
-import { LinePath, Bar, Line } from "@visx/shape";
+import { LinePath, Bar, Line, area as d3Area } from "@visx/shape";
 import { scaleLinear } from "@visx/scale";
 import { AxisBottom, AxisLeft } from "@visx/axis";
 import { GridRows } from "@visx/grid";
@@ -505,21 +505,25 @@ function InnerChart({
           {designMode && (() => {
             const green = data.trajectories.find((t) => t.id === "bun_lte_12");
             if (!green || green.points.length === 0) return null;
-            // LKID-89 (P2-3): close the fill to the bottom edge of the viewBox
-            // (design closes to y=275 of 280 — 5px above the bottom). This
-            // makes the green fill bleed into the dialysis pink zone like the
-            // design rather than stopping at yScale(0).
+            // LKID-89 (P2-3): close the fill 5px past the bottom of the inner
+            // plot area so the green gradient bleeds into the pink dialysis
+            // band (in inner-group coords; the plot area runs y=0..innerHeight,
+            // so innerHeight + 5 sits just below the bottom of the plot inside
+            // the bottom margin — equivalent to design's y=275 of 280 once the
+            // group transform is applied). Mirrors the design rather than
+            // stopping at yScale(0).
             const baselineY = innerHeight + 5;
-            // Walk the green line, then close down to the baseline and back.
-            const first = green.points[0];
-            let d = `M ${xScale(first.monthsFromBaseline)} ${yScale(first.egfr)}`;
-            for (let i = 1; i < green.points.length; i++) {
-              const pt = green.points[i];
-              d += ` L ${xScale(pt.monthsFromBaseline)} ${yScale(pt.egfr)}`;
-            }
-            const last = green.points[green.points.length - 1];
-            d += ` L ${xScale(last.monthsFromBaseline)} ${baselineY}`;
-            d += ` L ${xScale(first.monthsFromBaseline)} ${baselineY} Z`;
+            // LKID-89 PR #66 review (NIT-03): use Catmull-Rom for the top edge
+            // so the fill follows the same smoothed path as the trajectory
+            // stroke (LinePath above). Straight `L` segments produced visible
+            // divergence between fill edge and stroke at low point density.
+            const areaGen = d3Area<DataPoint>({
+              x: (pt) => xScale(pt.monthsFromBaseline),
+              y0: () => baselineY,
+              y1: (pt) => yScale(pt.egfr),
+              curve: curveCatmullRom,
+            });
+            const d = areaGen(green.points) ?? "";
             return (
               <path
                 d={d}
@@ -562,13 +566,19 @@ function InnerChart({
           {designMode && (() => {
             // LKID-89 (P0-2): pin the dashed dialysis line at 76.8% down the
             // chart, matching design's emphasis (project/Results.html:418
-            // places the line at y=215 of a 280-tall viewBox = 215/280 = 0.768).
-            // The yScale-driven position would land at ~60% (12/30 = 0.4 from
-            // top), washing out the "dialysis is way down here" visual.
+            // places the line at y=215 of a 280-tall viewBox = 215/280 = 0.768)
+            // — but only when yMax === 30, the design's source domain. For
+            // other yMax values (e.g. Stage 3a patients use yMax=60) the
+            // 0.768 ratio drifts ~5 eGFR units off `data.dialysisThreshold`
+            // while the label still says "dialysis may be needed". Fall back
+            // to the data-driven yScale position for those cases (LKID-89
+            // PR #66 review feedback: Copilot + CodeRabbit + Yuri NIT-01).
             // The line is decorative in design mode — engine-driven threshold
             // text remains in chrome mode (PDF) above.
             const totalHeight = innerHeight + margin.top + margin.bottom;
-            const thresholdY = 0.768 * totalHeight - margin.top;
+            const thresholdY = yMax === 30
+              ? 0.768 * totalHeight - margin.top
+              : yScale(data.dialysisThreshold);
             // Band height also scales with viewBox: design uses h=25 of 280 = 8.93%.
             const bandHeight = (25 / 280) * totalHeight;
             // P2-1: design label is at x=70 of viewBox (15px right of axis at x=55).
@@ -776,9 +786,13 @@ function InnerChart({
               {[12, 24, 36, 48, 60, 72, 84, 96, 108, 120].map((m, idx, arr) => {
                 if (isMobile && idx % 2 === 1) return null; // thin on mobile
                 const yr = m / 12;
-                // LKID-89 (P1-3): match design — labels sit just inside the
-                // bottom of the plot area (y=275 of 280 = innerHeight - 5)
-                // overlapping the pink dialysis fill, not below the chart.
+                // LKID-89 (P1-3): match design — labels sit 5px above the
+                // bottom of the inner plot area (in inner-group coords;
+                // remember the Group is translated by margin.top, so this
+                // y maps to the same visual position as design's y=275 of 280
+                // once you account for the top/bottom margin split). Visually
+                // the labels overlap the pink dialysis fill rather than
+                // sitting below the chart.
                 const yLabel = innerHeight - 5;
                 // LKID-89 (P1-4): last tick ("10 yr") clears the endpoint
                 // circle (centered at innerWidth-16, r=16). textAnchor="end"
