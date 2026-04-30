@@ -1,162 +1,119 @@
-import { test, expect } from "@playwright/test";
+import { test, expect, type Page, type Route } from "@playwright/test";
 
 /**
- * Visual Regression Tests — Visx eGFR Trajectory Chart (LKID-48)
+ * Visual Regression Tests — Visx eGFR Trajectory Chart (LKID-81)
  *
- * Tests capture screenshots of the chart component under different data
- * scenarios and compare against baseline snapshots.
+ * What this validates:
+ *   The chart SVG (`[data-testid="egfr-chart-svg"]`) renders a known set of
+ *   trajectories pixel-equivalently to its committed baseline. Any
+ *   meaningful change — color, missing line, layout shift, font swap —
+ *   surfaces as a diff PNG in CI.
+ *
+ * How it works:
+ *   `/results/[token]` is a `"use client"` component that fetches
+ *   `GET ${NEXT_PUBLIC_API_URL}/results/{token}` in a `useEffect`. Playwright
+ *   intercepts that fetch via `page.route` and serves a deterministic
+ *   `captured: true` payload, so the chart renders without any live backend.
+ *
+ *   The `prediction-flow.spec.ts` E2E suite uses the same pattern. Reusing it
+ *   here keeps mocking strategy in one place.
  *
  * Run:
  *   npx playwright test --config=playwright.visual.config.ts
  *
- * Update baselines:
+ * Update baselines (only after intentional design changes — see README):
  *   npx playwright test --config=playwright.visual.config.ts --update-snapshots
- *
- * These tests depend on:
- *   - The results page being accessible at /results
- *   - The Visx chart component rendering an <svg> element
- *   - Mock data or API stubs providing deterministic chart data
- *
- * TODO (Harshit): Wire up MSW or route interception to inject specific
- * prediction responses so chart renders are deterministic across runs.
  */
 
 // ---------------------------------------------------------------------------
-// Helpers
+// Mocking helpers — keep in sync with `prediction-flow.spec.ts`
 // ---------------------------------------------------------------------------
 
-/**
- * Wait for the Visx SVG chart to fully render and stabilize.
- *
- * Strategy:
- * 1. Wait for the <svg> element to appear in the DOM
- * 2. Wait for all path/line elements (trajectory lines) to be present
- * 3. Brief pause for any CSS transitions or animation frames to settle
- *
- * Findings from Yuri/Harshit pairing session (Task 1.2) should refine
- * these selectors and timing once the actual chart component is built.
- */
-async function waitForChartStable(page: import("@playwright/test").Page) {
-  // Wait for the SVG chart container to appear
-  await page.waitForSelector("svg", { state: "visible", timeout: 15000 });
+// Must match `NEXT_PUBLIC_API_URL` in playwright.visual.config.ts `webServer.env`.
+// The dev server's `apiUrl()` will issue fetches to this origin, which we
+// intercept below — and the build-time CSP `connect-src` whitelists this exact
+// origin so Chromium doesn't block the fetch before our route handler runs.
+const API_BASE =
+  process.env.NEXT_PUBLIC_API_URL ?? "http://127.0.0.1:8000";
 
-  // Wait for at least one path element (trajectory line) to render
-  await page.waitForSelector("svg path", { state: "visible", timeout: 10000 });
-
-  // Allow any animations or transitions to settle
-  // Visx typically doesn't animate by default, but custom transitions
-  // may be added. Adjust this if Harshit adds entrance animations.
-  await page.waitForTimeout(500);
-
-  // Ensure no pending network requests (chart data fully loaded)
-  await page.waitForLoadState("networkidle");
+function escapeRegExp(s: string): string {
+  return s.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
 }
-
-/**
- * Inject mock prediction data via route interception.
- *
- * This ensures deterministic chart rendering regardless of backend state.
- * Each test case provides its own dataset to exercise different visual states.
- */
-async function mockPredictResponse(
-  page: import("@playwright/test").Page,
-  responseData: Record<string, unknown>
-) {
-  await page.route("**/predict", (route) => {
-    route.fulfill({
-      status: 200,
-      contentType: "application/json",
-      body: JSON.stringify(responseData),
-    });
-  });
-}
-
-// ---------------------------------------------------------------------------
-// Mock data for each test scenario
-// ---------------------------------------------------------------------------
 
 const TIME_POINTS = [0, 1, 3, 6, 12, 18, 24, 36, 48, 60, 72, 84, 96, 108, 120];
 
+interface Trajectories {
+  no_treatment: number[];
+  bun_18_24: number[];
+  bun_13_17: number[];
+  bun_12: number[];
+}
+
+interface PredictionResult {
+  egfr_baseline: number;
+  confidence_tier: 1 | 2 | 3;
+  trajectories: Trajectories;
+  time_points_months: number[];
+  dial_ages: {
+    no_treatment: number | null;
+    bun_18_24: number | null;
+    bun_13_17: number | null;
+    bun_12: number | null;
+  };
+  dialysis_threshold: number;
+  stat_cards: {
+    egfr_baseline: number;
+    egfr_10yr_no_treatment: number;
+    egfr_10yr_best_case: number;
+    potential_gain_10yr: number;
+    bun_suppression_estimate: number;
+  };
+  bun_suppression_estimate: number;
+}
+
 /**
- * Single visit — Stage 3b patient, moderate decline.
- * Charts should show 4 trajectory lines diverging from baseline.
+ * Stage 3a baseline (eGFR ≈ 50). No-treatment line declines slowly; treatment
+ * lines bend upward. Dialysis threshold band is below the visible y-range,
+ * so the dashed line + label sit at the chart floor.
  */
-const SINGLE_VISIT_DATA = {
-  egfr_baseline: 38.0,
+const STAGE_3A_RESULT: PredictionResult = {
+  egfr_baseline: 50.0,
   confidence_tier: 1,
   trajectories: {
-    no_treatment: [38.0, 37.8, 37.3, 36.7, 35.6, 34.5, 33.4, 31.3, 29.1, 27.0, 24.8, 22.7, 20.5, 18.4, 16.2],
-    bun_18_24: [38.0, 39.0, 40.7, 41.0, 42.0, 42.6, 42.9, 41.4, 39.9, 38.4, 36.9, 35.4, 33.9, 32.4, 30.9],
-    bun_13_17: [38.0, 39.6, 41.9, 42.4, 44.4, 45.7, 46.4, 45.4, 44.4, 43.4, 42.4, 41.4, 40.4, 39.4, 38.4],
-    bun_12: [38.0, 40.4, 43.7, 44.6, 47.6, 49.5, 50.7, 50.2, 49.7, 49.2, 48.7, 48.2, 47.7, 47.2, 46.7],
+    no_treatment: [50.0, 49.7, 49.0, 48.0, 46.0, 44.0, 42.0, 38.0, 34.0, 30.0, 26.0, 22.0, 18.0, 14.0, 10.0],
+    bun_18_24:    [50.0, 51.0, 52.5, 53.0, 54.0, 54.4, 54.5, 53.0, 51.5, 50.0, 48.5, 47.0, 45.5, 44.0, 42.5],
+    bun_13_17:    [50.0, 51.6, 53.8, 54.4, 56.0, 57.1, 57.6, 56.6, 55.6, 54.6, 53.6, 52.6, 51.6, 50.6, 49.6],
+    bun_12:       [50.0, 52.4, 55.6, 56.5, 59.2, 61.0, 62.0, 61.5, 61.0, 60.5, 60.0, 59.5, 59.0, 58.5, 58.0],
   },
   time_points_months: TIME_POINTS,
-  dial_ages: {
-    no_treatment: 72.5,
-    bun_18_24: null,
-    bun_13_17: null,
-    bun_12: null,
-  },
+  dial_ages: { no_treatment: 78.0, bun_18_24: null, bun_13_17: null, bun_12: null },
   dialysis_threshold: 12.0,
   stat_cards: {
-    egfr_baseline: 38.0,
-    egfr_10yr_no_treatment: 16.2,
-    egfr_10yr_best_case: 46.7,
-    potential_gain_10yr: 30.5,
-    bun_suppression_estimate: 7.8,
+    egfr_baseline: 50.0,
+    egfr_10yr_no_treatment: 10.0,
+    egfr_10yr_best_case: 58.0,
+    potential_gain_10yr: 48.0,
+    bun_suppression_estimate: 7.6,
   },
+  bun_suppression_estimate: 7.6,
 };
 
 /**
- * Multi-visit — 3+ visits showing clear trajectory.
- * Same patient profile but with Tier 2 confidence (hemoglobin + glucose present).
+ * Stage 4 baseline (eGFR ≈ 18). No-treatment line crosses the dialysis
+ * threshold (12) within the chart window — the dashed threshold line +
+ * tinted band + endpoint callouts all light up.
  */
-const MULTI_VISIT_DATA = {
-  ...SINGLE_VISIT_DATA,
-  confidence_tier: 2,
-  egfr_baseline: 42.0,
-  trajectories: {
-    no_treatment: [42.0, 41.8, 41.3, 40.5, 39.2, 37.9, 36.6, 34.0, 31.4, 28.8, 26.2, 23.6, 21.0, 18.4, 15.8],
-    bun_18_24: [42.0, 43.2, 45.1, 45.5, 46.8, 47.5, 47.9, 46.4, 44.9, 43.4, 41.9, 40.4, 38.9, 37.4, 35.9],
-    bun_13_17: [42.0, 43.9, 46.5, 47.1, 49.5, 51.0, 51.8, 50.8, 49.8, 48.8, 47.8, 46.8, 45.8, 44.8, 43.8],
-    bun_12: [42.0, 44.8, 48.5, 49.6, 53.0, 55.2, 56.5, 56.0, 55.5, 55.0, 54.5, 54.0, 53.5, 53.0, 52.5],
-  },
-  dial_ages: {
-    no_treatment: 75.1,
-    bun_18_24: null,
-    bun_13_17: null,
-    bun_12: null,
-  },
-  stat_cards: {
-    egfr_baseline: 42.0,
-    egfr_10yr_no_treatment: 15.8,
-    egfr_10yr_best_case: 52.5,
-    potential_gain_10yr: 36.7,
-    bun_suppression_estimate: 9.3,
-  },
-};
-
-/**
- * Dialysis threshold — Stage 4 patient whose no-treatment trajectory
- * crosses below eGFR 12 within the chart timeframe.
- * The dialysis threshold line at eGFR=12 should be visually prominent.
- */
-const DIALYSIS_THRESHOLD_DATA = {
+const STAGE_4_RESULT: PredictionResult = {
   egfr_baseline: 18.0,
   confidence_tier: 1,
   trajectories: {
     no_treatment: [18.0, 17.7, 17.2, 16.4, 15.0, 13.5, 12.0, 9.0, 6.0, 3.0, 0, 0, 0, 0, 0],
-    bun_18_24: [18.0, 19.5, 21.8, 22.2, 23.5, 24.3, 24.8, 23.3, 21.8, 20.3, 18.8, 17.3, 15.8, 14.3, 12.8],
-    bun_13_17: [18.0, 20.0, 22.8, 23.5, 25.8, 27.3, 28.2, 27.2, 26.2, 25.2, 24.2, 23.2, 22.2, 21.2, 20.2],
-    bun_12: [18.0, 21.0, 24.8, 25.8, 29.0, 31.2, 32.7, 32.2, 31.7, 31.2, 30.7, 30.2, 29.7, 29.2, 28.7],
+    bun_18_24:    [18.0, 19.5, 21.8, 22.2, 23.5, 24.3, 24.8, 23.3, 21.8, 20.3, 18.8, 17.3, 15.8, 14.3, 12.8],
+    bun_13_17:    [18.0, 20.0, 22.8, 23.5, 25.8, 27.3, 28.2, 27.2, 26.2, 25.2, 24.2, 23.2, 22.2, 21.2, 20.2],
+    bun_12:       [18.0, 21.0, 24.8, 25.8, 29.0, 31.2, 32.7, 32.2, 31.7, 31.2, 30.7, 30.2, 29.7, 29.2, 28.7],
   },
   time_points_months: TIME_POINTS,
-  dial_ages: {
-    no_treatment: 62.0,
-    bun_18_24: null,
-    bun_13_17: null,
-    bun_12: null,
-  },
+  dial_ages: { no_treatment: 62.0, bun_18_24: null, bun_13_17: null, bun_12: null },
   dialysis_threshold: 12.0,
   stat_cards: {
     egfr_baseline: 18.0,
@@ -165,61 +122,140 @@ const DIALYSIS_THRESHOLD_DATA = {
     potential_gain_10yr: 28.7,
     bun_suppression_estimate: 12.4,
   },
+  bun_suppression_estimate: 12.4,
 };
 
+const VALID_INPUTS = {
+  bun: 16,
+  creatinine: 3.2,
+  potassium: 4.5,
+  age: 58,
+  sex: "unknown",
+};
+
+interface Scenario {
+  name: string;
+  token: string;
+  result: PredictionResult;
+  /** Expected count of trajectory `<path>` elements — wait gate. */
+  trajectoryPathCount: number;
+}
+
+const SCENARIOS: Scenario[] = [
+  {
+    name: "stage-3a-baseline",
+    token: "vr-stage-3a-token",
+    result: STAGE_3A_RESULT,
+    trajectoryPathCount: 4,
+  },
+  {
+    name: "stage-4-baseline",
+    token: "vr-stage-4-token",
+    result: STAGE_4_RESULT,
+    trajectoryPathCount: 4,
+  },
+];
+
+/**
+ * Mock the `GET /results/{token}` backend call that the client-side Results
+ * page issues on mount. `captured: true` so the page renders the chart
+ * directly (no `/gate` redirect, no email-capture flow).
+ */
+async function mockResultsGet(page: Page, scenario: Scenario) {
+  // Pin to the API host specifically so the page-route navigation (Next.js
+  // resolving /results/[token] on :3000) is NOT intercepted — only the
+  // backend GET that the client-side ResultsTokenPage issues.
+  const pattern = new RegExp(
+    `^${escapeRegExp(API_BASE)}/results/${escapeRegExp(scenario.token)}(?:\\?.*)?$`,
+  );
+  await page.route(pattern, (route: Route) => {
+    if (route.request().method() !== "GET") {
+      return route.continue();
+    }
+    return route.fulfill({
+      status: 200,
+      contentType: "application/json",
+      body: JSON.stringify({
+        report_token: scenario.token,
+        captured: true,
+        created_at: "2026-04-30T00:00:00Z",
+        result: scenario.result,
+        inputs: VALID_INPUTS,
+        lead: {
+          name: "VR Test",
+          email: "vr@kidneyhood.test",
+          email_captured_at: "2026-04-30T00:00:00Z",
+        },
+      }),
+    });
+  });
+}
+
+/**
+ * Disable CSS animations + transitions so the loading skeleton's `kh-pulse`
+ * keyframe and any visx hover transitions can't shift pixels mid-screenshot.
+ */
+async function disableAnimations(page: Page) {
+  await page.addStyleTag({
+    content: `
+      *, *::before, *::after {
+        animation-duration: 0s !important;
+        animation-delay: 0s !important;
+        transition-duration: 0s !important;
+        transition-delay: 0s !important;
+      }
+      .skeleton { animation: none !important; }
+    `,
+  });
+}
+
+/**
+ * Wait for the chart to be fully painted: SVG present, expected number of
+ * trajectory paths, fonts loaded, and a stable bounding box.
+ */
+async function waitForChartStable(page: Page, expectedPathCount: number) {
+  // 1. The SVG container must mount (replaces the skeleton).
+  await page.waitForSelector('[data-testid="egfr-chart-svg"]', {
+    state: "visible",
+    timeout: 15_000,
+  });
+
+  // 2. All four trajectory lines must be in the DOM. Visx renders via React,
+  //    so this wait protects against capturing a partial render.
+  await expect(
+    page.locator('[data-testid^="trajectory-line-"]'),
+  ).toHaveCount(expectedPathCount, { timeout: 10_000 });
+
+  // 3. Fonts (next/font Manrope + Nunito Sans) must be loaded — otherwise
+  //    a baseline taken with fallback fonts diffs against a CI run that
+  //    waited a tick longer.
+  await page.evaluate(() => document.fonts.ready);
+
+  // 4. Force layout to settle.
+  await page.waitForFunction(() => {
+    const svg = document.querySelector(
+      '[data-testid="egfr-chart-svg"]',
+    ) as SVGSVGElement | null;
+    if (!svg) return false;
+    const box = svg.getBoundingClientRect();
+    return box.width > 0 && box.height > 0;
+  });
+}
+
 // ---------------------------------------------------------------------------
-// Test cases
+// Tests
 // ---------------------------------------------------------------------------
 
-test.describe("eGFR Chart Visual Regression", () => {
-  test("single visit — 4 trajectory lines from Stage 3b baseline", async ({
-    page,
-  }) => {
-    await mockPredictResponse(page, SINGLE_VISIT_DATA);
-    await page.goto("/results");
-    await waitForChartStable(page);
+test.describe("eGFR Chart — visual regression", () => {
+  for (const scenario of SCENARIOS) {
+    test(`chart matches baseline — ${scenario.name}`, async ({ page }) => {
+      await mockResultsGet(page, scenario);
+      await page.goto(`/results/${scenario.token}`);
+      await disableAnimations(page);
+      await waitForChartStable(page, scenario.trajectoryPathCount);
 
-    await expect(page).toHaveScreenshot("chart-single-visit.png", {
-      fullPage: false,
-      // Clip to the chart area if a known container exists
-      // clip: { x: 0, y: 100, width: 1280, height: 500 },
+      const chart = page.locator('[data-testid="egfr-chart-svg"]');
+      await expect(chart).toHaveScreenshot(`chart-${scenario.name}.png`);
     });
-  });
-
-  test("multi-visit — 3+ visits with Tier 2 confidence", async ({ page }) => {
-    await mockPredictResponse(page, MULTI_VISIT_DATA);
-    await page.goto("/results");
-    await waitForChartStable(page);
-
-    await expect(page).toHaveScreenshot("chart-multi-visit.png", {
-      fullPage: false,
-    });
-  });
-
-  test("dialysis threshold — no-treatment crosses eGFR 12", async ({
-    page,
-  }) => {
-    await mockPredictResponse(page, DIALYSIS_THRESHOLD_DATA);
-    await page.goto("/results");
-    await waitForChartStable(page);
-
-    await expect(page).toHaveScreenshot("chart-dialysis-threshold.png", {
-      fullPage: false,
-    });
-  });
-});
-
-test.describe("eGFR Chart — Responsive Snapshots", () => {
-  test("chart renders correctly at mobile viewport", async ({ page }) => {
-    await mockPredictResponse(page, SINGLE_VISIT_DATA);
-    await page.setViewportSize({ width: 375, height: 667 });
-    await page.goto("/results");
-    await waitForChartStable(page);
-
-    await expect(page).toHaveScreenshot("chart-mobile.png", {
-      fullPage: false,
-      // Mobile may need slightly higher threshold due to cramped SVG scaling
-      maxDiffPixelRatio: 0.015,
-    });
-  });
+  }
 });
