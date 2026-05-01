@@ -2,7 +2,6 @@
 
 import Link from "next/link";
 import { Manrope, Nunito_Sans } from "next/font/google";
-import { useEffect, useState } from "react";
 import { DisclaimerBlock } from "@/components/disclaimer-block";
 
 const manrope = Manrope({
@@ -61,39 +60,6 @@ const LANDING_CSS = `
 }
 
 .kh-landing .accent { color: var(--navy); }
-
-/* ---------- Nav ---------- */
-.kh-landing .nav {
-  background: var(--navy);
-  color: #fff;
-  height: 64px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  position: relative;
-}
-.kh-landing .nav-inner {
-  display: flex;
-  align-items: center;
-  gap: 48px;
-  font-size: 15px;
-  font-weight: 500;
-}
-.kh-landing .nav a {
-  color: rgba(255,255,255,.92);
-  text-decoration: none;
-  padding: 6px 4px;
-  transition: color .15s;
-}
-.kh-landing .nav a:hover, .kh-landing .nav a:focus-visible { color: #fff; }
-.kh-landing .nav .brand {
-  color: #fff;
-  font-weight: 700;
-  font-family: var(--font-manrope), 'Manrope', sans-serif;
-  letter-spacing: -0.01em;
-  font-size: 16px;
-}
-.kh-landing .nav-burger { display: none; }
 
 /* ---------- Layout ---------- */
 .kh-landing .wrap { max-width: 1200px; margin: 0 auto; }
@@ -278,16 +244,6 @@ const LANDING_CSS = `
   font-weight: 500;
 }
 
-/* ---------- How it works ---------- */
-.kh-landing .how { background: #fff; padding: 100px 24px 80px; }
-.kh-landing .section-head {
-  display: flex;
-  justify-content: space-between;
-  align-items: flex-end;
-  gap: 32px;
-  margin-bottom: 64px;
-  flex-wrap: wrap;
-}
 .kh-landing .chip {
   display: inline-flex;
   align-items: center;
@@ -304,110 +260,6 @@ const LANDING_CSS = `
   background: var(--mint-dot);
   border-radius: 999px;
 }
-.kh-landing .section-title {
-  font-size: clamp(32px, 4.2vw, 56px);
-  margin: 14px 0 0;
-  color: var(--ink);
-}
-.kh-landing .head-tags { display: flex; gap: 10px; flex-wrap: wrap; }
-.kh-landing .tag-pill {
-  border: 1px solid var(--border);
-  border-radius: 999px;
-  padding: 8px 16px;
-  font-size: 13px;
-  color: var(--ink-2);
-  background: #fff;
-  font-weight: 500;
-}
-
-.kh-landing .steps {
-  display: grid;
-  grid-template-columns: repeat(3, 1fr);
-  gap: 20px;
-  position: relative;
-}
-.kh-landing .steps::before {
-  content: "";
-  position: absolute;
-  top: 36px; left: 0; right: 0;
-  height: 1px;
-  background: repeating-linear-gradient(to right, var(--border-2) 0 6px, transparent 6px 12px);
-  z-index: 0;
-}
-.kh-landing .step { position: relative; z-index: 1; }
-.kh-landing .step-num {
-  font-family: var(--font-manrope), 'Manrope', sans-serif;
-  font-size: 15px;
-  font-weight: 600;
-  color: var(--navy);
-  letter-spacing: .04em;
-  text-align: center;
-  margin-bottom: 48px;
-  background: #fff;
-  display: inline-block;
-  padding: 0 16px;
-  position: relative;
-  left: 50%;
-  transform: translateX(-50%);
-}
-.kh-landing .step-card {
-  background: #fff;
-  border: 1px solid var(--border);
-  border-radius: 16px;
-  padding: 24px 22px 28px;
-  box-shadow: 0 1px 2px rgba(16,24,40,.04);
-}
-.kh-landing .step-card .h {
-  font-size: 15px;
-  font-weight: 600;
-  color: var(--ink);
-  margin: 0 0 20px;
-}
-.kh-landing .step-card .desc {
-  color: var(--body);
-  font-size: 13px;
-  margin-top: 14px;
-  line-height: 1.5;
-}
-
-.kh-landing .field-pill {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  background: #fff;
-  border: 1px solid var(--border);
-  border-radius: 999px;
-  padding: 10px 20px;
-  font-size: 14px;
-  color: var(--ink-2);
-  margin-bottom: 10px;
-  box-shadow: 0 1px 2px rgba(16,24,40,.03);
-}
-.kh-landing .field-pill::after {
-  content: "";
-  width: 8px; height: 8px;
-  border-right: 1.5px solid var(--body);
-  border-bottom: 1.5px solid var(--body);
-  transform: rotate(45deg) translateY(-2px);
-}
-
-.kh-landing .ticker {
-  display: flex;
-  justify-content: center;
-  gap: 18px;
-  font-family: var(--font-manrope), 'Manrope', sans-serif;
-  font-size: 14px;
-  color: var(--body);
-  margin-bottom: 10px;
-  font-weight: 500;
-}
-.kh-landing .ticker .active {
-  color: var(--navy);
-  font-size: 18px;
-  font-weight: 700;
-}
-
-.kh-landing .mini-chart { width: 100%; height: 70px; display: block; }
 
 .kh-landing .dl-box {
   background: #fff;
@@ -572,73 +424,8 @@ const LANDING_CSS = `
 .kh-landing .kh-foot a { color: var(--body); text-decoration: none; padding: 2px 0; }
 .kh-landing .kh-foot a:hover { color: var(--ink-2); }
 
-/* ---------- Mobile nav overlay ---------- */
-.kh-landing .m-menu {
-  position: fixed;
-  inset: 0;
-  background: #fff;
-  z-index: 10000;
-  display: flex;
-  flex-direction: column;
-  transform: translateX(100%);
-  transition: transform .28s ease;
-  visibility: hidden;
-}
-.kh-landing .m-menu.open { transform: translateX(0); visibility: visible; }
-.kh-landing .m-menu-top {
-  background: var(--navy);
-  color: #fff;
-  height: 64px;
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  padding: 0 20px;
-  flex-shrink: 0;
-}
-.kh-landing .m-menu-top .brand {
-  font-family: var(--font-manrope), 'Manrope', sans-serif;
-  font-weight: 700;
-  font-size: 17px;
-  letter-spacing: -.01em;
-}
-.kh-landing .m-menu-close {
-  background: transparent;
-  border: 0;
-  color: #fff;
-  font-size: 24px;
-  line-height: 1;
-  cursor: pointer;
-  min-height: 44px;
-  min-width: 44px;
-  display: grid;
-  place-items: center;
-  padding: 0;
-}
-.kh-landing .m-menu-list { padding: 32px 28px 0; display: flex; flex-direction: column; gap: 22px; }
-.kh-landing .m-menu-list a { color: var(--ink); font-size: 17px; text-decoration: none; padding: 4px 0; font-weight: 400; }
-.kh-landing .m-menu-cta { margin: auto 28px 48px; padding-top: 32px; display: flex; justify-content: center; }
-.kh-landing .m-menu-cta a { width: 100%; max-width: 340px; padding: 18px 28px; text-align: center; justify-content: center; }
-
 /* ---------- Mobile ---------- */
 @media (max-width: 900px) {
-  .kh-landing .nav-inner { gap: 18px; font-size: 13px; }
-  .kh-landing .nav-inner a:not(.brand) { display: none; }
-  .kh-landing .nav-burger {
-    display: block;
-    position: absolute;
-    right: 20px;
-    top: 50%;
-    transform: translateY(-50%);
-    color: #fff;
-    background: transparent;
-    border: 0;
-    padding: 4px 8px;
-    font-size: 22px;
-    cursor: pointer;
-    min-height: 44px;
-    min-width: 44px;
-  }
-
   .kh-landing .hero { padding: 40px 20px 60px; }
   .kh-landing .hero .lede { font-size: 14px; }
   .kh-landing .cta-pill { padding: 14px 28px; font-size: 14px; }
@@ -653,13 +440,7 @@ const LANDING_CSS = `
   .kh-landing .trajectory-card { margin-top: 40px; padding: 18px 16px 22px; border-radius: 14px; }
   .kh-landing .trajectory-title { position: static; text-align: left; max-width: none; margin-bottom: 10px; font-size: 13px; }
 
-  .kh-landing .how, .kh-landing .band, .kh-landing .future, .kh-landing .final { padding: 60px 20px; }
-  .kh-landing .section-head { flex-direction: column; align-items: flex-start; gap: 14px; margin-bottom: 36px; }
-  .kh-landing .head-tags { order: 3; }
-
-  .kh-landing .steps { grid-template-columns: 1fr; gap: 32px; }
-  .kh-landing .steps::before { display: none; }
-  .kh-landing .step-num { left: 0; transform: none; padding: 0 0 8px; font-size: 14px; }
+  .kh-landing .band, .kh-landing .future, .kh-landing .final { padding: 60px 20px; }
 
   .kh-landing .band-inner, .kh-landing .future-inner, .kh-landing .final-card {
     grid-template-columns: 1fr;
@@ -710,21 +491,6 @@ const JSON_LD = {
 };
 
 export default function LandingPage() {
-  const [menuOpen, setMenuOpen] = useState(false);
-
-  useEffect(() => {
-    if (!menuOpen) return;
-    const onKey = (e: KeyboardEvent) => {
-      if (e.key === "Escape") setMenuOpen(false);
-    };
-    document.addEventListener("keydown", onKey);
-    document.body.style.overflow = "hidden";
-    return () => {
-      document.removeEventListener("keydown", onKey);
-      document.body.style.overflow = "";
-    };
-  }, [menuOpen]);
-
   return (
     <div className={`kh-landing ${manrope.variable} ${nunito.variable}`}>
       <style dangerouslySetInnerHTML={{ __html: LANDING_CSS }} />
@@ -734,54 +500,7 @@ export default function LandingPage() {
         dangerouslySetInnerHTML={{ __html: JSON.stringify(JSON_LD) }}
       />
 
-      <nav className="nav" aria-label="Main navigation">
-        <div className="nav-inner">
-          <a href="#how">How it works</a>
-          <a href="#preview">Preview</a>
-          <span className="brand">KidneyHood.org</span>
-          <a href="#about">About</a>
-          <a href="#contact">Contact</a>
-        </div>
-        <button
-          className="nav-burger"
-          aria-label="Open menu"
-          aria-expanded={menuOpen}
-          aria-controls="kh-mobile-menu"
-          onClick={() => setMenuOpen(true)}
-        >
-          ☰
-        </button>
-      </nav>
-
-      <div
-        id="kh-mobile-menu"
-        className={`m-menu${menuOpen ? " open" : ""}`}
-        role="dialog"
-        aria-label="Menu"
-        aria-hidden={!menuOpen}
-      >
-        <div className="m-menu-top">
-          <span className="brand">KidneyHood.org</span>
-          <button
-            className="m-menu-close"
-            aria-label="Close menu"
-            onClick={() => setMenuOpen(false)}
-          >
-            ✕
-          </button>
-        </div>
-        <nav className="m-menu-list" aria-label="Mobile navigation">
-          <a href="#how" onClick={() => setMenuOpen(false)}>How it works</a>
-          <a href="#preview" onClick={() => setMenuOpen(false)}>Preview</a>
-          <a href="#about" onClick={() => setMenuOpen(false)}>About</a>
-          <a href="#contact" onClick={() => setMenuOpen(false)}>Contact</a>
-        </nav>
-        <div className="m-menu-cta">
-          <Link href="/labs" className="cta-pill on-tint" onClick={() => setMenuOpen(false)}>
-            Start your check
-          </Link>
-        </div>
-      </div>
+      <div style={{ height: 64, backgroundColor: 'var(--navy)' }} aria-hidden="true" />
 
       <main id="main-content">
         <section className="hero">
@@ -878,91 +597,6 @@ export default function LandingPage() {
                 <span>2 yrs</span>
                 <span>4 yrs</span>
                 <span>5 yrs</span>
-              </div>
-            </div>
-          </div>
-        </section>
-
-        <section className="how" id="how">
-          <div className="wrap">
-            <div className="section-head">
-              <div>
-                <span className="chip"><span className="dot" />Clear</span>
-                <h2 className="display section-title">How it works</h2>
-              </div>
-              <div className="head-tags">
-                <span className="tag-pill">Takes less than a minute</span>
-                <span className="tag-pill">No account needed</span>
-                <span className="tag-pill">Instant results</span>
-              </div>
-            </div>
-
-            <div className="steps">
-              <div className="step">
-                <div className="step-num">01</div>
-                <div className="step-card">
-                  <div className="h">Enter your lab results:</div>
-                  <div className="field-pill">BUN</div>
-                  <div className="field-pill">Creatinine</div>
-                  <div className="field-pill">Your Age</div>
-                </div>
-              </div>
-
-              <div className="step">
-                <div className="step-num">02</div>
-                <div className="step-card">
-                  <div className="h">Get your projection:</div>
-                  <div className="ticker">
-                    <span>07</span>
-                    <span>06</span>
-                    <span className="active">05</span>
-                    <span>04</span>
-                    <span>03</span>
-                  </div>
-                  <svg className="mini-chart" viewBox="0 0 260 70" preserveAspectRatio="none" aria-hidden="true">
-                    <polyline
-                      fill="none"
-                      stroke="#2F8F52"
-                      strokeWidth="2"
-                      strokeLinecap="round"
-                      strokeLinejoin="round"
-                      points="8,50 40,40 70,42 100,22 130,10 160,26 190,36 220,28 252,34"
-                    />
-                  </svg>
-                  <div className="desc">
-                    Understand your current kidney function and what it may mean
-                  </div>
-                </div>
-              </div>
-
-              <div className="step">
-                <div className="step-num">03</div>
-                <div className="step-card">
-                  <div className="h">Download your report:</div>
-                  <div className="dl-box">
-                    <div className="dl-ico">
-                      <svg
-                        width="16"
-                        height="16"
-                        viewBox="0 0 24 24"
-                        fill="none"
-                        stroke="#1F2577"
-                        strokeWidth="2"
-                        strokeLinecap="round"
-                        strokeLinejoin="round"
-                        aria-hidden="true"
-                      >
-                        <path d="M12 3v12" />
-                        <path d="M7 10l5 5 5-5" />
-                        <path d="M5 21h14" />
-                      </svg>
-                    </div>
-                    <span className="dl-label">Download PDF</span>
-                  </div>
-                  <div className="desc">
-                    Download a simple report you can keep or share
-                  </div>
-                </div>
               </div>
             </div>
           </div>
