@@ -51,7 +51,7 @@ Theme A delivered end-to-end in a single day. 9 engineering cards merged + deplo
 
 **Backlog (filed, not scheduled):**
 
-- LKID-77 — Engine edge case: `compute_dial_age` returns None when `trajectory[0] < 12` (Low, agent:john-donaldson)
+*(empty — all engineering cards complete)*
 
 **Brad-hands tickets (agents can't do these — filter Jira board by label `brad-hands`):**
 
@@ -75,6 +75,7 @@ LKID-83/84/85 are blockers but on the backlog — agents will keep moving on eng
 - LKID-92 — Post-LKID-91 cleanup (PR #78, merged 2026-04-30). Removed the `.exclude('[data-testid="egfr-chart-svg"]')` axe waiver + `TODO(LKID-89)` comment block (visual regression now catches palette drift; LKID-91 hid the AA-failing yellow line). Deleted dormant `combineMidScenarios` helper + `bun_13_24` config entry left over from the LKID-90 spike. -105 lines net. Yuri PASS WITH NITS — 2 follow-ups filed: chart-SVG axe scan needs a working test (results-page accessibility test pre-existing broken on main), and no axe workflow exists in CI.
 - LKID-93 — Fixed broken results-page a11y test (PR #81, merged 2026-04-30). Root cause: `NEXT_PUBLIC_API_URL` missing from `playwright.a11y.config.ts` `webServer.env` — CSP blocked the route-mock fetch so the page never left its loading skeleton. Fix: added env var + switched `RESULTS_API_URL` to regex to handle query params + scoped axe scan to `[data-testid="egfr-chart-svg"]` (pre-existing page-chrome contrast failures tracked in LKID-96). Yuri PASS 22/22.
 - LKID-94 — Wired a11y CI suite (PR #83, merged 2026-04-30). New `.github/workflows/accessibility.yml`: runs axe-core suite on every frontend-touching PR, Playwright browser cache, artifact upload on failure. Added `test:a11y` npm script. Yuri PASS 26/26.
+- LKID-77 — Engine edge case fix (PR #87, merged 2026-04-30). `compute_dial_age` returned `None` when `trajectory[0] < DIALYSIS_THRESHOLD` (baseline already below 12.0) — indistinguishable from "never crosses." Fix: one-line guard returns `float(current_age)` in that case. 4 new tests (229 total). Yuri PASS 15/15.
 - LKID-96 — Color-contrast AA token fixes (PR #85, merged 2026-04-30). Darkened `--kh-muted` #8A8D96 → #5E6169 (5.68:1 on `#F4F5F7`; 4.98:1 worst-case on card tints) and `--s-gray-text` #6B6E78 → #616469 (5.03:1 on gray pill composite). Replaced hardcoded `#8A8D96` in `page.tsx`, `labs/page.tsx`, `gate/[token]/page.tsx` inline styles with `var(--kh-muted)`. Dropped `.include('[data-testid="egfr-chart-svg"]')` scope narrowing from the results-page a11y test — full-page scan now passes 5/5. Visual regression baselines need `workflow_dispatch` regen (axis tick text shifted ~1% — triggered post-merge). Yuri PASS WITH NITS.
 
 Full acceptance criteria + step-by-step for each in `agents/luca/drafts/brad-hands-cards-pending.md`.
@@ -268,6 +269,7 @@ CTO (Luca) opens one PR per Jira card. Each card gets a feature branch (`feat/LK
 | [#81](https://github.com/Automation-Architecture/LKID/pull/81) | `feat/LKID-93-fix-a11y-results-test` | LKID-93 | Harshit + Yuri | Merged |
 | [#83](https://github.com/Automation-Architecture/LKID/pull/83) | `feat/LKID-94-a11y-ci` | LKID-94 | Yuri | Merged |
 | [#85](https://github.com/Automation-Architecture/LKID/pull/85) | `feat/LKID-96-color-contrast-token-fixes` | LKID-96 | Harshit + Inga | Merged |
+| [#87](https://github.com/Automation-Architecture/LKID/pull/87) | `fix/LKID-77-dial-age-below-threshold` | LKID-77 | John Donaldson | Merged |
 
 ## Team
 
@@ -389,6 +391,7 @@ LKID/
 | Sprint 5 PR #63 QA Verdict | `agents/yuri/drafts/sprint5-pr63-qa-verdict.md` | Yuri | Final | LKID-74 CSP + headers: PASS — 13/13 checks; Report-Only; 6-step post-merge verification for enforcing-mode flip |
 | Sprint 5 PR #64 QA Verdict | `agents/yuri/drafts/sprint5-pr64-qa-verdict.md` | Yuri | Final | LKID-73 SEO basics: PASS — 13/13 checks; base URL env-driven for DNS flip |
 | LKID-96 PR #85 QA Verdict | `agents/yuri/drafts/lkid-96-pr85-qa-verdict.md` | Yuri | Final | LKID-96 contrast fixes: PASS WITH NITS — 20/20 checks; visual regression baselines need regen |
+| LKID-77 PR #87 QA Verdict | `agents/yuri/drafts/lkid-77-pr87-qa-verdict.md` | Yuri | Final | LKID-77 dial_age edge case: PASS — 15/15 checks, 229 tests pass |
 | LKID-78 Audit Investigation | `agents/john_donaldson/drafts/lkid-78-audit-discrepancy-investigation.md` | John | Final | WAI — "32" was mockup copy; `sex="unknown"` locked in by Lee's preference |
 | Brad-Hands Pending Cards | `agents/luca/drafts/brad-hands-cards-pending.md` | Luca | Final | Full acceptance criteria + step-by-step for LKID-83/84/85/86/87/88 (durable reference if Jira is slow) |
 | Scenario dial_age Sign-off | `agents/john_donaldson/drafts/scenario-dial-age-signoff.md` | John | Final | LKID-76 engine PASS — "Not projected" output correct for Stage 3a baseline |
