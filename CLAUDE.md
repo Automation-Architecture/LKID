@@ -59,12 +59,12 @@ Theme A delivered end-to-end in a single day. 9 engineering cards merged + deplo
 |-----|------|----------|
 | [LKID-47](https://automationarchitecture.atlassian.net/browse/LKID-47) | Klaviyo Flow dashboard config (engineering shipped; Flow setup + DNS + API key pending) | — |
 | [LKID-83](https://automationarchitecture.atlassian.net/browse/LKID-83) | Set PostHog env vars on Vercel — activate analytics | **High** |
-| [LKID-84](https://automationarchitecture.atlassian.net/browse/LKID-84) | Set Sentry env vars — DSN set on all envs ✅; still need `SENTRY_ORG` + `SENTRY_PROJECT` + `SENTRY_AUTH_TOKEN` (source maps) | **High** |
+| [LKID-84](https://automationarchitecture.atlassian.net/browse/LKID-84) | Set Sentry env vars — **Done 2026-05-01** ✅ All 4 vars set; source maps uploading (273 files, deploy `dpl_2TJnxkgCdms2WTgSdqfzaLcCz5ZR`) | ~~High~~ |
 | [LKID-85](https://automationarchitecture.atlassian.net/browse/LKID-85) | Resend DNS + flip FROM email to `reports@kidneyhood.org` | **High** |
 | [LKID-86](https://automationarchitecture.atlassian.net/browse/LKID-86) | DNS flip to `kidneyhood.org` + set `NEXT_PUBLIC_APP_URL` | Medium |
 | [LKID-88](https://automationarchitecture.atlassian.net/browse/LKID-88) | Send Sprint 5 update email to Lee | Low |
 
-LKID-83/84/85 are blockers but on the backlog — agents will keep moving on engineering work first.
+LKID-83/85 are blockers but on the backlog — agents will keep moving on engineering work first. LKID-84 done 2026-05-01.
 
 **Done (post-Sprint 5):**
 
@@ -77,6 +77,7 @@ LKID-83/84/85 are blockers but on the backlog — agents will keep moving on eng
 - LKID-94 — Wired a11y CI suite (PR #83, merged 2026-04-30). New `.github/workflows/accessibility.yml`: runs axe-core suite on every frontend-touching PR, Playwright browser cache, artifact upload on failure. Added `test:a11y` npm script. Yuri PASS 26/26.
 - LKID-77 — Engine edge case fix (PR #87, merged 2026-04-30). `compute_dial_age` returned `None` when `trajectory[0] < DIALYSIS_THRESHOLD` (baseline already below 12.0) — indistinguishable from "never crosses." Fix: one-line guard returns `float(current_age)` in that case. 4 new tests (229 total). Yuri PASS 15/15.
 - LKID-96 — Color-contrast AA token fixes (PR #85, merged 2026-04-30). Darkened `--kh-muted` #8A8D96 → #5E6169 (5.68:1 on `#F4F5F7`; 4.98:1 worst-case on card tints) and `--s-gray-text` #6B6E78 → #616469 (5.03:1 on gray pill composite). Replaced hardcoded `#8A8D96` in `page.tsx`, `labs/page.tsx`, `gate/[token]/page.tsx` inline styles with `var(--kh-muted)`. Dropped `.include('[data-testid="egfr-chart-svg"]')` scope narrowing from the results-page a11y test — full-page scan now passes 5/5. Visual regression baselines need `workflow_dispatch` regen (axis tick text shifted ~1% — triggered post-merge). Yuri PASS WITH NITS.
+- LKID-84 — Sentry source maps fully wired (2026-05-01). Set `SENTRY_ORG=automation-architect`, `SENTRY_PROJECT=javascript-nextjs-x0`, `SENTRY_AUTH_TOKEN` (full-scope `sntryu_*` token) on Vercel production. 273 source map files uploaded on first deploy (`dpl_2TJnxkgCdms2WTgSdqfzaLcCz5ZR`). `~/.sentryclirc` updated locally. Follow-up from LKID-87: wire `report-uri` to Sentry (now unblocked).
 
 Full acceptance criteria + step-by-step for each in `agents/luca/drafts/brad-hands-cards-pending.md`.
 
