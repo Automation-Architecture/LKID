@@ -694,19 +694,16 @@ class TestEdgeCases:
 
         LKID-77: Before the fix, all four dial_ages returned None for this input
         because every trajectory started below DIALYSIS_THRESHOLD=12.0 and the
-        crossing-detection loop found nothing.  After the fix, dial_ages should
-        equal the patient's current age (already below threshold at baseline).
+        crossing-detection loop found nothing.  After the fix, all four dial_ages
+        should equal the patient's current age (already below threshold at baseline).
         """
         age = 55
         result = _run_predict(bun=22, creatinine=5.0, age=age, egfr_entered=5.0)
-        no_tx_dial = result["dial_ages"]["no_treatment"]
-        assert no_tx_dial is not None, (
-            f"dial_ages['no_treatment'] must not be None when egfr_entered=5.0 "
-            f"(trajectory starts below threshold). Got {no_tx_dial!r}"
-        )
-        assert no_tx_dial == float(age), (
-            f"Expected dial_age == float({age}), got {no_tx_dial!r}"
-        )
+        for scenario in ["no_treatment", "bun_18_24", "bun_13_17", "bun_12"]:
+            dial = result["dial_ages"][scenario]
+            assert dial == float(age), (
+                f"Expected dial_ages['{scenario}'] == float({age}), got {dial!r}"
+            )
 
     def test_egfr_ceiling_not_exceeded(self):
         """No trajectory should produce arithmetic-runaway eGFR (ceiling: baseline+35).

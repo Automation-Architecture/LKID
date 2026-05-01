@@ -296,7 +296,7 @@ def compute_dial_age(
       - None: trajectory stays at or above the threshold for the full 120-month
         window (threshold never crossed).
 
-    Threshold: eGFR 12 (Q4 -- one-line change if Lee corrects to 15).
+    Threshold: eGFR 12.0 (confirmed by Lee — see DIALYSIS_THRESHOLD constant).
     """
     if trajectory[0] < DIALYSIS_THRESHOLD:
         return float(current_age)  # already below threshold at baseline
