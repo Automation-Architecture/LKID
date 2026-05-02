@@ -313,8 +313,8 @@ const GATE_CSS = `
 .kh-gate .state-card a.btn:hover { background: var(--navy-deep); }
 
 /* Overlay top tracks Header height at each breakpoint (matches h-12/md:h-14/lg:h-16) */
-@media (min-width: 768px)  { .kh-gate .overlay { inset-top: 56px; inset: 56px 0 0 0; } }
-@media (min-width: 1024px) { .kh-gate .overlay { inset-top: 64px; inset: 64px 0 0 0; } }
+@media (min-width: 768px)  { .kh-gate .overlay { inset: 56px 0 0 0; } }
+@media (min-width: 1024px) { .kh-gate .overlay { inset: 64px 0 0 0; } }
 
 /* Mobile */
 @media (max-width: 768px) {
