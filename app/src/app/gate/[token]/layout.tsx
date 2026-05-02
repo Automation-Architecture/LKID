@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import { Header } from "@/components/header";
 
 /**
  * LKID-73 — Email-gate pages for tokenized reports must never be indexed.
@@ -22,5 +23,10 @@ export default function GateTokenLayout({
 }: {
   children: React.ReactNode;
 }) {
-  return children;
+  return (
+    <>
+      <Header />
+      {children}
+    </>
+  );
 }

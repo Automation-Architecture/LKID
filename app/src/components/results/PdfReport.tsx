@@ -206,7 +206,7 @@ const PDF_CSS = `
 .kh-pdf .hdr {
   background: var(--navy);
   color: #fff;
-  height: 64px;
+  height: 52px;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -217,7 +217,7 @@ const PDF_CSS = `
 }
 
 /* ---------- Body padding ---------- */
-.kh-pdf .body-pad { padding: 28px 32px 24px; }
+.kh-pdf .body-pad { padding: 18px 28px 16px; }
 
 /* ---------- Title row ---------- */
 .kh-pdf .meta {
@@ -233,7 +233,7 @@ const PDF_CSS = `
   color: var(--navy);
   font-family: var(--font-manrope), 'Manrope', sans-serif;
   font-weight: 700;
-  font-size: 28px;
+  font-size: 22px;
   letter-spacing: -0.01em;
   line-height: 1.15;
 }
@@ -249,7 +249,7 @@ const PDF_CSS = `
   display: flex;
   align-items: center;
   gap: 8px;
-  margin: 22px 0 12px;
+  margin: 14px 0 8px;
 }
 .kh-pdf .sec-title::before {
   content: "";
@@ -263,14 +263,14 @@ const PDF_CSS = `
 .kh-pdf .chart-card {
   background: var(--bg);
   border-radius: 12px;
-  padding: 16px 18px 14px;
+  padding: 10px 14px 8px;
 }
 
 .kh-pdf .legend {
   display: flex;
   justify-content: space-between;
   gap: 8px;
-  margin-top: 14px;
+  margin-top: 8px;
   flex-wrap: wrap;
 }
 .kh-pdf .legend .it {
@@ -313,10 +313,12 @@ const PDF_CSS = `
   display: grid;
   grid-template-columns: repeat(2, 1fr);
   gap: 8px;
+  page-break-inside: avoid;
+  break-inside: avoid;
 }
 .kh-pdf .sc-card {
   border-radius: 12px;
-  padding: 12px 14px 14px;
+  padding: 8px 12px 10px;
   border: 1px solid transparent;
 }
 .kh-pdf .sc-card.green  { background: var(--s-green-bg);  border-color: var(--s-green-border); }
@@ -340,7 +342,7 @@ const PDF_CSS = `
 }
 .kh-pdf .sc-card .cell .val {
   font-family: var(--font-manrope), 'Manrope', sans-serif;
-  font-size: 28px;
+  font-size: 22px;
   font-weight: 800;
   line-height: 1;
   letter-spacing: -0.01em;
@@ -359,17 +361,19 @@ const PDF_CSS = `
 /* ---------- Explanation block ---------- */
 .kh-pdf .explain-grid {
   display: grid;
-  grid-template-columns: 170px 1fr;
+  grid-template-columns: 120px 1fr;
   gap: 20px;
   align-items: center;
-  margin-top: 24px;
+  margin-top: 14px;
+  page-break-inside: avoid;
+  break-inside: avoid;
 }
 .kh-pdf .kidney-visual {
   aspect-ratio: 1 / 1;
   border-radius: 999px;
   background: radial-gradient(circle at 50% 50%, #fff 55%, transparent 70%);
   position: relative;
-  max-width: 170px;
+  max-width: 120px;
 }
 .kh-pdf .kidney-visual::before,
 .kh-pdf .kidney-visual::after {
@@ -399,8 +403,8 @@ const PDF_CSS = `
 /* ---------- Disclaimer + brand footer ---------- */
 .kh-pdf .fine-line {
   border-top: 1px solid var(--border);
-  margin-top: 24px;
-  padding-top: 14px;
+  margin-top: 14px;
+  padding-top: 10px;
   text-align: center;
   color: var(--muted);
   font-size: 11px;

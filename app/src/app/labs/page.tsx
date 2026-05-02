@@ -93,24 +93,6 @@ const LABS_CSS = `
   text-transform: uppercase;
 }
 
-/* Nav */
-.kh-labs .nav {
-  background: var(--navy);
-  color: #fff;
-  height: 64px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  flex-shrink: 0;
-}
-.kh-labs .nav .brand {
-  color: #fff;
-  font-weight: 700;
-  font-family: var(--font-manrope), 'Manrope', sans-serif;
-  font-size: 16px;
-  letter-spacing: -0.01em;
-  text-decoration: none;
-}
 
 /* Page */
 .kh-labs main {
@@ -490,10 +472,6 @@ export default function LabsPage() {
   return (
     <div className={`kh-labs ${manrope.variable} ${nunito.variable}`}>
       <style dangerouslySetInnerHTML={{ __html: LABS_CSS }} />
-
-      <nav className="nav" aria-label="Main navigation">
-        <Link href="/" className="brand">KidneyHood.org</Link>
-      </nav>
 
       <main id="main-content">
         <div className="wrap">

@@ -120,24 +120,6 @@ const RESULTS_CSS = `
 }
 .kh-results *, .kh-results *::before, .kh-results *::after { box-sizing: border-box; }
 
-/* ---------- Nav ---------- */
-.kh-results .nav {
-  background: var(--navy);
-  color: #fff;
-  height: 64px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  position: relative;
-}
-.kh-results .nav .brand {
-  color: #fff;
-  font-weight: 700;
-  font-family: var(--font-manrope), 'Manrope', sans-serif;
-  letter-spacing: -0.01em;
-  font-size: 16px;
-  text-decoration: none;
-}
 
 /* ---------- Main layout ---------- */
 .kh-results main {
@@ -683,11 +665,6 @@ export default function ResultsTokenPage({
   return (
     <div className={`kh-results ${manrope.variable} ${nunito.variable}`}>
       <style dangerouslySetInnerHTML={{ __html: RESULTS_CSS }} />
-      <nav className="nav" aria-label="Main navigation">
-        <Link href="/" className="brand">
-          KidneyHood.org
-        </Link>
-      </nav>
       <main id="main-content">{renderBody()}</main>
       <footer className="kh-foot">
         <div className="brand-foot">KidneyHood.org</div>
