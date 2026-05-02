@@ -60,11 +60,12 @@ Theme A delivered end-to-end in a single day. 9 engineering cards merged + deplo
 | [LKID-47](https://automationarchitecture.atlassian.net/browse/LKID-47) | Klaviyo Flow dashboard config (engineering shipped; Flow setup + DNS + API key pending) | — |
 | [LKID-83](https://automationarchitecture.atlassian.net/browse/LKID-83) | Set PostHog env vars on Vercel — **Done 2026-05-01** ✅ Both vars confirmed set; events live on latest deploy | ~~High~~ |
 | [LKID-84](https://automationarchitecture.atlassian.net/browse/LKID-84) | Set Sentry env vars — **Done 2026-05-01** ✅ All 4 vars set; source maps uploading (273 files, deploy `dpl_2TJnxkgCdms2WTgSdqfzaLcCz5ZR`) | ~~High~~ |
-| [LKID-85](https://automationarchitecture.atlassian.net/browse/LKID-85) | Resend DNS + flip FROM email to `reports@kidneyhood.org` | **High** |
-| [LKID-86](https://automationarchitecture.atlassian.net/browse/LKID-86) | DNS flip to `kidneyhood.org` + set `NEXT_PUBLIC_APP_URL` | Medium |
-| [LKID-88](https://automationarchitecture.atlassian.net/browse/LKID-88) | Send Sprint 5 update email to Lee | Low |
+| [LKID-85](https://automationarchitecture.atlassian.net/browse/LKID-85) | Resend DNS + flip FROM email to `reports@kidneyhood.org` — **blocked on Lee** | **High** |
+| [LKID-86](https://automationarchitecture.atlassian.net/browse/LKID-86) | DNS flip to `kidneyhood.org` + set `NEXT_PUBLIC_APP_URL` — **blocked on Lee** | Medium |
+| [LKID-47](https://automationarchitecture.atlassian.net/browse/LKID-47) | Klaviyo Flow dashboard config — **blocked on Lee (API key)** | — |
+| [LKID-88](https://automationarchitecture.atlassian.net/browse/LKID-88) | Send Sprint 5 update email to Lee — **Done 2026-05-02** ✅ | ~~Low~~ |
 
-LKID-85 is a blocker but on the backlog — agents will keep moving on engineering work first. LKID-83 + LKID-84 done 2026-05-01.
+LKID-85, LKID-86, LKID-47 all blocked on Lee. LKID-83 + LKID-84 done 2026-05-01. LKID-88 done 2026-05-02.
 
 **Done (post-Sprint 5):**
 
