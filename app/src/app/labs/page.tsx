@@ -93,7 +93,6 @@ const LABS_CSS = `
   text-transform: uppercase;
 }
 
-
 /* Page */
 .kh-labs main {
   flex: 1;

@@ -83,7 +83,6 @@ const GATE_CSS = `
   text-transform: uppercase;
 }
 
-
 /* Page */
 .kh-gate main {
   flex: 1;
@@ -157,10 +156,10 @@ const GATE_CSS = `
   border-radius: 4px 4px 0 0;
 }
 
-/* Overlay dim */
+/* Overlay dim — top offset tracks Header height (48px / 56px / 64px) */
 .kh-gate .overlay {
   position: fixed;
-  inset: 64px 0 0 0;
+  inset: 48px 0 0 0;
   background: rgba(20, 28, 70, 0.35);
   display: flex;
   align-items: flex-start;
@@ -312,6 +311,10 @@ const GATE_CSS = `
   line-height: 20px;
 }
 .kh-gate .state-card a.btn:hover { background: var(--navy-deep); }
+
+/* Overlay top tracks Header height at each breakpoint (matches h-12/md:h-14/lg:h-16) */
+@media (min-width: 768px)  { .kh-gate .overlay { inset-top: 56px; inset: 56px 0 0 0; } }
+@media (min-width: 1024px) { .kh-gate .overlay { inset-top: 64px; inset: 64px 0 0 0; } }
 
 /* Mobile */
 @media (max-width: 768px) {
