@@ -13,7 +13,7 @@ FastAPI service deployed to Railway (Python 3.11+). Handles the prediction engin
 | `GET` | `/reports/{token}/pdf` | Render Playwright PDF for a stored prediction |
 | `GET` | `/client/{slug}/metrics` | Lee dashboard launch metrics (LKID-75) |
 
-Rate limits: 10/min on `/predict`, 5/min on `/leads` and `/predict/pdf`.
+Rate limits: 10/min on `/predict`, 5/min on `/leads` and `/reports/{token}/pdf`.
 
 ## Local Development
 
@@ -23,7 +23,7 @@ pip install -r requirements.txt
 uvicorn main:app --reload
 ```
 
-The API runs on `http://localhost:8000` by default. Set `DATABASE_URL` in `.env` for a full local stack; without it, `/predict` still returns tokens but `/results` and `/leads` will 404/503.
+The API runs on `http://localhost:8000` by default. Set `DATABASE_URL` in `.env` for a full local stack; without it, `/predict` still returns tokens but `/results` and `/leads` will 503 (`Database not configured`); 404 applies when the DB is configured but the token is unknown.
 
 ## Running Tests
 

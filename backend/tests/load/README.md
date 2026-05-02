@@ -1,10 +1,11 @@
 # Load Testing — k6
 
 > **These scripts target the pre-Sprint 4 API contract (before the tokenized flow).**
-> `lab_entries_load.js` targets a non-existent endpoint (was never implemented).
-> `predict_load.js` uses the old `/predict` shape — incompatible with the current
-> tokenized response. Scripts need a full rewrite before use. `API_BASE_URL` example
-> below is also pending LKID-86 (DNS flip not yet complete; use Railway URL for now).
+> `lab_entries_load.js` hits a non-existent endpoint (`POST /lab-entries` was never
+> implemented) and cannot run. `predict_load.js` targets `POST /predict` which still
+> exists and returns the same fields (plus `report_token`), so it remains runnable —
+> but it does not cover the tokenized `/results` or `/leads` flow. `API_BASE_URL`
+> example below is pending LKID-86 (DNS flip not yet complete; use Railway URL for now).
 
 Load test infrastructure for the KidneyHood Prediction API.
 
