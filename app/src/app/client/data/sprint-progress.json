@@ -417,12 +417,12 @@
         {
           "id": "LKID-77",
           "title": "Engine edge case fix (dial age below threshold)",
-          "status": "done"
+          "status": "upcoming"
         },
         {
           "id": "LKID-96",
           "title": "WCAG AA color-contrast token fixes",
-          "status": "done"
+          "status": "upcoming"
         },
         {
           "id": "LKID-83",
