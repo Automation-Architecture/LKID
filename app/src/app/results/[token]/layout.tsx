@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import { Header } from "@/components/header";
 
 /**
  * LKID-73 — Tokenized report URLs must never be indexed by search engines.
@@ -26,5 +27,10 @@ export default function ResultsTokenLayout({
 }: {
   children: React.ReactNode;
 }) {
-  return children;
+  return (
+    <>
+      <Header />
+      {children}
+    </>
+  );
 }
