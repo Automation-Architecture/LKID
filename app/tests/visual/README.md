@@ -143,8 +143,8 @@ Two scenarios cover the chart's structural surface:
 
 | Scenario | Baseline | What it validates |
 |----------|----------|-------------------|
-| Stage 3a | eGFR 50 | Four trajectories, end-of-line callouts, no threshold-crossing |
-| Stage 4  | eGFR 18 | Four trajectories, no-treatment crosses dialysis threshold, threshold band visible, callouts at 0 and the best-case value |
+| Stage 3a | eGFR 50 | Two trajectories displayed (`bun_13_17` labelled 'BUN 12-17' + `no_treatment`); `bun_lte_12` and `bun_18_24` hidden per LKID-91 (PR #75, 2026-04-30). End-of-line callouts, no threshold-crossing. |
+| Stage 4  | eGFR 18 | Two trajectories displayed (`bun_13_17` labelled 'BUN 12-17' + `no_treatment`); `bun_lte_12` and `bun_18_24` hidden per LKID-91 (PR #75, 2026-04-30). No-treatment crosses dialysis threshold, threshold band visible, callouts at 0 and the BUN 12-17 line best-case value. |
 
 Adding more scenarios is cheap — drop another entry into `SCENARIOS` in the
 spec, run `npm run test:visual:update`, commit. Avoid over-fragmenting:

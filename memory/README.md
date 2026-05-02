@@ -4,8 +4,8 @@ Project-scoped learning system. See `docs/memory-system-reference.md` for entry 
 
 ## Status
 
-**Phase:** Sprint 5 complete — post-launch-readiness
-**Last updated:** 2026-04-20
+**Phase:** Post-Sprint 5 — active hardening (a11y, engine edge cases, visual regression, UI polish)
+**Last updated:** 2026-05-02
 
 ## Contents
 

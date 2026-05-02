@@ -10,7 +10,7 @@ npm run dev
 
 Open [http://localhost:3000](http://localhost:3000). The page auto-updates as you edit.
 
-Fonts load via `next/font` (Inter, per Inga's design tokens). Tailwind CSS for styling.
+Fonts load globally via `app/src/app/layout.tsx` using `next/font`: Inter, Manrope (headings/display), and Nunito Sans (body) — all three added in LKID-76. Tailwind CSS for styling.
 
 ## Routes
 
@@ -29,11 +29,11 @@ No patient accounts, no sessionStorage. The tokenized flow replaced the legacy `
 
 - **PostHog** analytics (env-gated by `NEXT_PUBLIC_POSTHOG_KEY` + host) — silent no-op until env vars set on Vercel
 - **Sentry** error monitoring, frontend + backend (env-gated) — silent no-op until DSN set
-- **CSP + 6 security headers** shipped in Report-Only mode (LKID-74). See `agents/yuri/drafts/sprint5-pr63-qa-verdict.md` for the enforcing-mode flip checklist.
+- **CSP enforcing (LKID-87, 2026-04-30) + 6 security headers (LKID-74).**
 
 ## Design Parity
 
-Visual parity for the patient surfaces is driven by design-source HTML in `project/` (Landing Page, Lab Form, Email Gate, Results, PDF Report, Email Template). These files are maintained locally by Inga and are not committed — ask the designer or check the main repo clone for the current source of truth.
+Visual parity for the patient surfaces is driven by design-source HTML in `project/` (Landing Page, Lab Form, Email Gate, Results, PDF Report, Email Template). Committed to `project/` — source of truth for all page designs.
 
 ## Deployment
 

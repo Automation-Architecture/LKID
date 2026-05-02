@@ -12,7 +12,7 @@ Lead generation web app for kidney health awareness. Patients enter lab values a
 
 ## Tech Stack
 
-Next.js 16 (Vercel) + FastAPI (Railway) + PostgreSQL (Railway) + Clerk v7 (auth, scoped to `/client/*` only) + Playwright (PDF generation). PostHog analytics and Sentry error monitoring wired (env-gated). CSP + 6 security headers shipped in Report-Only mode.
+Next.js 16 (Vercel) + FastAPI (Railway) + PostgreSQL (Railway) + Clerk v7 (auth, scoped to `/client/*` only) + Playwright (PDF generation). PostHog analytics and Sentry error monitoring wired (env-gated). CSP enforcing (LKID-87, 2026-04-30) + 6 security headers.
 
 ## Patient Flow
 
