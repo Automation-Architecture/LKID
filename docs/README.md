@@ -13,12 +13,17 @@ Engineering documentation and standard operating procedures.
 | `jira-lean-setup.md` | Jira board configuration and lean setup guide |
 | `prd-sprint-timeline.excalidraw` | Sprint timeline visual diagram |
 | `prd-agent-workload.excalidraw` | Agent workload distribution diagram |
+| `qa-testing-sop.md` | QA Testing SOP — Final; binding QA process and skill invocation rules |
 
 ## Subdirectories
 
 ### `design-sprint/`
 
 Placeholder docs for each Design Sprint PR branch (LKID-31 through LKID-38). One file per card.
+
+### `client-comms/`
+
+Call transcripts (Fireflies/Granola notes) from Lee calls, 2026-03-12 through 2026-04-09. Contains `specs/` subdirectory with patient app spec PDFs.
 
 ### `superpowers/specs/`
 

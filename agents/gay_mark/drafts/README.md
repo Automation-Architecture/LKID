@@ -11,7 +11,6 @@ Working documents for **Gay Mark** (Database Engineer).
 | `db_schema.sql` | PostgreSQL schema definition |
 | `db-deployment-runbook.md` | Database deployment runbook for Railway |
 | `pgaudit-setup-notes.md` | Notes on pgAudit configuration |
-| `TASK-rewrite-db-schema.md` | Iteration: rewrite DB schema for Lean Launch |
 
 ## Conventions
 

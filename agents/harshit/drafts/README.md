@@ -2,16 +2,7 @@
 
 Working documents for **Harshit** (Frontend Developer).
 
-## Contents
-
-| File | Description |
-|------|-------------|
-| `frontend_architecture.md` | Frontend architecture decisions and structure |
-| `lean-launch-review.md` | Review notes on Lean Launch MVP scope |
-| `clerk-integration-plan.md` | Clerk auth integration plan for the frontend |
-| `DISPATCH-sprint2-frontend.md` | One-time task: Sprint 2 frontend implementation |
-| `DISPATCH-pr12-qa-fixes.md` | One-time task: QA fixes for PR #12 |
-| `pr12-fixes-summary.md` | Summary of fixes applied to PR #12 |
+For a current file listing see `CLAUDE.md` — the static table here is not maintained.
 
 ## Conventions
 
