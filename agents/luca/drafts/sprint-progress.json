@@ -374,6 +374,82 @@
           "status": "done"
         }
       ]
+    },
+    {
+      "name": "Post-Sprint 5 — Hardening",
+      "dates": "Apr 30 – May 2 (In Progress)",
+      "cards": [
+        {
+          "id": "LKID-87",
+          "title": "CSP Report-Only → enforcing flip",
+          "status": "done"
+        },
+        {
+          "id": "LKID-81",
+          "title": "Visual regression CI infrastructure",
+          "status": "done"
+        },
+        {
+          "id": "LKID-90",
+          "title": "Chart v3 — divergence wedge + dialysis event markers",
+          "status": "done"
+        },
+        {
+          "id": "LKID-91",
+          "title": "Chart simplification — 2 trajectory lines",
+          "status": "done"
+        },
+        {
+          "id": "LKID-92",
+          "title": "Post-simplification cleanup + axe waiver removal",
+          "status": "done"
+        },
+        {
+          "id": "LKID-93",
+          "title": "Fix broken results-page a11y test",
+          "status": "done"
+        },
+        {
+          "id": "LKID-94",
+          "title": "A11y CI suite — automatic per-PR checks",
+          "status": "done"
+        },
+        {
+          "id": "LKID-77",
+          "title": "Engine edge case fix (dial age below threshold)",
+          "status": "done"
+        },
+        {
+          "id": "LKID-96",
+          "title": "WCAG AA color-contrast token fixes",
+          "status": "done"
+        },
+        {
+          "id": "LKID-83",
+          "title": "PostHog env vars set — analytics live",
+          "status": "done"
+        },
+        {
+          "id": "LKID-84",
+          "title": "Sentry source maps + env vars — error monitoring live",
+          "status": "done"
+        },
+        {
+          "id": "LKID-88",
+          "title": "Sprint 5 update email to Lee",
+          "status": "done"
+        },
+        {
+          "id": "LKID-85",
+          "title": "Resend DNS + flip FROM email to reports@kidneyhood.org",
+          "status": "upcoming"
+        },
+        {
+          "id": "LKID-86",
+          "title": "DNS flip to kidneyhood.org + set NEXT_PUBLIC_APP_URL",
+          "status": "upcoming"
+        }
+      ]
     }
   ]
 }
