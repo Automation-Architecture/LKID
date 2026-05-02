@@ -21,6 +21,10 @@ Engineering documentation and standard operating procedures.
 
 Placeholder docs for each Design Sprint PR branch (LKID-31 through LKID-38). One file per card.
 
+### `client-comms/`
+
+Call transcripts (Fireflies/Granola notes) from Lee calls, 2026-03-12 through 2026-04-09. (Patient app spec PDFs live in `Resources/specs/`, not here.)
+
 ### `superpowers/specs/`
 
 | File | Description |
